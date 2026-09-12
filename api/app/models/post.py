@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Text, DateTime
+from sqlalchemy import Column, String, Text, DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 
@@ -12,5 +12,5 @@ class Post(Base):
     title = Column(String(255), nullable=False)
     content = Column(Text, nullable=False)
     category = Column(String(100), nullable=True)
-    published_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    published_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
