@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import posts
+from app.routers import posts, auth
 
 app = FastAPI(
     title="La Guardia de Elune API",
@@ -7,3 +7,4 @@ app = FastAPI(
 )
 
 app.include_router(posts.router)
+app.include_router(auth.router)

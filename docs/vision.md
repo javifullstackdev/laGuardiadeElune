@@ -90,3 +90,28 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 # 7. Diagramas
 ![Entidad-Relación](docs/diagrama-er.png)
 ![Flujo](docs/diagrama-flujo.png)
+# 8. Estado del proyecto
+## Fase 0 — Planificación y setup ✅
+- Visión, user stories, reglas de negocio y entidades definidas
+- Cuentas de developer en Discord y Blizzard
+- Monorepo inicializado (`api/`, `web/`)
+- Docker Compose con PostgreSQL en puerto 5433
+- Variables de entorno configuradas (`.env`, `.env.example`)
+
+## Fase 1 — Web pública: listado y detalle de posts ✅
+- FastAPI con SQLAlchemy + Alembic
+- Modelo `Post` con migración aplicada
+- Endpoints `GET /posts/` y `GET /posts/{id}` con esquemas Pydantic
+- Next.js App Router con Server Components
+- Página home con listado de posts y página de detalle dinámica
+
+## Fase 2 — Modelo de datos completo ✅
+- Modelos ORM: `Season`, `User`, `Character`, `Achievement`, `UserAchievement`, `PointTransaction`
+- ENUMs centralizados en `enums.py`
+- Migraciones Alembic generadas y aplicadas
+
+## Fase 3 — OAuth2 Discord + JWT 🚧 En progreso
+- Endpoint `GET /auth/discord/login` → redirige a Discord con OAuth2
+- Endpoint `GET /auth/discord/callback` → intercambia code, upsert user en DB, devuelve JWT
+- Next.js route handler `GET /api/auth/discord/callback` → recibe code, llama a FastAPI, guarda JWT en cookie httpOnly
+- Pendiente: verificar flujo completo end-to-end y páginas privadas
