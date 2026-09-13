@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default async function Home() {
 
   const res = await fetch("http://127.0.0.1:8000/posts/", { cache: "no-store" });
@@ -9,7 +11,9 @@ export default async function Home() {
       <ul className="flex flex-col gap-4">
         {posts.map((post: any) => (
           <li key={post.id} className="border rounded-lg p-4">
-            <h2 className="text-xl font-semibold">{post.title}</h2>
+            <Link href={`/posts/${post.id}`}>
+              <h2 className="text-xl font-semibold">{post.title}</h2>
+            </Link>
             <p className="text-gray-500 text-sm mt-1">{post.category}</p>
             <p className="mt-2">{post.content}</p>
           </li>
