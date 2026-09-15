@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     }
 
     const fastapiRes = await fetch(
-        `http://lcocalhost:8000/api/auth/discord/callback?code=${code}`
+        `http://localhost:8000/auth/discord/callback?code=${code}`
     );
 
     if (!fastapiRes.ok) {

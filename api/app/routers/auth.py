@@ -12,6 +12,7 @@ from urllib.parse import quote
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
+DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID")
 JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 24
@@ -25,7 +26,7 @@ def discord_login():
         f"?client_id={DISCORD_CLIENT_ID}"
         f"&redirect_uri={quote(DISCORD_REDIRECT_URI, safe='')}"
         "&response_type=code"
-        "&scope=identify"
+        "&scope=identify%20guilds.members.read"
     )
     return RedirectResponse(url)
 
@@ -67,6 +68,17 @@ async def discord_callback(code: str, db: Session = Depends(get_db)):
     discord_id = discord_user["id"]
     username = discord_user["username"]
     avatar_url = f"https://cdn.discordapp.com/avatars/{discord_id}/{discord_user.get('avatar')}.png" if discord_user.get("avatar") else None
+
+    async with httpx.AsyncClient() as client:
+        member_res = await client.get(
+            f"https://discord.com/api/users/@me/guilds/{DISCORD_GUILD_ID}/member",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    if member_res.status_code != 200:
+        raise HTTPException(
+            status_code=403,
+            detail="Debes ser miembro de La Guardia de Elune para acceder."
+        )
 
     user = db.query(User).filter(User.discord_id == discord_id).first()
     if not user:
