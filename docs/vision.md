@@ -110,6 +110,13 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - ENUMs centralizados en `enums.py`
 - Migraciones Alembic generadas y aplicadas
 
+## Fase 4 — Roles admin + CRUD protegido de posts ✅
+- Schemas Pydantic `PostCreate` y `PostUpdate`
+- Endpoints `POST /posts/`, `PATCH /posts/{id}`, `DELETE /posts/{id}` protegidos con `require_admin`
+- Dependencia `require_admin` encadenada sobre `get_current_user`
+- Panel `/admin/posts` con formulario de creación, edición inline y borrado
+- Enlace "Admin" en el Navbar solo visible para admins y officers
+
 ## Fase 3 — OAuth2 Discord + JWT ✅
 - Endpoint `GET /auth/discord/login` → redirige a Discord con OAuth2
 - Endpoint `GET /auth/discord/callback` → intercambia code, verifica membresía en servidor Discord, upsert user en DB, devuelve JWT
