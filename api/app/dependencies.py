@@ -26,3 +26,11 @@ def get_current_user(
     if user is None:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
     return user
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role.value not in ("admin", "officer"):
+        raise HTTException(
+            status_code=403,
+            detail="No tienes permisos para realizar esta acción"
+        )
+    return current_user

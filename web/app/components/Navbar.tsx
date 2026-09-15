@@ -5,6 +5,17 @@ export default async function Navbar() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
 
+  let user = null;
+  if (token) {
+    const res = await fetch("http://localhost:8000/users/me", {
+      headers: { Cookie: `token=${token}` },
+      cache: "no-store",
+    });
+    if (res.ok) user = await res.json();
+  }
+
+  const isAdmin = user?.role === "admin" || user?.role === "officer";
+
   return (
     <nav className="bg-gray-900 text-white px-6 py-4 flex items-center justify-between">
       <Link href="/" className="text-xl font-bold">
@@ -19,6 +30,11 @@ export default async function Navbar() {
             <Link href="/profile" className="hover:text-gray-300">
               Mi perfil
             </Link>
+            {isAdmin && (
+              <Link href="/admin/posts" className="hover:text-gray-300">
+                Admin
+              </Link>
+            )}
             <a
               href="/api/auth/logout"
               className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm"
