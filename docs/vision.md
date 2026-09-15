@@ -110,8 +110,10 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - ENUMs centralizados en `enums.py`
 - Migraciones Alembic generadas y aplicadas
 
-## Fase 3 — OAuth2 Discord + JWT 🚧 En progreso
+## Fase 3 — OAuth2 Discord + JWT ✅
 - Endpoint `GET /auth/discord/login` → redirige a Discord con OAuth2
-- Endpoint `GET /auth/discord/callback` → intercambia code, upsert user en DB, devuelve JWT
-- Next.js route handler `GET /api/auth/discord/callback` → recibe code, llama a FastAPI, guarda JWT en cookie httpOnly
-- Pendiente: verificar flujo completo end-to-end y páginas privadas
+- Endpoint `GET /auth/discord/callback` → intercambia code, verifica membresía en servidor Discord, upsert user en DB, devuelve JWT
+- Next.js route handler `GET /api/auth/discord/callback` → recibe code, llama a FastAPI, guarda JWT en cookie httpOnly, redirige a home
+- Dependencia `get_current_user` para proteger endpoints con JWT
+- Endpoint `GET /users/me` → devuelve datos del usuario autenticado
+- Página `/profile` privada → muestra avatar, nombre, rol, itinerario y puntos

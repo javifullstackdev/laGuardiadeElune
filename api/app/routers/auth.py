@@ -92,7 +92,7 @@ async def discord_callback(code: str, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
 
-    token = create_jwt(user.id)
+    token = create_jwt(str(user.id))
     return {
         "access_token": token,
         "token_type": "bearer"}
