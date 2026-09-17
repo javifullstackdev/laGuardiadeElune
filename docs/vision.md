@@ -117,7 +117,12 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Panel `/admin/posts` con formulario de creación, edición inline y borrado
 - Enlace "Admin" en el Navbar solo visible para admins y officers
 
-## Fase 3 — OAuth2 Discord + JWT ✅
+## Fase 5 — Conectar Bubu a PostgreSQL 🚧 En progreso
+- Estructura de Cogs creada: `bubu/cogs/` con admin, personajes, puntos, logros, ranking, perfil, piedra, raid, cumpleanos, misiones, sorteos, pedidos, donaciones
+- Capa de base de datos `bubu/db/database.py` con asyncpg conectando a PostgreSQL compartida
+- Cog `admin` implementado con `/ping` y `/sync`
+- Pendiente: añadir DISCORD_TOKEN al .env y arrancar el bot
+- Pendiente: migrar comandos del main.py original al Cog correspondiente
 - Endpoint `GET /auth/discord/login` → redirige a Discord con OAuth2
 - Endpoint `GET /auth/discord/callback` → intercambia code, verifica membresía en servidor Discord, upsert user en DB, devuelve JWT
 - Next.js route handler `GET /api/auth/discord/callback` → recibe code, llama a FastAPI, guarda JWT en cookie httpOnly, redirige a home
