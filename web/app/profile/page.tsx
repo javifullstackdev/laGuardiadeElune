@@ -12,7 +12,7 @@ export default async function ProfilePage() {
     "Cache-Control": "no-store",
   };
 
-  // Peticiones en paralelo para reducir el tiempo de carga
+  // 1. Obtener usuario y personajes en paralelo
   const [userRes, charsRes, txRes] = await Promise.all([
     fetch("http://localhost:8000/users/me",           { headers, cache: "no-store" }),
     fetch("http://localhost:8000/characters/my",      { headers, cache: "no-store" }),
@@ -21,22 +21,40 @@ export default async function ProfilePage() {
 
   if (!userRes.ok) redirect("/");
 
-  const user         = await userRes.json();
-  const characters   = charsRes.ok ? await charsRes.json() : [];
-  const transactions = txRes.ok    ? await txRes.json()    : [];
+  const user       = await userRes.json();
+  let characters   = charsRes.ok ? await charsRes.json() : [];
+  const transactions = txRes.ok  ? await txRes.json()    : [];
 
-  // Auto-sincronizar blizzard_character_id si faltan (fire-and-forget)
-  const needsSync = characters.some(
-    (c: { game: string; blizzard_character_id: number | null }) =>
-      c.game !== "forever" && !c.blizzard_character_id
+  // 2. Si hay personajes Retail sin render_url o con render de baja calidad (avatar),
+  //    ejecutar sync ANTES de renderizar para que la primera visita ya muestre las imágenes.
+  const needsSync = user.has_blizzard && characters.some(
+    (c: { game: string; render_url: string | null }) =>
+      c.game !== "forever" && (!c.render_url || (c.render_url as string).endsWith("-avatar.jpg"))
   );
-  if (needsSync && user.has_blizzard) {
-    fetch("http://localhost:8000/characters/sync-blizzard-ids", {
-      method: "POST", headers, cache: "no-store",
-    }).catch(() => {});
+  if (needsSync) {
+    try {
+      await fetch("http://localhost:8000/characters/sync-blizzard-ids", {
+        method: "POST", headers, cache: "no-store",
+      });
+      // Re-fetch personajes para obtener las render_url recién guardadas
+      const updatedCharsRes = await fetch("http://localhost:8000/characters/my", {
+        headers, cache: "no-store",
+      });
+      if (updatedCharsRes.ok) {
+        characters = await updatedCharsRes.json();
+      }
+    } catch {
+      // Si falla el sync no bloqueamos la página
+    }
   }
 
-  // Ordenar: main primero, luego alts por nombre
+  // 3. Detectar si el token de Blizzard parece caducado:
+  //    si hay personajes retail sin render de calidad después del sync, probablemente el token expiró.
+  const retailChars = characters.filter((c: { game: string }) => c.game !== "forever");
+  const bnetTokenExpired = user.has_blizzard && retailChars.length > 0 && retailChars.every(
+    (c: { render_url: string | null; custom_avatar_url: string | null }) =>
+      !c.custom_avatar_url && (!c.render_url || (c.render_url as string).endsWith("-avatar.jpg"))
+  );
   const sorted = [...characters].sort((a, b) => {
     if (b.is_main !== a.is_main) return b.is_main ? 1 : -1;
     return a.name.localeCompare(b.name);
@@ -47,6 +65,7 @@ export default async function ProfilePage() {
       user={user}
       characters={sorted}
       transactions={transactions}
+      bnetTokenExpired={bnetTokenExpired}
     />
   );
 }

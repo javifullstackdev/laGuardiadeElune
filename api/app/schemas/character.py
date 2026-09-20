@@ -23,8 +23,9 @@ class CharacterResponse(BaseModel):
     realm: str
     blizzard_character_id: Optional[int] = None
     # Avatares
-    custom_avatar_url:  Optional[str] = None   # imagen aprobada (ruta /static/...)
-    pending_avatar_url: Optional[str] = None   # pendiente de aprobación
+    render_url:        Optional[str] = None   # URL directa del Character Media API
+    custom_avatar_url: Optional[str] = None   # imagen aprobada (ruta /static/...)
+    pending_avatar_url: Optional[str] = None  # pendiente de aprobación
     # Campo calculado: la imagen a mostrar
     avatar_url: Optional[str] = None
     wow_class: Optional[str] = None
@@ -52,14 +53,11 @@ class CharacterResponse(BaseModel):
 
     @model_validator(mode="after")
     def compute_avatar_url(self) -> "CharacterResponse":
-        """Prioridad: imagen custom aprobada > render Blizzard > null."""
+        """Prioridad: imagen custom aprobada > render Blizzard (Character Media API) > null."""
         if self.custom_avatar_url:
             self.avatar_url = f"http://localhost:8000/static/{self.custom_avatar_url}"
-        elif self.blizzard_character_id and self.realm:
-            self.avatar_url = (
-                f"https://render-{BLIZZARD_REGION}.worldofwarcraft.com"
-                f"/character/{self.realm}/{self.blizzard_character_id}/profilemain.jpg"
-            )
+        elif self.render_url:
+            self.avatar_url = self.render_url
         return self
 
 

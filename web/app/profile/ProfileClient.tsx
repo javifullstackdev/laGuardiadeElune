@@ -32,6 +32,7 @@ type Character = {
   game: string;
   realm: string;
   blizzard_character_id: number | null;
+  render_url: string | null;
   avatar_url: string | null;
   custom_avatar_url: string | null;
   pending_avatar_url: string | null;
@@ -137,20 +138,23 @@ export default function ProfileClient({
   user,
   characters: initialChars,
   transactions,
+  bnetTokenExpired = false,
 }: {
   user: User;
   characters: Character[];
   transactions: Transaction[];
+  bnetTokenExpired?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [characters, setCharacters] = useState<Character[]>(initialChars);
   const [selected, setSelected] = useState<Character | null>(initialChars[0] ?? null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   function handleSelect(char: Character) {
-    // Sincronizar con la versión más actualizada del estado local
     const fresh = characters.find((c) => c.name === char.name && c.realm === char.realm) ?? char;
     setSelected(fresh);
+    setSidebarOpen(false); // cerrar sidebar en mobile al seleccionar
   }
 
   async function handleSetMain(char: Character) {
@@ -191,13 +195,37 @@ export default function ProfileClient({
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] bg-gray-950 text-white">
+    <div className="flex bg-gray-950 text-white relative">
+
+      {/* ── Overlay backdrop (mobile) ──────────────────────────────── */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/60 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       {/* ── Sidebar ────────────────────────────────────────────────── */}
-      <aside className="w-68 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col">
-
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-40 w-72 bg-gray-900 border-r border-gray-800
+          flex flex-col transition-transform duration-300
+          md:sticky md:top-16 md:bottom-auto md:left-auto md:translate-x-0
+          md:w-72 md:shrink-0 md:h-[calc(100vh-4rem)] md:z-30
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+        `}
+      >
         {/* Jugador */}
         <div className="p-5 border-b border-gray-800">
+          {/* Botón cerrar sidebar (mobile) */}
+          <button
+            className="absolute top-4 right-4 text-gray-500 hover:text-white md:hidden"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Cerrar menú"
+          >
+            ✕
+          </button>
+
           <div className="flex items-center gap-3 mb-4">
             {user.avatar_url ? (
               <img src={user.avatar_url} alt="" className="w-12 h-12 rounded-full border-2 border-gray-600" />
@@ -223,6 +251,19 @@ export default function ProfileClient({
             <Link href="http://localhost:8000/auth/blizzard/login" className="text-xs text-gray-500 hover:text-blue-400 underline mb-2 block">
               Conectar Battle.net
             </Link>
+          )}
+
+          {/* Aviso token caducado */}
+          {bnetTokenExpired && (
+            <div className="mt-2 mb-1 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2">
+              <p className="text-xs text-amber-400 font-medium mb-1">Token de Battle.net caducado</p>
+              <Link
+                href="http://localhost:8000/auth/blizzard/login"
+                className="text-xs text-amber-300 hover:text-amber-100 underline"
+              >
+                Reconectar para actualizar renders
+              </Link>
+            </div>
           )}
 
           <div className="flex items-center gap-2 mt-2">
@@ -255,18 +296,48 @@ export default function ProfileClient({
       </aside>
 
       {/* ── Contenido ─────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 min-w-0 flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
+
+        {/* Barra superior mobile: botón ≡ + nombre del personaje activo */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800 md:hidden shrink-0">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-gray-400 hover:text-white transition-colors shrink-0"
+            aria-label="Abrir menú"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          {selected ? (
+            <div className="min-w-0">
+              <p className="font-semibold text-sm truncate">{selected.name}</p>
+              <p className="text-xs text-gray-500 truncate">
+                {selected.favorite_title?.name ?? selected.realm}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">Selecciona un personaje</p>
+          )}
+        </div>
+
         {selected ? (
-          <CharacterDetail
-            char={selected}
-            transactions={transactions}
-            onSetMain={() => handleSetMain(selected)}
-            isPending={isPending}
-            onFavoriteTitleChange={(t) => handleFavoriteTitleChange(selected, t)}
-            onDetailsPatch={(p) => handleDetailsPatch(selected, p)}
-          />
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <CharacterDetail
+              char={selected}
+              transactions={transactions}
+              onSetMain={() => handleSetMain(selected)}
+              isPending={isPending}
+              onFavoriteTitleChange={(t) => handleFavoriteTitleChange(selected, t)}
+              onDetailsPatch={(p) => handleDetailsPatch(selected, p)}
+            />
+          </div>
         ) : (
-          <EmptyState hasBnet={user.has_blizzard} />
+          <div className="flex-1 min-h-0">
+            <EmptyState hasBnet={user.has_blizzard} />
+          </div>
         )}
       </main>
     </div>
@@ -313,130 +384,184 @@ function CharacterDetail({
   ];
 
   return (
-    <div className="p-8 max-w-2xl">
+    <div className="relative flex flex-col h-full overflow-hidden">
 
-      {/* ── Cabecera con avatar ─────────────────────────────────── */}
-      <div className="flex gap-6 mb-6">
-
-        {/* Avatar */}
-        <CharacterAvatar
-          char={char}
-          onAvatarPatch={(p) => onDetailsPatch(p)}
-        />
-
-        {/* Texto */}
-        <div className="flex-1 min-w-0 pt-1">
-
-        {/* Antetítulo */}
-        {char.prefix_title && (
-          <p className="text-sm text-gray-400 mb-1 italic">{char.prefix_title}</p>
-        )}
-
-        {/* Nombre + Apellido */}
-        <h1
-          className="text-4xl font-bold tracking-tight"
-          style={{ color, textShadow: `0 0 24px ${color}35` }}
-        >
-          {char.name}
-          {char.surname && (
-            <span className="ml-3 opacity-80">{char.surname}</span>
-          )}
-        </h1>
-
-        {/* Título favorito */}
-        {char.favorite_title && (
-          <p className="text-base mt-1.5" style={{ color: "#DDB96A" }}>
-            {char.favorite_title.name}
-          </p>
-        )}
-
-        {/* Badge de línea temporal */}
-        {char.game === "forever" ? (
-          <p className="text-xs mt-1.5 font-semibold tracking-wide" style={{ color: "#f59e0b" }}>
-            Warcraft Forever
-          </p>
-        ) : (
-          <p className="text-xs mt-1.5 text-gray-600 tracking-wide">
-            World of Warcraft
-          </p>
-        )}
-
-        {/* Badges + acción principal */}
-        <div className="flex items-center gap-2 mt-3 flex-wrap">
-          {char.is_main && (
-            <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium border border-yellow-500/25">
-              Personaje principal
-            </span>
-          )}
-          {char.is_verified && (
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium border border-blue-500/25">
-              Verificado
-            </span>
-          )}
-          {!char.is_main && (
-            <button
-              onClick={onSetMain}
-              disabled={isPending}
-              className="px-2.5 py-0.5 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs border border-gray-700 transition-colors disabled:opacity-50"
-            >
-              {isPending ? "..." : "Establecer como main"}
-            </button>
-          )}
+      {/* ── Mobile: render como banner superior ──────────────────── */}
+      {char.avatar_url && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url) && (
+        <div className="sm:hidden relative h-48 overflow-hidden shrink-0">
+          <img
+            src={char.avatar_url}
+            alt=""
+            className="w-full h-full object-cover object-[50%_0%]"
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 h-24"
+            style={{ background: "linear-gradient(to bottom, transparent, #030712)" }}
+          />
+          <div
+            className="absolute inset-y-0 left-0 w-1/3"
+            style={{ background: "linear-gradient(to right, #030712, transparent)" }}
+          />
         </div>
-        {/* fin texto */}
-      </div>
-      {/* fin flex cabecera */}
-      </div>
+      )}
 
-      {/* ── Separador con color de clase ────────────────────────── */}
-      <div className="h-px mb-6 opacity-25" style={{ background: `linear-gradient(to right, ${color}, transparent)` }} />
+      {/* ── sm+: render fijo en la derecha (no hace scroll) ────── */}
+      {char.avatar_url && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url) ? (
+        <div className="fixed right-0 top-16 bottom-0 w-[58%] pointer-events-none select-none hidden sm:block" style={{ zIndex: 0 }} aria-hidden>
+          <img
+            src={char.avatar_url}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover object-[50%_5%]"
+            style={{ opacity: 0.28 }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: [
+                "linear-gradient(to right, #030712 0%, #030712 6%, rgba(3,7,18,0.92) 18%, rgba(3,7,18,0.72) 32%, rgba(3,7,18,0.40) 48%, rgba(3,7,18,0.10) 65%, transparent 78%)",
+                "linear-gradient(to top, #030712 0%, rgba(3,7,18,0.7) 12%, transparent 30%)",
+                "linear-gradient(to bottom, rgba(3,7,18,0.5) 0%, transparent 20%)",
+              ].join(", "),
+            }}
+          />
+        </div>
+      ) : (
+        <div
+          className="fixed right-0 top-16 bottom-0 w-[40%] pointer-events-none select-none hidden sm:block"
+          style={{ zIndex: 0, background: `linear-gradient(to left, ${color}08 0%, transparent 100%)` }}
+          aria-hidden
+        />
+      )}
 
-      {/* ── Datos personales ────────────────────────────────────── */}
-      {personalData.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-          {personalData.map((d) => (
-            <div key={d.label} className="bg-gray-900/70 rounded-lg px-3 py-2.5 border border-gray-800/50">
-              <p className="text-xs text-gray-600 mb-0.5">{d.label}</p>
-              <p className="text-sm font-medium" style={d.color ? { color: d.color } : { color: "#e5e7eb" }}>
-                {d.value}
+      {/* ══ ZONA ESTÁTICA: cabecera + datos personales + barra de tabs ══ */}
+      <div className="relative z-10 px-4 md:px-8 pt-4 md:pt-8 pb-0 shrink-0">
+
+        {/* Cabecera: texto a la izquierda, controles de imagen arriba-derecha */}
+        <div className="flex items-start justify-between mb-5 gap-4">
+
+          {/* Texto principal */}
+          <div className="min-w-0">
+            <div className="min-w-0">
+
+            {/* Antetítulo */}
+            {char.prefix_title && (
+              <p className="text-sm text-gray-400 mb-1 italic">{char.prefix_title}</p>
+            )}
+
+            {/* Nombre + Apellido */}
+            <h1
+              className="text-3xl md:text-4xl font-bold tracking-tight"
+              style={{ color, textShadow: `0 0 24px ${color}35` }}
+            >
+              {char.name}
+              {char.surname && (
+                <span className="ml-3 opacity-80">{char.surname}</span>
+              )}
+            </h1>
+
+            {/* Título favorito */}
+            {char.favorite_title && (
+              <p className="text-base mt-1.5" style={{ color: "#DDB96A" }}>
+                {char.favorite_title.name}
               </p>
+            )}
+
+            {/* Badge de línea temporal */}
+            {char.game === "forever" ? (
+              <p className="text-xs mt-1.5 font-semibold tracking-wide" style={{ color: "#f59e0b" }}>
+                Warcraft Forever
+              </p>
+            ) : (
+              <p className="text-xs mt-1.5 text-gray-600 tracking-wide">
+                World of Warcraft
+              </p>
+            )}
+
+            {/* Badges + acción principal */}
+            <div className="flex items-center gap-2 mt-3 flex-wrap">
+              {char.is_main && (
+                <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium border border-yellow-500/25">
+                  Personaje principal
+                </span>
+              )}
+              {char.is_verified && (
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium border border-blue-500/25">
+                  Verificado
+                </span>
+              )}
+              {!char.is_main && (
+                <button
+                  onClick={onSetMain}
+                  disabled={isPending}
+                  className="px-2.5 py-0.5 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs border border-gray-700 transition-colors disabled:opacity-50"
+                >
+                  {isPending ? "..." : "Establecer como main"}
+                </button>
+              )}
             </div>
+            </div>
+          </div>{/* fin texto */}
+
+          {/* Controles de imagen (esquina superior derecha) */}
+          <CharacterAvatar
+            char={char}
+            onAvatarPatch={(p) => onDetailsPatch(p)}
+          />
+        </div>
+
+        {/* Separador con color de clase */}
+        <div className="h-px mb-4 opacity-25" style={{ background: `linear-gradient(to right, ${color}, transparent)` }} />
+
+        {/* Datos personales */}
+        {personalData.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 md:gap-3 mb-4">
+            {personalData.map((d) => (
+              <div key={d.label} className="bg-gray-900/70 rounded-lg px-3 py-2 border border-gray-800/50">
+                <p className="text-xs text-gray-600 mb-0.5">{d.label}</p>
+                <p className="text-xs md:text-sm font-medium truncate" style={d.color ? { color: d.color } : { color: "#e5e7eb" }}>
+                  {d.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Barra de tabs (solo los botones, sin mb para pegar con el contenido) */}
+        <div className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`px-3 md:px-4 py-2.5 text-xs md:text-sm font-medium transition-colors -mb-px border-b-2 whitespace-nowrap shrink-0 ${
+                tab === t.key
+                  ? "text-white border-current"
+                  : "border-transparent text-gray-500 hover:text-gray-300"
+              }`}
+              style={tab === t.key ? { color, borderBottomColor: color } : {}}
+            >
+              {t.label}
+            </button>
           ))}
         </div>
-      )}
-
-      {/* ── Tabs ────────────────────────────────────────────────── */}
-      <div className="flex gap-1 border-b border-gray-800 mb-6">
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors -mb-px border-b-2 ${
-              tab === t.key
-                ? "text-white border-current"
-                : "border-transparent text-gray-500 hover:text-gray-300"
-            }`}
-            style={tab === t.key ? { color, borderBottomColor: color } : {}}
-          >
-            {t.label}
-          </button>
-        ))}
       </div>
 
-      {/* ── Contenido del tab ───────────────────────────────────── */}
-      {tab === "points" && (
-        <PointsAndAchievementsTab transactions={transactions} />
-      )}
-      {tab === "lore" && (
-        <LoreAndRelationsTab
-          char={char}
-          onDetailsPatch={onDetailsPatch}
-          onFavoriteTitleChange={onFavoriteTitleChange}
-        />
-      )}
-      {tab === "professions" && (
-        <ProfessionsTab />
-      )}
+      {/* ══ ZONA SCROLLEABLE: contenido del tab activo ══════════════ */}
+      <div className="relative z-10 flex-1 overflow-y-auto min-h-0 px-4 md:px-8 py-4 md:py-6">
+        {tab === "points" && (
+          <PointsAndAchievementsTab transactions={transactions} />
+        )}
+        {tab === "lore" && (
+          <LoreAndRelationsTab
+            char={char}
+            onDetailsPatch={onDetailsPatch}
+            onFavoriteTitleChange={onFavoriteTitleChange}
+          />
+        )}
+        {tab === "professions" && (
+          <ProfessionsTab />
+        )}
+      </div>
+
     </div>
   );
 }
@@ -942,8 +1067,6 @@ function CharacterAvatar({
   const [error, setError]         = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const isBlizzardRender = !char.custom_avatar_url && !!char.blizzard_character_id;
-
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -961,7 +1084,6 @@ function CharacterAvatar({
       onAvatarPatch({ pending_avatar_url: "pending" });
     }
     setUploading(false);
-    // Reset input
     if (inputRef.current) inputRef.current.value = "";
   }
 
@@ -976,63 +1098,48 @@ function CharacterAvatar({
   }
 
   return (
-    <div className="relative shrink-0">
-      {/* Imagen */}
-      <div className="w-32 h-44 rounded-xl overflow-hidden bg-gray-800 border border-gray-700/50">
-        {char.avatar_url ? (
-          <img
-            src={char.avatar_url}
-            alt={char.name}
-            className="w-full h-full object-cover object-top"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-gray-600 text-4xl font-bold">
-              {char.name.slice(0, 1)}
-            </span>
-          </div>
-        )}
-      </div>
+    <div className="shrink-0 flex flex-col items-end gap-1">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleFileChange}
+      />
 
-      {/* Etiqueta si es render Blizzard */}
-      {isBlizzardRender && (
-        <p className="text-xs text-gray-600 text-center mt-1">Render Blizzard</p>
-      )}
+      {/* Estado de imagen personalizada */}
       {char.custom_avatar_url && (
-        <p className="text-xs text-green-600 text-center mt-1">Imagen propia</p>
+        <span className="text-xs text-green-500 border border-green-600/30 rounded-full px-2 py-0.5">
+          Imagen propia activa
+        </span>
       )}
       {char.pending_avatar_url && (
-        <p className="text-xs text-amber-500 text-center mt-1">Pendiente aprobación</p>
+        <span className="text-xs text-amber-500 border border-amber-600/30 rounded-full px-2 py-0.5">
+          Imagen pendiente
+        </span>
       )}
 
-      {/* Acciones */}
-      <div className="flex flex-col gap-1 mt-2">
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="hidden"
-          onChange={handleFileChange}
-        />
+      {/* Botón subir */}
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading || !!char.pending_avatar_url}
+        className="text-xs text-gray-600 hover:text-gray-400 transition-colors disabled:opacity-40"
+        title={char.pending_avatar_url ? "Ya tienes una imagen pendiente de aprobación" : "Subir imagen propia"}
+      >
+        {uploading ? "Subiendo..." : char.pending_avatar_url ? "Pendiente..." : "Cambiar imagen"}
+      </button>
+
+      {/* Botón quitar */}
+      {(char.custom_avatar_url || char.pending_avatar_url) && (
         <button
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading || !!char.pending_avatar_url}
-          title={char.pending_avatar_url ? "Ya tienes una imagen pendiente de aprobación" : "Subir imagen propia"}
-          className="text-xs text-gray-500 hover:text-gray-300 transition-colors disabled:opacity-40 text-center"
+          onClick={handleRemove}
+          className="text-xs text-gray-700 hover:text-red-400 transition-colors"
         >
-          {uploading ? "Subiendo..." : char.pending_avatar_url ? "Pendiente..." : "Cambiar imagen"}
+          Quitar imagen
         </button>
-        {(char.custom_avatar_url || char.pending_avatar_url) && (
-          <button
-            onClick={handleRemove}
-            className="text-xs text-gray-600 hover:text-red-400 transition-colors text-center"
-          >
-            Quitar imagen
-          </button>
-        )}
-        {error && <p className="text-xs text-red-400 text-center">{error}</p>}
-      </div>
+      )}
+
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }

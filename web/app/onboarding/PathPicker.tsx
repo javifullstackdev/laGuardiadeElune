@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 const PATHS = [
   {
     value: "COMPETITIVE",
-    icon: "⚔️",
     name: "Competitivo",
     description: "M+ y Raids",
     detail: "Top 8 actividades competitivas por semana",
@@ -17,7 +16,6 @@ const PATHS = [
   },
   {
     value: "CAMPAIGN",
-    icon: "📖",
     name: "Campaña",
     description: "Rol, lore y logros",
     detail: "Top 8 actividades de campaña por semana",
@@ -28,7 +26,6 @@ const PATHS = [
   },
   {
     value: "HYBRID",
-    icon: "🌀",
     name: "Híbrido",
     description: "Todo en todas partes",
     detail: "4 mejores competitivos + 4 mejores campaña/semana",
@@ -43,7 +40,6 @@ const PATHS = [
 export default function PathPicker({ currentPath }: { currentPath: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  // currentPath viene como "competitive" / "campaign" / "hybrid" (lowercase)
   const [selected, setSelected] = useState(currentPath.toUpperCase());
 
   function handleSelect(value: string) {
@@ -75,9 +71,6 @@ export default function PathPicker({ currentPath }: { currentPath: string }) {
                 : `${p.border} hover:border-gray-500 bg-gray-900/40`
             }`}
           >
-            {/* Icono */}
-            <span className="text-2xl">{p.icon}</span>
-
             {/* Texto */}
             <div className="flex-1">
               <div className="flex items-center gap-2">
@@ -98,7 +91,7 @@ export default function PathPicker({ currentPath }: { currentPath: string }) {
             <div
               className={`w-4 h-4 rounded-full border-2 shrink-0 transition-all ${
                 isSelected
-                  ? `${p.activeBorder} ${p.glow.replace("bg-", "bg-").replace("/10", "/60")}`
+                  ? `${p.activeBorder} ${p.glow.replace("/10", "/60")}`
                   : "border-gray-600"
               }`}
             >

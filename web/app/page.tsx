@@ -15,10 +15,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
-
-      {/* Hero */}
       <div className="bg-gray-900 border-b border-gray-800 py-12 px-4 text-center">
-        <p className="text-3xl mb-3">⚔️</p>
         <h1 className="text-3xl font-bold">La Guardia de Elune</h1>
         <p className="text-gray-400 mt-2">Noticias, crónicas y anuncios de la hermandad</p>
       </div>
@@ -26,12 +23,11 @@ export default async function Home() {
       <div className="max-w-3xl mx-auto px-4 py-10">
         {posts.length === 0 ? (
           <div className="text-center py-20 text-gray-500">
-            <p className="text-4xl mb-4">📭</p>
             <p>Aún no hay posts publicados.</p>
           </div>
         ) : (
           <ul className="space-y-4">
-            {posts.map((post) => (
+            {posts.map((post: Post) => (
               <PostCard key={post.id} post={post} />
             ))}
           </ul>
@@ -43,7 +39,6 @@ export default async function Home() {
 
 function PostCard({ post }: { post: Post }) {
   const cat = getCategoryStyle(post.category);
-  // Extracto: primeros 200 caracteres del contenido
   const excerpt =
     post.content.length > 200
       ? post.content.slice(0, 200).trimEnd() + "…"
@@ -52,29 +47,17 @@ function PostCard({ post }: { post: Post }) {
   return (
     <li className="group rounded-xl bg-gray-900 border border-gray-800 hover:border-gray-600 transition-colors overflow-hidden">
       <Link href={`/posts/${post.id}`} className="block p-6">
-
-        {/* Cabecera: categoría + fecha */}
         <div className="flex items-center justify-between mb-3">
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat.badge}`}>
-            {cat.icon} {cat.label}
+            {cat.label}
           </span>
-          <span className="text-xs text-gray-500">
-            {formatDate(post.published_at)}
-          </span>
+          <span className="text-xs text-gray-500">{formatDate(post.published_at)}</span>
         </div>
-
-        {/* Título */}
         <h2 className="text-xl font-bold group-hover:text-yellow-400 transition-colors mb-2">
           {post.title}
         </h2>
-
-        {/* Extracto */}
         <p className="text-gray-400 text-sm leading-relaxed">{excerpt}</p>
-
-        {/* Leer más */}
-        <p className="text-yellow-500 text-sm mt-4 font-medium">
-          Leer más →
-        </p>
+        <p className="text-yellow-500 text-sm mt-4 font-medium">Leer más →</p>
       </Link>
     </li>
   );

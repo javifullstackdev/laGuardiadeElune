@@ -25,7 +25,6 @@ export default async function BienvenidaPage() {
   const step1Done = true;
   const step2Done = user.has_blizzard;
   const step3Done = step2Done && hasMain;
-  // Paso 4: siempre tiene un path (default HYBRID), pero mostramos la opción de elegirlo
   const step4Done = step3Done;
   const allDone   = step1Done && step2Done && step3Done && step4Done;
 
@@ -35,7 +34,6 @@ export default async function BienvenidaPage() {
 
         {/* Cabecera */}
         <div className="text-center mb-10">
-          <p className="text-4xl mb-3">⚔️</p>
           <h1 className="text-3xl font-bold">
             Bienvenido/a, {user.username}
           </h1>
@@ -77,9 +75,7 @@ export default async function BienvenidaPage() {
             active={!step2Done}
           >
             {step2Done ? (
-              <p className="text-sm text-blue-400 mt-2">
-                ⚔️ {user.blizzard_battletag}
-              </p>
+              <p className="text-sm text-blue-400 mt-2">{user.blizzard_battletag}</p>
             ) : (
               <div className="mt-3">
                 <p className="text-sm text-gray-400 mb-3">
@@ -90,7 +86,7 @@ export default async function BienvenidaPage() {
                   href="http://localhost:8000/auth/blizzard/login"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm font-medium transition-colors"
                 >
-                  🔗 Conectar Battle.net
+                  Conectar Battle.net
                 </a>
               </div>
             )}
@@ -114,7 +110,7 @@ export default async function BienvenidaPage() {
                   Primero añade tus personajes desde Battle.net.
                 </p>
                 <Link
-                  href="/personajes"
+                  href="/characters"
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm font-medium transition-colors"
                 >
                   + Añadir personajes
@@ -126,7 +122,7 @@ export default async function BienvenidaPage() {
                   const main = characters.find((c: { is_main: boolean }) => c.is_main);
                   return main ? (
                     <p className="text-sm text-yellow-400">
-                      ⭐ {main.name}-{main.realm}
+                      {main.name}-{main.realm}
                     </p>
                   ) : null;
                 })()}
@@ -170,7 +166,7 @@ export default async function BienvenidaPage() {
           {allDone ? (
             <div>
               <p className="text-green-400 font-medium mb-4">
-                🎉 ¡Todo listo! Tu perfil está configurado.
+                Todo listo. Tu perfil está configurado.
               </p>
               <Link
                 href="/profile"
@@ -259,8 +255,8 @@ function StepCard({
             Pendiente
           </span>
         )}
-        {locked && (
-          <span className="ml-auto text-xs text-gray-600">🔒</span>
+        {locked && !done && !active && (
+          <span className="ml-auto text-xs text-gray-600">Bloqueado</span>
         )}
       </div>
 

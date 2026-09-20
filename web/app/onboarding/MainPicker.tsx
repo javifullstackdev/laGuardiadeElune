@@ -10,10 +10,12 @@ const CLASS_COLOR: Record<string, string> = {
   MONK: "#00FF96", DRUID: "#FF7D0A", DEMONHUNTER: "#A330C9", EVOKER: "#33937F",
 };
 
-const CLASS_ICON: Record<string, string> = {
-  WARRIOR: "⚔️", PALADIN: "🛡️", HUNTER: "🏹", ROGUE: "🗡️",
-  PRIEST: "✨", DEATH_KNIGHT: "💀", SHAMAN: "⚡", MAGE: "🔮",
-  WARLOCK: "🔥", MONK: "🥋", DRUID: "🌿", DEMONHUNTER: "👁️", EVOKER: "🐉",
+const CLASS_NAME_ES: Record<string, string> = {
+  WARRIOR: "Guerrero", PALADIN: "Paladín", HUNTER: "Cazador",
+  ROGUE: "Pícaro", PRIEST: "Sacerdote", DEATH_KNIGHT: "Caballero de la Muerte",
+  SHAMAN: "Chamán", MAGE: "Mago", WARLOCK: "Brujo",
+  MONK: "Monje", DRUID: "Druida", DEMONHUNTER: "Cazador de Demonios",
+  EVOKER: "Evocador",
 };
 
 type Character = {
@@ -47,7 +49,7 @@ export default function MainPicker({ characters }: { characters: Character[] }) 
     <ul className="space-y-2 mt-3">
       {characters.map((char) => {
         const color = CLASS_COLOR[char.wow_class ?? ""] ?? "#888";
-        const icon  = CLASS_ICON[char.wow_class ?? ""]  ?? "🧙";
+        const className = CLASS_NAME_ES[char.wow_class ?? ""] ?? char.wow_class ?? null;
         const isSelected = selected === char.name;
 
         return (
@@ -61,7 +63,6 @@ export default function MainPicker({ characters }: { characters: Character[] }) 
                   : "border-gray-700 hover:border-gray-500 bg-gray-900/50 hover:bg-gray-800/50"
               }`}
             >
-              <span className="text-xl">{icon}</span>
               <div className="flex-1">
                 <p className="font-semibold text-sm" style={{ color }}>
                   {char.name}
@@ -69,12 +70,12 @@ export default function MainPicker({ characters }: { characters: Character[] }) 
                     -{char.realm}
                   </span>
                 </p>
-                {char.wow_class && (
-                  <p className="text-xs text-gray-500">{char.wow_class}</p>
+                {className && (
+                  <p className="text-xs text-gray-500">{className}</p>
                 )}
               </div>
               {isSelected ? (
-                <span className="text-yellow-400 text-sm">⭐ Main</span>
+                <span className="text-yellow-400 text-sm font-medium">Main</span>
               ) : (
                 <span className="text-gray-600 text-xs">
                   {isPending ? "..." : "Establecer"}

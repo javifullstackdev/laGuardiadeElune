@@ -91,41 +91,92 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 ![Entidad-Relación](docs/diagrama-er.png)
 ![Flujo](docs/diagrama-flujo.png)
 # 8. Estado del proyecto
+
+## Base de datos — tablas activas (20 migraciones Alembic aplicadas)
+
+| Tabla | Descripción |
+|---|---|
+| `users` | Jugadores: Discord OAuth, Blizzard OAuth, rol, path, puntos, birthday |
+| `characters` | Personajes: Retail/Forever, lore, avatares, render_url Blizzard |
+| `titles` | Catálogo de títulos de hermandad (source: achievement/points/rank/custom) |
+| `character_titles` | Junction: qué personaje tiene qué título, cuándo y otorgado por quién |
+| `character_relations` | Árbol de relaciones narrativas entre personajes (ally, rival, family, …) |
+| `point_transactions` | Historial de puntos por categoría y temporada |
+| `achievements` | Catálogo de logros disponibles |
+| `user_achievements` | Junction: logros conseguidos por jugador |
+| `posts` | Publicaciones de noticias / lore con categorías |
+| `seasons` | Temporadas con fechas y estado activo |
+
 ## Fase 0 — Planificación y setup ✅
 - Visión, user stories, reglas de negocio y entidades definidas
 - Cuentas de developer en Discord y Blizzard
-- Monorepo inicializado (`api/`, `web/`)
+- Monorepo inicializado (`api/`, `web/`, `bubu/`)
 - Docker Compose con PostgreSQL en puerto 5433
 - Variables de entorno configuradas (`.env`, `.env.example`)
 
 ## Fase 1 — Web pública: listado y detalle de posts ✅
 - FastAPI con SQLAlchemy + Alembic
-- Modelo `Post` con migración aplicada
+- Modelos `Post`, `Season`; migraciones aplicadas
 - Endpoints `GET /posts/` y `GET /posts/{id}` con esquemas Pydantic
 - Next.js App Router con Server Components
-- Página home con listado de posts y página de detalle dinámica
+- Página home con listado de posts por categoría y página de detalle dinámica
+- Ranking público en `/ranking`
 
 ## Fase 2 — Modelo de datos completo ✅
-- Modelos ORM: `Season`, `User`, `Character`, `Achievement`, `UserAchievement`, `PointTransaction`
-- ENUMs centralizados en `enums.py`
-- Migraciones Alembic generadas y aplicadas
+- Modelos ORM: `User`, `Character`, `Achievement`, `UserAchievement`, `PointTransaction`
+- ENUMs centralizados en `enums.py`: `CharacterClass`, `CharacterFunction`, `CharacterProfession`, `EventCategory`, `UserRole`, `UserPath`
+- 20 migraciones Alembic aplicadas en cadena lineal
 
-## Fase 4 — Roles admin + CRUD protegido de posts ✅
-- Schemas Pydantic `PostCreate` y `PostUpdate`
-- Endpoints `POST /posts/`, `PATCH /posts/{id}`, `DELETE /posts/{id}` protegidos con `require_admin`
-- Dependencia `require_admin` encadenada sobre `get_current_user`
-- Panel `/admin/posts` con formulario de creación, edición inline y borrado
-- Enlace "Admin" en el Navbar solo visible para admins y officers
-
-## Fase 5 — Conectar Bubu a PostgreSQL 🚧 En progreso
-- Estructura de Cogs creada: `bubu/cogs/` con admin, personajes, puntos, logros, ranking, perfil, piedra, raid, cumpleanos, misiones, sorteos, pedidos, donaciones
-- Capa de base de datos `bubu/db/database.py` con asyncpg conectando a PostgreSQL compartida
-- Cog `admin` implementado con `/ping` y `/sync`
-- Pendiente: añadir DISCORD_TOKEN al .env y arrancar el bot
-- Pendiente: migrar comandos del main.py original al Cog correspondiente
-- Endpoint `GET /auth/discord/login` → redirige a Discord con OAuth2
-- Endpoint `GET /auth/discord/callback` → intercambia code, verifica membresía en servidor Discord, upsert user en DB, devuelve JWT
-- Next.js route handler `GET /api/auth/discord/callback` → recibe code, llama a FastAPI, guarda JWT en cookie httpOnly, redirige a home
+## Fase 3 — OAuth2 Discord + JWT + páginas privadas ✅
+- Endpoint `GET /auth/discord/login` → OAuth2 Discord con state CSRF
+- Endpoint `GET /auth/discord/callback` → verifica membresía, upsert usuario, JWT en cookie httpOnly
+- Sincronización automática de rol en login: `Lider → admin`, `Oficial → officer`, resto → `member`
+- `guild_title` se asigna solo en creación (no se sobreescribe en logins posteriores)
 - Dependencia `get_current_user` para proteger endpoints con JWT
-- Endpoint `GET /users/me` → devuelve datos del usuario autenticado
-- Página `/profile` privada → muestra avatar, nombre, rol, itinerario y puntos
+- Endpoint `GET /users/me`, `PATCH /users/me/birthday`
+- Página `/profile` privada con perfil completo del usuario
+
+## Fase 4 — Roles admin + CRUD protegido ✅
+- Dependencia `require_admin` encadenada sobre `get_current_user`
+- CRUD completo de posts protegido (`POST`, `PATCH`, `DELETE /posts/{id}`)
+- Panel `/admin` — hub central con secciones: Posts, Títulos, Jugadores, Avatares
+- Panel `/admin/posts` — formulario de creación, edición inline y borrado
+- Panel `/admin/titles` — crear títulos y otorgar/revocar a personajes
+- Panel `/admin/players` — gestión de jugadores (tabla con roles y datos)
+- Panel `/admin/avatars` — revisión y aprobación de avatares pendientes
+- Navbar con botón Admin visible solo para admin/officer
+
+## Fase 5 — Bot Bubu 🚧 En progreso
+- Estructura de Cogs creada en `bubu/cogs/`
+- Capa de base de datos `bubu/db/database.py` con asyncpg
+- Cog `admin` con `/ping` y `/sync`
+- Pendiente: conectar a PostgreSQL compartida y migrar comandos originales
+
+## Fase 6 — Blizzard API + personajes ✅ (parcial)
+- OAuth2 Blizzard: login, callback, tokens guardados en BD
+- Importar personajes desde Battle.net con selector Retail / Warcraft Forever
+- Sincronización de `blizzard_character_id` y `render_url` via Character Media API
+- `render_url` prioriza: main > inset > avatar
+- Re-sync automático si el render es de tipo avatar (baja calidad)
+- Sistema de avatares custom: upload → pendiente → aprobación admin → activo
+- Detección de token Blizzard caducado con aviso en perfil
+- Pendiente: importar profesiones desde Blizzard API
+
+## Perfil de personaje — sistema completo ✅
+- Datos de identidad: nombre, apellido (WF), antetítulo, título favorito, facción, origen, edad, residencia
+- Lore: biografía, personalidad, aspecto (campos de texto libres)
+- Árbol de relaciones narrativas con otros personajes de la hermandad
+- Sistema de títulos: otorgar/revocar (admin), establecer favorito (jugador)
+- Imagen de fondo: render de Blizzard o avatar custom con aprobación admin
+- Tres tabs: Puntos y logros / Historia y relaciones / Profesiones (placeholder)
+
+## Layout del perfil — diseño fijo ✅
+- Navbar: `sticky top-0 z-50` con `backdrop-blur`
+- Aside: `md:sticky top-16 h-[calc(100vh-4rem)]` — solo la lista de personajes scrollea
+- CharacterDetail: zona estática (cabecera + datos + tabs bar) + zona scrolleable (contenido del tab)
+- Imagen de fondo: `position: fixed` con fade multi-stop de 7 paradas
+
+## Fase 7 — Deploy 🚧 Pendiente
+- Docker Compose completo
+- Deploy: Vercel (web) + Railway o Render (API)
+- README portfolio

@@ -400,7 +400,7 @@ def delete_relation(
 # ── Añadir personaje ───────────────────────────────────────────────────────────
 
 @router.post("/add", response_model=CharacterResponse, status_code=201)
-def add_character(
+async def add_character(
     data: CharacterAddInput,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -434,6 +434,14 @@ def add_character(
             Character.user_id == current_user.id
         ).update({"is_main": False, "is_alt": True})
 
+    # Obtener render_url del Character Media API si es Retail y hay token
+    render_url = None
+    if data.game == "retail" and current_user.blizzard_access_token:
+        async with httpx.AsyncClient() as client:
+            render_url = await _fetch_character_render_url(
+                client, data.name, data.realm, current_user.blizzard_access_token
+            )
+
     char = Character(
         user_id=current_user.id,
         game=data.game,
@@ -441,6 +449,7 @@ def add_character(
         realm=data.realm,
         surname=data.surname or None,
         blizzard_character_id=data.blizzard_character_id,
+        render_url=render_url,
         wow_class=wow_class,
         race=race,
         level=data.level,
@@ -457,15 +466,45 @@ def add_character(
 
 # ── Soft-delete ────────────────────────────────────────────────────────────────
 
+async def _fetch_character_render_url(
+    client: httpx.AsyncClient,
+    name: str,
+    realm: str,
+    access_token: str,
+) -> str | None:
+    """
+    Llama al Character Media API de Blizzard y devuelve la URL del render 'inset'.
+    Devuelve None si el personaje no tiene render disponible.
+    """
+    try:
+        res = await client.get(
+            f"https://{BLIZZARD_REGION}.api.blizzard.com/profile/wow/character/{realm}/{name.lower()}/character-media",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"namespace": f"profile-{BLIZZARD_REGION}", "locale": "es_ES"},
+            timeout=8.0,
+        )
+        if res.status_code != 200:
+            return None
+        assets = res.json().get("assets", [])
+        # Prioridad: main (cuerpo entero, mayor calidad) > inset (busto) > avatar (miniatura, solo como último recurso)
+        for preferred in ("main", "inset", "avatar"):
+            for asset in assets:
+                if asset.get("key") == preferred:
+                    return asset.get("value")
+    except Exception:
+        pass
+    return None
+
+
 @router.post("/sync-blizzard-ids", status_code=200)
 async def sync_blizzard_ids(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Actualiza blizzard_character_id para los personajes Retail del usuario
+    Actualiza blizzard_character_id y render_url para los personajes Retail del usuario
     que coincidan por nombre+realm con los de su cuenta de Battle.net.
-    Operación idempotente y segura: solo rellena campos NULL.
+    Operacion idempotente y segura.
     """
     if not current_user.blizzard_access_token:
         return {"synced": 0}
@@ -477,41 +516,60 @@ async def sync_blizzard_ids(
             params={"namespace": f"profile-{BLIZZARD_REGION}", "locale": "es_ES"},
         )
 
-    if res.status_code != 200:
-        return {"synced": 0}
+        if res.status_code != 200:
+            return {"synced": 0}
 
-    # Mapa (name_lower, realm_lower) → blizzard_character_id
-    bnet_index: dict[tuple[str, str], int] = {}
-    for account in res.json().get("wow_accounts", []):
-        for char in account.get("characters", []):
-            key = (char["name"].lower(), char["realm"]["slug"].lower())
-            bnet_index[key] = char["id"]
+        # Mapa (name_lower, realm_lower) -> blizzard_character_id
+        bnet_index: dict[tuple[str, str], int] = {}
+        for account in res.json().get("wow_accounts", []):
+            for char in account.get("characters", []):
+                key = (char["name"].lower(), char["realm"]["slug"].lower())
+                bnet_index[key] = char["id"]
 
-    chars_to_sync = (
-        db.query(Character)
-        .filter(
-            Character.user_id == current_user.id,
-            Character.game == "retail",
-            Character.blizzard_character_id.is_(None),
-            Character.deleted_at.is_(None),
+        # Sincronizar todos los personajes retail para asegurar render_url
+        chars_to_sync = (
+            db.query(Character)
+            .filter(
+                Character.user_id == current_user.id,
+                Character.game == "retail",
+                Character.deleted_at.is_(None),
+            )
+            .all()
         )
-        .all()
-    )
 
-    synced = 0
-    for char in chars_to_sync:
-        key = (char.name.lower(), char.realm.lower())
-        if key in bnet_index:
-            char.blizzard_character_id = bnet_index[key]
-            synced += 1
+        synced = 0
+        for char in chars_to_sync:
+            key = (char.name.lower(), char.realm.lower())
+            if key not in bnet_index:
+                continue
 
-    if synced:
-        db.commit()
+            changed = False
+
+            # Rellenar blizzard_character_id si falta
+            if not char.blizzard_character_id:
+                char.blizzard_character_id = bnet_index[key]
+                changed = True
+
+            # Rellenar render_url si falta O si solo tiene el tipo avatar (baja calidad)
+            if not char.render_url or char.render_url.endswith("-avatar.jpg"):
+                url = await _fetch_character_render_url(
+                    client, char.name, char.realm, current_user.blizzard_access_token
+                )
+                if url:
+                    char.render_url = url
+                    changed = True
+
+            if changed:
+                synced += 1
+
+        if synced:
+            db.commit()
 
     return {"synced": synced}
 
 
 
+@router.get("/pending-avatars")
 def list_pending_avatars(
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
@@ -537,6 +595,9 @@ def list_pending_avatars(
         }
         for c, username in results
     ]
+
+
+@router.delete("/{name}/{realm}", status_code=204)
 def delete_character(
     name: str, realm: str,
     current_user: User = Depends(get_current_user),

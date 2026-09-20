@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     headers: { Cookie: `token=${jwt}` },
   });
   const user = userRes.ok ? await userRes.json() : null;
-  const redirectTo = user?.has_blizzard ? "/profile" : "/bienvenida";
+  const redirectTo = user?.has_blizzard ? "/profile" : "/onboarding";
 
   const response = NextResponse.redirect(new URL(redirectTo, request.url));
   response.cookies.set("token", jwt, {

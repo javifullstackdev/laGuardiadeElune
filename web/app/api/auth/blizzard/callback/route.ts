@@ -35,5 +35,5 @@ export async function GET(request: NextRequest) {
   }
 
   // Battle.net vinculado → ir al onboarding paso 3
-  return NextResponse.redirect(new URL("/bienvenida", request.url));
+  return NextResponse.redirect(new URL("/onboarding", request.url));
 }

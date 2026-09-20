@@ -7,24 +7,95 @@ from sqlalchemy.orm import Session
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 from app.database import get_db
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.dependencies import get_current_user
 from urllib.parse import quote
 
-DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
+DISCORD_CLIENT_ID     = os.getenv("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
-DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
-DISCORD_GUILD_ID = os.getenv("DISCORD_GUILD_ID")
-JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
-JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_HOURS = 24
+DISCORD_REDIRECT_URI  = os.getenv("DISCORD_REDIRECT_URI")
+DISCORD_GUILD_ID      = os.getenv("DISCORD_GUILD_ID")
+DISCORD_BOT_TOKEN     = os.getenv("DISCORD_TOKEN", "")
+JWT_SECRET            = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
+JWT_ALGORITHM         = "HS256"
+JWT_EXPIRE_HOURS      = 24
 
-BLIZZARD_CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID")
+BLIZZARD_CLIENT_ID     = os.getenv("BLIZZARD_CLIENT_ID")
 BLIZZARD_CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET")
-BLIZZARD_REDIRECT_URI = os.getenv("BLIZZARD_REDIRECT_URI")
-BLIZZARD_REGION = os.getenv("BLIZZARD_REGION", "eu")
+BLIZZARD_REDIRECT_URI  = os.getenv("BLIZZARD_REDIRECT_URI")
+BLIZZARD_REGION        = os.getenv("BLIZZARD_REGION", "eu")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# ── Mapeo de roles de Discord → nivel de permiso ─────────────────────────
+# Solo "Lider"/"Líder" → ADMIN, "Oficial" → OFFICER, todo lo demás → MEMBER
+_ADMIN_KEYWORDS   = {"lider", "líder"}
+_OFFICER_KEYWORDS = {"oficial"}
+
+
+def _map_role_name(name: str) -> UserRole | None:
+    """Devuelve el UserRole si el nombre del rol coincide con un patrón conocido."""
+    lower = name.lower()
+    if any(k in lower for k in _ADMIN_KEYWORDS):
+        return UserRole.ADMIN
+    if any(k in lower for k in _OFFICER_KEYWORDS):
+        return UserRole.OFFICER
+    return None
+
+
+async def _resolve_discord_role(
+    member_role_ids: list[str],
+) -> tuple[UserRole, str]:
+    """
+    Llama a la API de Discord con el bot token para obtener los nombres
+    de los roles del servidor y determina el rol más alto del miembro.
+
+    Devuelve (UserRole, guild_title_string).
+    Si falla la llamada, devuelve (MEMBER, "Miembro") como fallback seguro.
+    """
+    if not DISCORD_BOT_TOKEN or not DISCORD_GUILD_ID:
+        return UserRole.MEMBER, "Miembro"
+
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(
+                f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/roles",
+                headers={"Authorization": f"Bot {DISCORD_BOT_TOKEN}"},
+                timeout=5.0,
+            )
+        if res.status_code != 200:
+            return UserRole.MEMBER, "Miembro"
+
+        # Construir mapa id → {name, position}
+        all_roles: dict[str, dict] = {
+            r["id"]: r for r in res.json() if r["id"] != DISCORD_GUILD_ID  # excluir @everyone
+        }
+    except Exception:
+        return UserRole.MEMBER, "Miembro"
+
+    # Filtrar solo los roles que tiene el miembro, ordenar por posición (mayor = más alto)
+    member_roles = [
+        all_roles[rid] for rid in member_role_ids if rid in all_roles
+    ]
+    member_roles.sort(key=lambda r: r.get("position", 0), reverse=True)
+
+    # Determinar nivel de permiso basado en el rol más alto reconocido
+    best_role   = UserRole.MEMBER
+    best_title  = "Miembro"
+
+    for discord_role in member_roles:
+        mapped = _map_role_name(discord_role["name"])
+        if mapped == UserRole.ADMIN:
+            return UserRole.ADMIN, discord_role["name"]
+        if mapped == UserRole.OFFICER and best_role != UserRole.ADMIN:
+            best_role  = UserRole.OFFICER
+            best_title = discord_role["name"]
+
+    # Si no se reconoció ningún rol especial, devolver el nombre del rol más alto como título
+    if best_role == UserRole.MEMBER and member_roles:
+        best_title = member_roles[0]["name"]
+
+    return best_role, best_title
 
 @router.get("/discord/login")
 def discord_login():
@@ -47,6 +118,7 @@ def create_jwt(user_id: str) -> str:
 
 @router.get("/discord/callback")
 async def discord_callback(code: str, db: Session = Depends(get_db)):
+    # ── 1. Intercambiar code por access_token ─────────────────────────────
     async with httpx.AsyncClient() as client:
         token_res = await client.post(
             "https://discord.com/api/oauth2/token",
@@ -60,9 +132,10 @@ async def discord_callback(code: str, db: Session = Depends(get_db)):
         )
     if token_res.status_code != 200:
         raise HTTPException(status_code=400, detail="Error al obtener el token de Discord")
-    
+
     access_token = token_res.json()["access_token"]
 
+    # ── 2. Perfil básico del usuario ──────────────────────────────────────
     async with httpx.AsyncClient() as client:
         user_res = await client.get(
             "https://discord.com/api/users/@me",
@@ -70,12 +143,17 @@ async def discord_callback(code: str, db: Session = Depends(get_db)):
         )
     if user_res.status_code != 200:
         raise HTTPException(status_code=400, detail="Error al obtener el perfil de Discord")
-    
-    discord_user = user_res.json()
-    discord_id = discord_user["id"]
-    username = discord_user["username"]
-    avatar_url = f"https://cdn.discordapp.com/avatars/{discord_id}/{discord_user.get('avatar')}.png" if discord_user.get("avatar") else None
 
+    discord_user = user_res.json()
+    discord_id   = discord_user["id"]
+    username     = discord_user["username"]
+    avatar_hash  = discord_user.get("avatar")
+    avatar_url   = (
+        f"https://cdn.discordapp.com/avatars/{discord_id}/{avatar_hash}.png"
+        if avatar_hash else None
+    )
+
+    # ── 3. Verificar pertenencia al servidor y obtener roles ──────────────
     async with httpx.AsyncClient() as client:
         member_res = await client.get(
             f"https://discord.com/api/users/@me/guilds/{DISCORD_GUILD_ID}/member",
@@ -87,22 +165,38 @@ async def discord_callback(code: str, db: Session = Depends(get_db)):
             detail="Debes ser miembro de La Guardia de Elune para acceder."
         )
 
+    member_data     = member_res.json()
+    member_role_ids = member_data.get("roles", [])
+
+    # ── 4. Resolver rol y título a partir de los roles de Discord ─────────
+    new_role, role_title = await _resolve_discord_role(member_role_ids)
+
+    # ── 5. Crear o actualizar usuario ─────────────────────────────────────
     user = db.query(User).filter(User.discord_id == discord_id).first()
-    if not user:
+    if user:
+        # En cada login solo sincronizamos datos que vienen de Discord:
+        # avatar, username y rol. guild_title es un campo independiente
+        # que gestiona el admin y no debe sobreescribirse aquí.
+        user.username   = username
+        user.avatar_url = avatar_url
+        user.role       = new_role
+    else:
+        # Primera vez: asignamos guild_title basándonos en el rol
+        # como valor inicial razonable (el admin puede cambiarlo después)
         user = User(
-            discord_id=discord_id,
-            username=username,
-            avatar_url=avatar_url,
-            guild_title="Miembro",
+            discord_id  = discord_id,
+            username    = username,
+            avatar_url  = avatar_url,
+            role        = new_role,
+            guild_title = role_title,
         )
         db.add(user)
-        db.commit()
-        db.refresh(user)
+
+    db.commit()
+    db.refresh(user)
 
     token = create_jwt(str(user.id))
-    return {
-        "access_token": token,
-        "token_type": "bearer"}
+    return {"access_token": token, "token_type": "bearer"}
 
 @router.delete("/blizzard/unlink", status_code=204)
 def blizzard_unlink(

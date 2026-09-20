@@ -37,22 +37,20 @@ export default async function AdminPostsPage({
     <main className="min-h-screen bg-gray-950 text-white">
       <div className="max-w-3xl mx-auto px-4 py-10">
 
-        {/* Cabecera */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold">Panel de posts</h1>
             <p className="text-gray-400 text-sm mt-1">{posts.length} posts publicados</p>
           </div>
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-300">
-            ← Ver web
+          <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-300">
+            &larr; Panel admin
           </Link>
         </div>
 
-        {/* ── Formulario de creación ── */}
+        {/* Formulario de creación */}
         <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-10">
-          <h2 className="text-lg font-semibold mb-5">✏️ Nuevo post</h2>
+          <h2 className="text-lg font-semibold mb-5">Nuevo post</h2>
           <form action="/api/admin/posts" method="POST" className="space-y-4">
-
             <div>
               <label className="block text-sm text-gray-400 mb-1">Título *</label>
               <input
@@ -62,7 +60,6 @@ export default async function AdminPostsPage({
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
               />
             </div>
-
             <div>
               <label className="block text-sm text-gray-400 mb-1">Categoría</label>
               <select
@@ -72,15 +69,17 @@ export default async function AdminPostsPage({
                 <option value="">Sin categoría</option>
                 {CATEGORIES.map((cat) => (
                   <option key={cat.value} value={cat.value}>
-                    {cat.icon} {cat.label}
+                    {cat.label}
                   </option>
                 ))}
               </select>
             </div>
-
             <div>
               <label className="block text-sm text-gray-400 mb-1">
-                Contenido * <span className="text-gray-600">(separa párrafos con una línea en blanco)</span>
+                Contenido *{" "}
+                <span className="text-gray-600">
+                  (separa párrafos con una línea en blanco)
+                </span>
               </label>
               <textarea
                 name="content"
@@ -90,17 +89,16 @@ export default async function AdminPostsPage({
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 resize-y"
               />
             </div>
-
             <button
               type="submit"
               className="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-5 py-2 rounded-lg text-sm transition-colors"
             >
-              Publicar post
+              Publicar
             </button>
           </form>
         </section>
 
-        {/* ── Lista de posts existentes ── */}
+        {/* Posts existentes */}
         <section>
           <h2 className="text-lg font-semibold mb-4">Posts publicados</h2>
           {posts.length === 0 ? (
@@ -110,17 +108,9 @@ export default async function AdminPostsPage({
               {posts.map((post) => {
                 const cat = getCategoryStyle(post.category);
                 return (
-                  <li
-                    key={post.id}
-                    className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden"
-                  >
+                  <li key={post.id} className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                     {editId === post.id ? (
-                      /* ── Modo edición inline ── */
-                      <form
-                        action={`/api/admin/posts/${post.id}`}
-                        method="POST"
-                        className="p-5 space-y-3"
-                      >
+                      <form action={`/api/admin/posts/${post.id}`} method="POST" className="p-5 space-y-3">
                         <input
                           name="title"
                           defaultValue={post.title}
@@ -134,9 +124,7 @@ export default async function AdminPostsPage({
                         >
                           <option value="">Sin categoría</option>
                           {CATEGORIES.map((c) => (
-                            <option key={c.value} value={c.value}>
-                              {c.icon} {c.label}
-                            </option>
+                            <option key={c.value} value={c.value}>{c.label}</option>
                           ))}
                         </select>
                         <textarea
@@ -146,47 +134,31 @@ export default async function AdminPostsPage({
                           className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm resize-y"
                         />
                         <div className="flex gap-2">
-                          <button
-                            type="submit"
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm"
-                          >
+                          <button type="submit" className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm">
                             Guardar
                           </button>
-                          <Link
-                            href="/admin/posts"
-                            className="bg-gray-700 hover:bg-gray-600 px-4 py-1.5 rounded-lg text-sm"
-                          >
+                          <Link href="/admin/posts" className="bg-gray-700 hover:bg-gray-600 px-4 py-1.5 rounded-lg text-sm">
                             Cancelar
                           </Link>
                         </div>
                       </form>
                     ) : (
-                      /* ── Modo visualización ── */
-                      <div className="p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat.badge}`}>
-                                {cat.icon} {cat.label}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {formatDate(post.published_at)}
-                              </span>
-                            </div>
-                            <h3 className="font-semibold text-sm">{post.title}</h3>
-                            <p className="text-gray-500 text-xs mt-1 line-clamp-2">
-                              {post.content}
-                            </p>
+                      <div className="p-5 flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat.badge}`}>
+                              {cat.label}
+                            </span>
+                            <span className="text-xs text-gray-500">{formatDate(post.published_at)}</span>
                           </div>
-                          <div className="flex gap-2 shrink-0">
-                            <Link
-                              href={`/admin/posts?edit=${post.id}`}
-                              className="text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 transition-colors"
-                            >
-                              Editar
-                            </Link>
-                            <DeleteButton postId={post.id} />
-                          </div>
+                          <h3 className="font-semibold text-sm">{post.title}</h3>
+                          <p className="text-gray-500 text-xs mt-1 line-clamp-2">{post.content}</p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <Link href={`/admin/posts?edit=${post.id}`} className="text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 transition-colors">
+                            Editar
+                          </Link>
+                          <DeleteButton postId={post.id} />
                         </div>
                       </div>
                     )}
@@ -196,7 +168,6 @@ export default async function AdminPostsPage({
             </ul>
           )}
         </section>
-
       </div>
     </main>
   );

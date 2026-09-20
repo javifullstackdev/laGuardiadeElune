@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.dependencies import get_current_user
+from pydantic import BaseModel
+from typing import Optional
+from datetime import date
+from app.dependencies import get_current_user, require_admin
 from app.database import get_db
 from app.models.user import User
 from app.models.point_transaction import PointTransaction
@@ -21,7 +24,55 @@ def get_me(current_user: User = Depends(get_current_user)):
         "path": current_user.path.value,
         "blizzard_battletag": current_user.blizzard_battletag,
         "has_blizzard": current_user.blizzard_access_token is not None,
+        "birthday": current_user.birthday.isoformat() if current_user.birthday else None,
     }
+
+
+class BirthdayInput(BaseModel):
+    birthday: date
+
+
+@router.patch("/me/birthday")
+def set_my_birthday(
+    data: BirthdayInput,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Establece la fecha de nacimiento del usuario.
+    - Si aún no tiene cumpleaños → cualquier usuario puede establecerlo.
+    - Si ya tiene cumpleaños y no es admin/officer → devuelve 403.
+    - Admin/officer siempre pueden modificarlo.
+    """
+    if (
+        current_user.birthday is not None
+        and current_user.role.value not in ("admin", "officer")
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Ya tienes una fecha de nacimiento guardada. Pide al Líder que la modifique si hay un error.",
+        )
+
+    current_user.birthday = data.birthday
+    db.commit()
+    return {"birthday": current_user.birthday.isoformat()}
+
+
+@router.patch("/users/{user_id}/birthday")
+def set_user_birthday(
+    user_id: str,
+    data: BirthdayInput,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Permite a admin/officer cambiar el cumpleaños de cualquier usuario."""
+    from uuid import UUID
+    user = db.query(User).filter(User.id == UUID(user_id)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    user.birthday = data.birthday
+    db.commit()
+    return {"birthday": user.birthday.isoformat()}
 
 
 @router.get("/me/transactions")
@@ -69,9 +120,51 @@ def set_my_path(
     return {"path": current_user.path.value}
 
 
+@router.get("/admin/players")
+def list_players(
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Lista todos los jugadores para el panel de admin.
+    Incluye puntos, rol, cumpleaños y número de personajes.
+    """
+    from app.models.character import Character
+    from sqlalchemy import func as sqlfunc
+
+    rows = (
+        db.query(
+            User,
+            sqlfunc.count(Character.id).label("character_count"),
+        )
+        .outerjoin(
+            Character,
+            (Character.user_id == User.id) & (Character.deleted_at.is_(None)),
+        )
+        .filter(User.deleted_at.is_(None))
+        .group_by(User.id)
+        .order_by(User.total_points.desc())
+        .all()
+    )
+
+    return [
+        {
+            "id":              str(u.id),
+            "username":        u.username,
+            "discord_id":      u.discord_id,
+            "guild_title":     u.guild_title,
+            "role":            u.role.value,
+            "total_points":    u.total_points,
+            "avatar_url":      u.avatar_url,
+            "birthday":        u.birthday.isoformat() if u.birthday else None,
+            "character_count": count,
+        }
+        for u, count in rows
+    ]
+
+
 @router.get("/ranking")
-def get_ranking(
-    limit: int = Query(default=20, le=50),
+def get_ranking(    limit: int = Query(default=20, le=50),
     db: Session = Depends(get_db),
 ):
     """

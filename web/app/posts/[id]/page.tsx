@@ -15,18 +15,15 @@ export default async function PostPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const res = await fetch(`http://localhost:8000/posts/${id}`, {
-    cache: "no-store",
-  });
+  const res = await fetch(`http://localhost:8000/posts/${id}`, { cache: "no-store" });
 
   if (!res.ok) {
     return (
       <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-5xl mb-4">📭</p>
-          <p className="text-gray-400">Post no encontrado.</p>
-          <Link href="/" className="text-yellow-400 mt-4 inline-block hover:underline">
-            ← Volver al inicio
+          <p className="text-gray-400 mb-4">Post no encontrado.</p>
+          <Link href="/" className="text-yellow-400 hover:underline">
+            Volver al inicio
           </Link>
         </div>
       </main>
@@ -40,32 +37,24 @@ export default async function PostPage({
   return (
     <main className="min-h-screen bg-gray-950 text-white">
       <div className="max-w-2xl mx-auto px-4 py-12">
-
-        {/* Breadcrumb */}
         <Link
           href="/"
           className="text-sm text-gray-500 hover:text-gray-300 transition-colors mb-8 inline-block"
         >
-          ← Volver a posts
+          &larr; Volver a posts
         </Link>
 
-        {/* Meta: categoría + fecha */}
         <div className="flex items-center gap-3 mb-4">
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat.badge}`}>
-            {cat.icon} {cat.label}
+            {cat.label}
           </span>
-          <span className="text-sm text-gray-500">
-            {formatDate(post.published_at)}
-          </span>
+          <span className="text-sm text-gray-500">{formatDate(post.published_at)}</span>
         </div>
 
-        {/* Título */}
         <h1 className="text-4xl font-bold leading-tight mb-8">{post.title}</h1>
 
-        {/* Separador decorativo */}
         <div className="h-px bg-gradient-to-r from-yellow-500/40 to-transparent mb-8" />
 
-        {/* Contenido — cada bloque separado por línea en blanco es un párrafo */}
         <div className="space-y-5">
           {paragraphs.map((paragraph, i) => (
             <p key={i} className="text-gray-300 leading-relaxed text-[1.05rem]">
@@ -73,7 +62,6 @@ export default async function PostPage({
             </p>
           ))}
         </div>
-
       </div>
     </main>
   );
