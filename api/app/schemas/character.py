@@ -14,15 +14,12 @@ class CharacterResponse(BaseModel):
 
     model_config = {
         "from_attributes": True,
-        "use_enum_values": True,   # serializa Enum como su .value (str)
+        "use_enum_values": True,
     }
 
 
 class BlizzardCharacterOut(BaseModel):
-    """
-    Personaje obtenido en tiempo real de la API de Blizzard.
-    No está (todavía) en nuestra BD.
-    """
+    """Personaje obtenido en tiempo real de la API de Blizzard."""
     name: str
     realm: str
     realm_name: str
@@ -35,8 +32,14 @@ class BlizzardCharacterOut(BaseModel):
 
 
 class CharacterAddInput(BaseModel):
-    """Datos que envía el frontend para añadir un personaje verificado."""
+    """Datos para añadir un personaje verificado."""
     name: str
     realm: str
     class_id: Optional[int] = None
     is_main: bool = False
+
+
+class SetMainInput(BaseModel):
+    """Datos para marcar un personaje como main."""
+    name: str
+    realm: str

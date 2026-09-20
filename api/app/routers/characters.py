@@ -13,7 +13,7 @@ from app.dependencies import get_current_user
 from app.models.user import User
 from app.models.character import Character
 from app.models.enums import CharacterClass
-from app.schemas.character import CharacterAddInput, CharacterResponse, BlizzardCharacterOut
+from app.schemas.character import CharacterAddInput, CharacterResponse, BlizzardCharacterOut, SetMainInput
 
 BLIZZARD_REGION = os.getenv("BLIZZARD_REGION", "eu")
 
@@ -119,7 +119,67 @@ async def get_blizzard_characters(
     return characters
 
 
-@router.post("/add", response_model=CharacterResponse)
+@router.patch("/set-main", response_model=CharacterResponse)
+def set_main_character(
+    data: SetMainInput,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Marca un personaje como main y el resto como alts.
+    Llamado desde el perfil web con un solo click.
+    """
+    # Todos los personajes del usuario pasan a ser alts
+    db.query(Character).filter(
+        Character.user_id == current_user.id
+    ).update({"is_main": False, "is_alt": True})
+
+    # El seleccionado pasa a ser main
+    char = (
+        db.query(Character)
+        .filter(
+            Character.user_id == current_user.id,
+            Character.name == data.name,
+            Character.realm == data.realm,
+            Character.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not char:
+        raise HTTPException(status_code=404, detail="Personaje no encontrado")
+
+    char.is_main = True
+    char.is_alt = False
+    db.commit()
+    db.refresh(char)
+    return char
+
+
+@router.delete("/{name}/{realm}", status_code=204)
+def delete_character(
+    name: str,
+    realm: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Soft-delete de un personaje del usuario."""
+    from datetime import datetime, timezone
+    char = (
+        db.query(Character)
+        .filter(
+            Character.user_id == current_user.id,
+            Character.name == name,
+            Character.realm == realm,
+            Character.deleted_at.is_(None),
+        )
+        .first()
+    )
+    if not char:
+        raise HTTPException(status_code=404, detail="Personaje no encontrado")
+
+    char.deleted_at = datetime.now(timezone.utc)
+    db.commit()
+
 def add_character(
     data: CharacterAddInput,
     current_user: User = Depends(get_current_user),
