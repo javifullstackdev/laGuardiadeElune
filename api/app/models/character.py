@@ -37,13 +37,19 @@ class CharacterRace(enum.Enum):
 class Character(Base):
     __tablename__ = "characters"
     __table_args__ = (
-        UniqueConstraint("user_id", "name", "realm", name="uq_character_user_name_realm"),
+        # game incluido en la clave única para permitir
+        # el mismo personaje en retail y en Forever
+        UniqueConstraint("user_id", "name", "realm", "game", name="uq_character_user_name_realm_game"),
     )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    name = Column(String(255), nullable=False)
-    realm = Column(String(255), nullable=False)
+    # ── Línea temporal ─────────────────────────────────────────────────────
+    # "retail"  → personaje importado y verificado por Blizzard
+    # "forever" → personaje de Warcraft Forever, creado manualmente
+    game    = Column(String(20), nullable=False, server_default="retail")
+    name    = Column(String(255), nullable=False)
+    realm   = Column(String(255), nullable=False)
     is_main = Column(Boolean, nullable=False, default=False)
     is_alt = Column(Boolean, nullable=False, default=False)
     wow_class = Column(Enum(CharacterClass), nullable=True)

@@ -19,6 +19,8 @@ export async function POST(request: NextRequest) {
   const level_raw = formData.get("level");
   const level = level_raw ? parseInt(level_raw as string) : undefined;
   const faction = (formData.get("faction") as string) || undefined;
+  const game    = (formData.get("game")    as string) || "retail";
+  const surname = (formData.get("surname") as string) || undefined;
   const is_main = formData.get("is_main") === "true";
 
   const res = await fetch("http://localhost:8000/characters/add", {
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`,
     },
-    body: JSON.stringify({ name, realm, class_id, race_id, level, faction, is_main }),
+    body: JSON.stringify({ name, realm, class_id, race_id, level, faction, game, surname, is_main }),
   });
 
   if (!res.ok) {

@@ -396,18 +396,23 @@ def add_character(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Para Forever el apellido es obligatorio
+    if data.game == "forever" and not (data.surname or "").strip():
+        raise HTTPException(400, "Los personajes de Warcraft Forever requieren apellido.")
+
     existing = (
         db.query(Character)
         .filter(
             Character.user_id == current_user.id,
             Character.name == data.name,
             Character.realm == data.realm,
+            Character.game == data.game,
             Character.deleted_at.is_(None),
         )
         .first()
     )
     if existing:
-        raise HTTPException(400, "Este personaje ya está registrado")
+        raise HTTPException(400, "Este personaje ya está registrado en esta línea temporal")
 
     wow_class_str = BLIZZARD_CLASS_MAP.get(data.class_id) if data.class_id else None
     wow_class = CharacterClass[wow_class_str] if wow_class_str else None
@@ -422,8 +427,10 @@ def add_character(
 
     char = Character(
         user_id=current_user.id,
+        game=data.game,
         name=data.name,
         realm=data.realm,
+        surname=data.surname or None,
         wow_class=wow_class,
         race=race,
         level=data.level,

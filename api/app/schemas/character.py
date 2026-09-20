@@ -14,6 +14,7 @@ class TitleOut(BaseModel):
 
 class CharacterResponse(BaseModel):
     """Personaje completo tal como está guardado en nuestra BD."""
+    game: str
     name: str
     surname: Optional[str] = None
     prefix_title: Optional[str] = None
@@ -57,13 +58,15 @@ class BlizzardCharacterOut(BaseModel):
 
 
 class CharacterAddInput(BaseModel):
-    """Datos para añadir un personaje verificado."""
+    """Datos para añadir un personaje verificado por Blizzard."""
     name: str
     realm: str
+    game: str = "retail"         # "retail" | "forever"
     class_id: Optional[int] = None
     race_id: Optional[int] = None
     level: Optional[int] = None
     faction: Optional[str] = None
+    surname: Optional[str] = None  # Obligatorio para Forever (se valida en el router)
     is_main: bool = False
 
 

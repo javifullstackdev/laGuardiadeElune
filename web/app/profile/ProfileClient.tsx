@@ -29,6 +29,7 @@ type Character = {
   name: string;
   surname: string | null;
   prefix_title: string | null;
+  game: string;          // "retail" | "forever"
   realm: string;
   wow_class: string | null;
   race: string | null;
@@ -228,42 +229,16 @@ export default function ProfileClient({
         {/* Cumpleaños */}
         <BirthdaySection birthday={user.birthday} isAdmin={user.role === "admin" || user.role === "officer"} />
 
-        {/* Lista de personajes */}
+        {/* Lista de personajes — agrupada por juego */}
         <div className="flex-1 overflow-y-auto p-3">
-          <p className="text-xs text-gray-500 uppercase tracking-wider px-2 mb-2">Personajes</p>
           {characters.length === 0 ? (
             <p className="text-gray-500 text-sm px-2">Sin personajes</p>
           ) : (
-            <ul className="space-y-1">
-              {characters.map((char) => {
-                const color = CLASS_COLOR[char.wow_class ?? ""] ?? "#888";
-                const isActive = selected?.name === char.name && selected?.realm === char.realm;
-                return (
-                  <li key={`${char.name}-${char.realm}`}>
-                    <button
-                      onClick={() => handleSelect(char)}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                        isActive ? "bg-gray-700 ring-1 ring-gray-600" : "hover:bg-gray-800"
-                      }`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate text-sm" style={{ color }}>
-                          {char.name}
-                          {char.surname ? <span className="font-normal opacity-70"> {char.surname}</span> : null}
-                          {char.is_main && <span className="ml-1 text-xs text-yellow-400 font-normal opacity-80">(main)</span>}
-                        </p>
-                        <p className="text-xs truncate mt-0.5">
-                          {char.favorite_title
-                            ? <span className="text-yellow-500/80">{char.favorite_title.name}</span>
-                            : <span className="text-gray-500">{char.realm}</span>}
-                        </p>
-                      </div>
-                      {char.is_verified && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            <CharacterList
+              characters={characters}
+              selected={selected}
+              onSelect={handleSelect}
+            />
           )}
         </div>
 
@@ -358,6 +333,17 @@ function CharacterDetail({
         {char.favorite_title && (
           <p className="text-base mt-1.5" style={{ color: "#DDB96A" }}>
             {char.favorite_title.name}
+          </p>
+        )}
+
+        {/* Badge de línea temporal */}
+        {char.game === "forever" ? (
+          <p className="text-xs mt-1.5 font-semibold tracking-wide" style={{ color: "#f59e0b" }}>
+            Warcraft Forever
+          </p>
+        ) : (
+          <p className="text-xs mt-1.5 text-gray-600 tracking-wide">
+            World of Warcraft
           </p>
         )}
 
@@ -922,6 +908,77 @@ function AddRelationForm({
           Cancelar
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── Lista de personajes agrupada por juego ────────────────────────────────
+
+const GAME_LABEL: Record<string, string> = {
+  retail:  "World of Warcraft",
+  forever: "Warcraft Forever",
+};
+
+const GAME_ACCENT: Record<string, string> = {
+  retail:  "#3b82f6",   // blue-500
+  forever: "#f59e0b",   // amber-500
+};
+
+function CharacterList({
+  characters, selected, onSelect,
+}: {
+  characters: Character[];
+  selected: Character | null;
+  onSelect: (c: Character) => void;
+}) {
+  const games = ["retail", "forever"].filter((g) => characters.some((c) => (c.game ?? "retail") === g));
+
+  return (
+    <div className="space-y-3">
+      {games.map((game) => {
+        const group = characters.filter((c) => (c.game ?? "retail") === game);
+        const accent = GAME_ACCENT[game] ?? "#888";
+        return (
+          <div key={game}>
+            <p
+              className="text-xs font-semibold uppercase tracking-wider px-2 mb-1"
+              style={{ color: accent }}
+            >
+              {GAME_LABEL[game] ?? game}
+            </p>
+            <ul className="space-y-0.5">
+              {group.map((char) => {
+                const color   = CLASS_COLOR[char.wow_class ?? ""] ?? "#888";
+                const isActive = selected?.name === char.name && selected?.realm === char.realm && (selected?.game ?? "retail") === game;
+                return (
+                  <li key={`${char.name}-${char.realm}-${game}`}>
+                    <button
+                      onClick={() => onSelect(char)}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                        isActive ? "bg-gray-700 ring-1 ring-gray-600" : "hover:bg-gray-800"
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate text-sm" style={{ color }}>
+                          {char.name}
+                          {char.surname && <span className="font-normal opacity-70"> {char.surname}</span>}
+                          {char.is_main && <span className="ml-1 text-xs text-yellow-400 font-normal opacity-80">(main)</span>}
+                        </p>
+                        <p className="text-xs truncate mt-0.5">
+                          {char.favorite_title
+                            ? <span className="text-yellow-500/80">{char.favorite_title.name}</span>
+                            : <span className="text-gray-500">{char.realm}</span>}
+                        </p>
+                      </div>
+                      {char.is_verified && <span title="Verificado" className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }
