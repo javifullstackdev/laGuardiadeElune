@@ -14,6 +14,7 @@ from db.database import Database
 # ======= ENV =======
 load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 TOKEN = os.getenv("DISCORD_TOKEN")
+GUILD_ID = int(os.getenv("DISCORD_GUILD_ID", 0))
 if not TOKEN:
     raise RuntimeError("DISCORD_TOKEN no está configurado en .env")
 
@@ -35,18 +36,18 @@ bot.db: Database = None  # Se inicializa en setup_hook
 
 COGS = [
     "cogs.admin",
-    "cogs.personajes",
-    "cogs.puntos",
-    "cogs.logros",
+    "cogs.characters",
+    "cogs.points",
+    "cogs.achievements",
     "cogs.ranking",
-    "cogs.perfil",
-    "cogs.piedra",
+    "cogs.profile",
+    "cogs.dungeon",
     "cogs.raid",
-    "cogs.cumpleanos",
-    "cogs.misiones",
-    "cogs.sorteos",
-    "cogs.pedidos",
-    "cogs.donaciones",
+    "cogs.birthdays",
+    "cogs.missions",
+    "cogs.raffles",
+    "cogs.orders",
+    "cogs.donations",
 ]
 
 # ======= EVENTOS =======
@@ -64,8 +65,12 @@ async def setup_hook():
         except Exception as e:
             log.error(f"Error cargando {cog}: {e}")
 
-    await bot.tree.sync()
-    log.info("Slash commands sincronizados")
+    # Sincronización a la guild en desarrollo → instantánea (sin 1h de espera)
+    # copy_global_to copia todos los comandos globales al árbol de la guild
+    guild = discord.Object(id=GUILD_ID)
+    bot.tree.copy_global_to(guild=guild)
+    synced = await bot.tree.sync(guild=guild)
+    log.info(f"Slash commands sincronizados: {len(synced)} comandos en guild {GUILD_ID}")
 
 
 @bot.event

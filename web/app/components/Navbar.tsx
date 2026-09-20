@@ -30,6 +30,9 @@ export default async function Navbar() {
             <Link href="/profile" className="hover:text-gray-300">
               Mi perfil
             </Link>
+            <Link href="/personajes" className="hover:text-gray-300">
+              Mis personajes
+            </Link>
             {isAdmin && (
               <Link href="/admin/posts" className="hover:text-gray-300">
                 Admin

@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, ForeignKey, DateTime, func, Integer, String, Boolean, Enum
+from sqlalchemy import Column, ForeignKey, DateTime, func, Integer, String, Boolean, Enum, text
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 from app.models.enums import EventCategory
@@ -13,7 +13,9 @@ class PointTransaction(Base):
     amount = Column(Integer, nullable=False)
     reason = Column(String(255), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    active = Column(Boolean, default=True, nullable=False)
-    week_start = Column(DateTime(timezone=True), nullable=False)
-    season_id = Column(UUID(as_uuid=True), ForeignKey("seasons.id"), nullable=False)
+    # server_default="true" → PostgreSQL lo rellena automáticamente, incluso con SQL raw
+    active = Column(Boolean, server_default="true", nullable=False)
+    # Nullable hasta que implementemos el sistema de temporadas (Fase futura)
+    week_start = Column(DateTime(timezone=True), nullable=True)
+    season_id = Column(UUID(as_uuid=True), ForeignKey("seasons.id"), nullable=True)
     event_category = Column(Enum(EventCategory), nullable=False)

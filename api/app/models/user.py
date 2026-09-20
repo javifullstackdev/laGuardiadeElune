@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, DateTime, Integer, Date, Enum, func
+from sqlalchemy import Column, String, DateTime, Integer, Date, Enum, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 
@@ -26,6 +26,12 @@ class User(Base):
     avatar_url = Column(String(255), nullable=True)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.MEMBER)
     path = Column(Enum(UserPath), nullable=False, default=UserPath.HYBRID)
+    # Battle.net — se rellena cuando el usuario conecta su cuenta
+    blizzard_id = Column(String(255), nullable=True, unique=True)
+    blizzard_battletag = Column(String(255), nullable=True)
+    blizzard_access_token = Column(Text, nullable=True)
+    blizzard_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)

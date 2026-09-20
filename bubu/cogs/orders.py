@@ -1,11 +1,11 @@
 ﻿from discord.ext import commands
 
 
-class RaidCog(commands.Cog, name="Raid"):
+class OrdersCog(commands.Cog, name="Orders"):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(RaidCog(bot))
+    await bot.add_cog(OrdersCog(bot))
 

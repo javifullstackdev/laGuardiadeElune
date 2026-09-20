@@ -15,4 +15,7 @@ def get_me(current_user: User = Depends(get_current_user)):
         "avatar_url": current_user.avatar_url,
         "role": current_user.role.value,
         "path": current_user.path.value,
+        # Battle.net
+        "blizzard_battletag": current_user.blizzard_battletag,
+        "has_blizzard": current_user.blizzard_access_token is not None,
     }
