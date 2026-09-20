@@ -1,5 +1,16 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import DeleteButton from "./DeleteButton";
+import { CATEGORIES, getCategoryStyle, formatDate } from "@/lib/posts";
+
+type Post = {
+  id: string;
+  title: string;
+  content: string;
+  category: string | null;
+  published_at: string;
+};
 
 export default async function AdminPostsPage({
   searchParams,
@@ -8,7 +19,6 @@ export default async function AdminPostsPage({
 }) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
-
   if (!token) redirect("/");
 
   const userRes = await fetch("http://localhost:8000/users/me", {
@@ -16,118 +26,178 @@ export default async function AdminPostsPage({
     cache: "no-store",
   });
   if (!userRes.ok) redirect("/");
-
   const user = await userRes.json();
   if (user.role !== "admin" && user.role !== "officer") redirect("/");
 
-  const postsRes = await fetch("http://localhost:8000/posts/", {
-    cache: "no-store",
-  });
-  const posts = await postsRes.json();
-
+  const postsRes = await fetch("http://localhost:8000/posts/", { cache: "no-store" });
+  const posts: Post[] = postsRes.ok ? await postsRes.json() : [];
   const { edit: editId } = await searchParams;
 
   return (
-    <main className="max-w-3xl mx-auto py-12 px-4">
-      <h1 className="text-3xl font-bold mb-8">Panel — Gestión de posts</h1>
+    <main className="min-h-screen bg-gray-950 text-white">
+      <div className="max-w-3xl mx-auto px-4 py-10">
 
-      <form action="/api/admin/posts" method="POST" className="flex flex-col gap-4 mb-12 border rounded-lg p-6">
-        <h2 className="text-xl font-semibold">Crear nuevo post</h2>
-        <input
-          name="title"
-          placeholder="Título"
-          required
-          className="border rounded px-3 py-2"
-        />
-        <input
-          name="category"
-          placeholder="Categoría (ej: noticias, lore...)"
-          className="border rounded px-3 py-2"
-        />
-        <textarea
-          name="content"
-          placeholder="Contenido"
-          required
-          rows={5}
-          className="border rounded px-3 py-2"
-        />
-        <button
-          type="submit"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg self-start"
-        >
-          Publicar
-        </button>
-      </form>
+        {/* Cabecera */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold">Panel de posts</h1>
+            <p className="text-gray-400 text-sm mt-1">{posts.length} posts publicados</p>
+          </div>
+          <Link href="/" className="text-sm text-gray-500 hover:text-gray-300">
+            ← Ver web
+          </Link>
+        </div>
 
-      <h2 className="text-xl font-semibold mb-4">Posts existentes</h2>
-      <ul className="flex flex-col gap-4">
-        {posts.map((post: any) => (
-          <li key={post.id} className="border rounded-lg p-4">
-            {editId === post.id ? (
-              <form
-                action={`/api/admin/posts/${post.id}`}
-                method="POST"
-                className="flex flex-col gap-3"
+        {/* ── Formulario de creación ── */}
+        <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-10">
+          <h2 className="text-lg font-semibold mb-5">✏️ Nuevo post</h2>
+          <form action="/api/admin/posts" method="POST" className="space-y-4">
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Título *</label>
+              <input
+                name="title"
+                placeholder="Título del post"
+                required
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Categoría</label>
+              <select
+                name="category"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
               >
-                <input
-                  name="title"
-                  defaultValue={post.title}
-                  required
-                  className="border rounded px-3 py-2 font-semibold"
-                />
-                <input
-                  name="category"
-                  defaultValue={post.category ?? ""}
-                  className="border rounded px-3 py-2 text-sm"
-                />
-                <textarea
-                  name="content"
-                  defaultValue={post.content}
-                  rows={4}
-                  className="border rounded px-3 py-2"
-                />
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm"
+                <option value="">Sin categoría</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.icon} {cat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">
+                Contenido * <span className="text-gray-600">(separa párrafos con una línea en blanco)</span>
+              </label>
+              <textarea
+                name="content"
+                placeholder={"Escribe el contenido aquí...\n\nUsa líneas en blanco para separar párrafos."}
+                required
+                rows={8}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 resize-y"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-5 py-2 rounded-lg text-sm transition-colors"
+            >
+              Publicar post
+            </button>
+          </form>
+        </section>
+
+        {/* ── Lista de posts existentes ── */}
+        <section>
+          <h2 className="text-lg font-semibold mb-4">Posts publicados</h2>
+          {posts.length === 0 ? (
+            <p className="text-gray-500 text-sm">No hay posts todavía.</p>
+          ) : (
+            <ul className="space-y-3">
+              {posts.map((post) => {
+                const cat = getCategoryStyle(post.category);
+                return (
+                  <li
+                    key={post.id}
+                    className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden"
                   >
-                    Guardar
-                  </button>
-                  <a
-                    href="/admin/posts"
-                    className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-lg text-sm"
-                  >
-                    Cancelar
-                  </a>
-                </div>
-              </form>
-            ) : (
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-semibold">{post.title}</h3>
-                  <p className="text-sm text-gray-500">{post.category}</p>
-                </div>
-                <div className="flex gap-3">
-                  <a
-                    href={`/admin/posts?edit=${post.id}`}
-                    className="text-indigo-600 hover:text-indigo-800 text-sm"
-                  >
-                    Editar
-                  </a>
-                  <form action={`/api/admin/posts/${post.id}/delete`} method="POST">
-                    <button
-                      type="submit"
-                      className="text-red-600 hover:text-red-800 text-sm"
-                    >
-                      Borrar
-                    </button>
-                  </form>
-                </div>
-              </div>
-            )}
-          </li>
-        ))}
-      </ul>
+                    {editId === post.id ? (
+                      /* ── Modo edición inline ── */
+                      <form
+                        action={`/api/admin/posts/${post.id}`}
+                        method="POST"
+                        className="p-5 space-y-3"
+                      >
+                        <input
+                          name="title"
+                          defaultValue={post.title}
+                          required
+                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-semibold"
+                        />
+                        <select
+                          name="category"
+                          defaultValue={post.category ?? ""}
+                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"
+                        >
+                          <option value="">Sin categoría</option>
+                          {CATEGORIES.map((c) => (
+                            <option key={c.value} value={c.value}>
+                              {c.icon} {c.label}
+                            </option>
+                          ))}
+                        </select>
+                        <textarea
+                          name="content"
+                          defaultValue={post.content}
+                          rows={6}
+                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm resize-y"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm"
+                          >
+                            Guardar
+                          </button>
+                          <Link
+                            href="/admin/posts"
+                            className="bg-gray-700 hover:bg-gray-600 px-4 py-1.5 rounded-lg text-sm"
+                          >
+                            Cancelar
+                          </Link>
+                        </div>
+                      </form>
+                    ) : (
+                      /* ── Modo visualización ── */
+                      <div className="p-5">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat.badge}`}>
+                                {cat.icon} {cat.label}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {formatDate(post.published_at)}
+                              </span>
+                            </div>
+                            <h3 className="font-semibold text-sm">{post.title}</h3>
+                            <p className="text-gray-500 text-xs mt-1 line-clamp-2">
+                              {post.content}
+                            </p>
+                          </div>
+                          <div className="flex gap-2 shrink-0">
+                            <Link
+                              href={`/admin/posts?edit=${post.id}`}
+                              className="text-xs px-3 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 border border-gray-600 transition-colors"
+                            >
+                              Editar
+                            </Link>
+                            <DeleteButton postId={post.id} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+      </div>
     </main>
   );
 }
