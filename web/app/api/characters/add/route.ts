@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
   const race_id = race_id_raw ? parseInt(race_id_raw as string) : undefined;
   const level_raw = formData.get("level");
   const level = level_raw ? parseInt(level_raw as string) : undefined;
+  const bchar_raw = formData.get("blizzard_character_id");
+  const blizzard_character_id = bchar_raw ? parseInt(bchar_raw as string) : undefined;
   const faction = (formData.get("faction") as string) || undefined;
   const game    = (formData.get("game")    as string) || "retail";
   const surname = (formData.get("surname") as string) || undefined;
@@ -29,7 +31,7 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`,
     },
-    body: JSON.stringify({ name, realm, class_id, race_id, level, faction, game, surname, is_main }),
+    body: JSON.stringify({ name, realm, class_id, race_id, level, blizzard_character_id, faction, game, surname, is_main }),
   });
 
   if (!res.ok) {

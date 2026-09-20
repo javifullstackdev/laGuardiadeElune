@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, DateTime, Boolean, Enum, func, ForeignKey, UniqueConstraint, Integer, Text
+from sqlalchemy import Column, String, DateTime, Boolean, Enum, func, ForeignKey, UniqueConstraint, Integer, Text, BigInteger
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -44,6 +44,10 @@ class Character(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    # ── ID Blizzard y avatares ─────────────────────────────────────────────
+    blizzard_character_id = Column(BigInteger, nullable=True)  # para render de armería
+    custom_avatar_url     = Column(String(500), nullable=True) # imagen aprobada por admin
+    pending_avatar_url    = Column(String(500), nullable=True) # imagen pendiente de aprobación
     # ── Línea temporal ─────────────────────────────────────────────────────
     # "retail"  → personaje importado y verificado por Blizzard
     # "forever" → personaje de Warcraft Forever, creado manualmente

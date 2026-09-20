@@ -1,6 +1,8 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import Optional
 from uuid import UUID
+
+BLIZZARD_REGION = "eu"  # ajusta si el servidor usa otra región
 
 
 class TitleOut(BaseModel):
@@ -19,6 +21,12 @@ class CharacterResponse(BaseModel):
     surname: Optional[str] = None
     prefix_title: Optional[str] = None
     realm: str
+    blizzard_character_id: Optional[int] = None
+    # Avatares
+    custom_avatar_url:  Optional[str] = None   # imagen aprobada (ruta /static/...)
+    pending_avatar_url: Optional[str] = None   # pendiente de aprobación
+    # Campo calculado: la imagen a mostrar
+    avatar_url: Optional[str] = None
     wow_class: Optional[str] = None
     race: Optional[str] = None
     faction: Optional[str] = None
@@ -42,6 +50,18 @@ class CharacterResponse(BaseModel):
         "use_enum_values": True,
     }
 
+    @model_validator(mode="after")
+    def compute_avatar_url(self) -> "CharacterResponse":
+        """Prioridad: imagen custom aprobada > render Blizzard > null."""
+        if self.custom_avatar_url:
+            self.avatar_url = f"http://localhost:8000/static/{self.custom_avatar_url}"
+        elif self.blizzard_character_id and self.realm:
+            self.avatar_url = (
+                f"https://render-{BLIZZARD_REGION}.worldofwarcraft.com"
+                f"/character/{self.realm}/{self.blizzard_character_id}/profilemain.jpg"
+            )
+        return self
+
 
 class BlizzardCharacterOut(BaseModel):
     """Personaje obtenido en tiempo real de la API de Blizzard."""
@@ -61,12 +81,13 @@ class CharacterAddInput(BaseModel):
     """Datos para añadir un personaje verificado por Blizzard."""
     name: str
     realm: str
-    game: str = "retail"         # "retail" | "forever"
+    game: str = "retail"
+    blizzard_character_id: Optional[int] = None
     class_id: Optional[int] = None
     race_id: Optional[int] = None
     level: Optional[int] = None
     faction: Optional[str] = None
-    surname: Optional[str] = None  # Obligatorio para Forever (se valida en el router)
+    surname: Optional[str] = None
     is_main: bool = False
 
 

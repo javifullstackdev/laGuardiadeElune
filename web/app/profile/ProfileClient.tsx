@@ -29,8 +29,12 @@ type Character = {
   name: string;
   surname: string | null;
   prefix_title: string | null;
-  game: string;          // "retail" | "forever"
+  game: string;
   realm: string;
+  blizzard_character_id: number | null;
+  avatar_url: string | null;
+  custom_avatar_url: string | null;
+  pending_avatar_url: string | null;
   wow_class: string | null;
   race: string | null;
   faction: string | null;
@@ -123,7 +127,8 @@ function getRelationLabel(type: string) {
 
 type CharPatch = Partial<Pick<Character,
   "surname" | "prefix_title" | "biography" | "personality" | "appearance" |
-  "origin" | "age_lore" | "residence"
+  "origin" | "age_lore" | "residence" |
+  "avatar_url" | "custom_avatar_url" | "pending_avatar_url"
 >>;
 
 // ── Componente principal ───────────────────────────────────────────────────
@@ -310,8 +315,17 @@ function CharacterDetail({
   return (
     <div className="p-8 max-w-2xl">
 
-      {/* ── Cabecera ────────────────────────────────────────────── */}
-      <div className="mb-6">
+      {/* ── Cabecera con avatar ─────────────────────────────────── */}
+      <div className="flex gap-6 mb-6">
+
+        {/* Avatar */}
+        <CharacterAvatar
+          char={char}
+          onAvatarPatch={(p) => onDetailsPatch(p)}
+        />
+
+        {/* Texto */}
+        <div className="flex-1 min-w-0 pt-1">
 
         {/* Antetítulo */}
         {char.prefix_title && (
@@ -369,6 +383,9 @@ function CharacterDetail({
             </button>
           )}
         </div>
+        {/* fin texto */}
+      </div>
+      {/* fin flex cabecera */}
       </div>
 
       {/* ── Separador con color de clase ────────────────────────── */}
@@ -907,6 +924,114 @@ function AddRelationForm({
         <button onClick={onCancel} className="px-4 py-2 text-gray-400 hover:text-gray-200 text-sm transition-colors">
           Cancelar
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Avatar del personaje ──────────────────────────────────────────────────
+
+function CharacterAvatar({
+  char,
+  onAvatarPatch,
+}: {
+  char: Character;
+  onAvatarPatch: (p: CharPatch) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const isBlizzardRender = !char.custom_avatar_url && !!char.blizzard_character_id;
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    const fd = new FormData();
+    fd.append("file",  file);
+    fd.append("name",  char.name);
+    fd.append("realm", char.realm);
+    const res = await fetch("/api/characters/avatar", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? data.detail ?? "Error al subir");
+    } else {
+      onAvatarPatch({ pending_avatar_url: "pending" });
+    }
+    setUploading(false);
+    // Reset input
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  async function handleRemove() {
+    const res = await fetch(
+      `/api/characters/avatar?name=${encodeURIComponent(char.name)}&realm=${encodeURIComponent(char.realm)}`,
+      { method: "DELETE" }
+    );
+    if (res.ok || res.status === 204) {
+      onAvatarPatch({ avatar_url: null, custom_avatar_url: null, pending_avatar_url: null });
+    }
+  }
+
+  return (
+    <div className="relative shrink-0">
+      {/* Imagen */}
+      <div className="w-32 h-44 rounded-xl overflow-hidden bg-gray-800 border border-gray-700/50">
+        {char.avatar_url ? (
+          <img
+            src={char.avatar_url}
+            alt={char.name}
+            className="w-full h-full object-cover object-top"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <span className="text-gray-600 text-4xl font-bold">
+              {char.name.slice(0, 1)}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Etiqueta si es render Blizzard */}
+      {isBlizzardRender && (
+        <p className="text-xs text-gray-600 text-center mt-1">Render Blizzard</p>
+      )}
+      {char.custom_avatar_url && (
+        <p className="text-xs text-green-600 text-center mt-1">Imagen propia</p>
+      )}
+      {char.pending_avatar_url && (
+        <p className="text-xs text-amber-500 text-center mt-1">Pendiente aprobación</p>
+      )}
+
+      {/* Acciones */}
+      <div className="flex flex-col gap-1 mt-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading || !!char.pending_avatar_url}
+          title={char.pending_avatar_url ? "Ya tienes una imagen pendiente de aprobación" : "Subir imagen propia"}
+          className="text-xs text-gray-500 hover:text-gray-300 transition-colors disabled:opacity-40 text-center"
+        >
+          {uploading ? "Subiendo..." : char.pending_avatar_url ? "Pendiente..." : "Cambiar imagen"}
+        </button>
+        {(char.custom_avatar_url || char.pending_avatar_url) && (
+          <button
+            onClick={handleRemove}
+            className="text-xs text-gray-600 hover:text-red-400 transition-colors text-center"
+          >
+            Quitar imagen
+          </button>
+        )}
+        {error && <p className="text-xs text-red-400 text-center">{error}</p>}
       </div>
     </div>
   );

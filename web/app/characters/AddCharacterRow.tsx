@@ -74,14 +74,15 @@ export default function AddCharacterRow({ c }: { c: BlizzardCharacter }) {
 
       {/* Acciones */}
       <form method="POST" action="/api/characters/add" className="flex items-center gap-2 flex-wrap">
-        <input type="hidden" name="name"     value={c.name} />
-        <input type="hidden" name="realm"    value={c.realm} />
-        <input type="hidden" name="class_id" value={c.class_id} />
-        <input type="hidden" name="race_id"  value={c.race_id} />
-        <input type="hidden" name="level"    value={c.level} />
-        <input type="hidden" name="faction"  value={c.faction} />
-        <input type="hidden" name="game"     value={game} />
-        <input type="hidden" name="surname"  value={surname} />
+        <input type="hidden" name="name"                   value={c.name} />
+        <input type="hidden" name="realm"                  value={c.realm} />
+        <input type="hidden" name="class_id"               value={c.class_id} />
+        <input type="hidden" name="race_id"                value={c.race_id} />
+        <input type="hidden" name="level"                  value={c.level} />
+        <input type="hidden" name="faction"                value={c.faction} />
+        <input type="hidden" name="blizzard_character_id"  value={c.blizzard_character_id} />
+        <input type="hidden" name="game"                   value={game} />
+        <input type="hidden" name="surname"                value={surname} />
 
         <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
           <input

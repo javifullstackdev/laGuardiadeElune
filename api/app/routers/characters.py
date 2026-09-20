@@ -5,11 +5,14 @@ Gestión de personajes WoW del usuario autenticado.
 
 import httpx
 import os
-from fastapi import APIRouter, Depends, HTTPException, Query
+import uuid as _uuid
+import shutil
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_admin
 from app.models.user import User
 from app.models.character import Character, CharacterRace
 from app.models.character_title import CharacterTitle
@@ -23,6 +26,12 @@ from app.schemas.character import (
 )
 
 BLIZZARD_REGION = os.getenv("BLIZZARD_REGION", "eu")
+
+UPLOAD_DIR = Path("uploads/avatars")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
 
 BLIZZARD_CLASS_MAP: dict[int, str] = {
     1: "WARRIOR", 2: "PALADIN", 3: "HUNTER", 4: "ROGUE", 5: "PRIEST",
@@ -431,6 +440,7 @@ def add_character(
         name=data.name,
         realm=data.realm,
         surname=data.surname or None,
+        blizzard_character_id=data.blizzard_character_id,
         wow_class=wow_class,
         race=race,
         level=data.level,
@@ -447,7 +457,32 @@ def add_character(
 
 # ── Soft-delete ────────────────────────────────────────────────────────────────
 
-@router.delete("/{name}/{realm}", status_code=204)
+@router.get("/pending-avatars")
+def list_pending_avatars(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: lista todos los personajes con imagen pendiente de aprobación."""
+    from app.models.user import User as UserModel
+    results = (
+        db.query(Character, UserModel.username)
+        .join(UserModel, UserModel.id == Character.user_id)
+        .filter(
+            Character.pending_avatar_url.isnot(None),
+            Character.deleted_at.is_(None),
+        )
+        .all()
+    )
+    return [
+        {
+            "name":              c.name,
+            "realm":             c.realm,
+            "game":              c.game,
+            "owner_username":    username,
+            "pending_avatar_url": f"http://localhost:8000/static/{c.pending_avatar_url}",
+        }
+        for c, username in results
+    ]
 def delete_character(
     name: str, realm: str,
     current_user: User = Depends(get_current_user),
@@ -456,4 +491,114 @@ def delete_character(
     from datetime import datetime, timezone
     char = _get_own_character(name, realm, current_user, db)
     char.deleted_at = datetime.now(timezone.utc)
+    db.commit()
+
+
+# ── Avatares ───────────────────────────────────────────────────────────────
+
+@router.post("/{name}/{realm}/avatar", status_code=202)
+async def upload_avatar(
+    name: str, realm: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sube una imagen personalizada. Queda pendiente hasta que un admin la apruebe."""
+    char = _get_own_character(name, realm, current_user, db)
+
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(400, "Solo se permiten imágenes JPEG, PNG o WebP.")
+
+    content = await file.read()
+    if len(content) > MAX_AVATAR_SIZE:
+        raise HTTPException(400, "La imagen no puede superar 5 MB.")
+
+    ext = (file.filename or "avatar").rsplit(".", 1)[-1].lower()
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        ext = "jpg"
+    filename = f"{char.id}_{_uuid.uuid4().hex}.{ext}"
+    filepath = UPLOAD_DIR / filename
+
+    with filepath.open("wb") as f:
+        f.write(content)
+
+    # Si había una imagen pendiente anterior, eliminarla del disco
+    if char.pending_avatar_url:
+        old = Path("uploads") / char.pending_avatar_url
+        if old.exists():
+            old.unlink(missing_ok=True)
+
+    char.pending_avatar_url = f"avatars/{filename}"
+    db.commit()
+    return {"message": "Imagen enviada. Un admin la revisará antes de publicarla."}
+
+
+@router.post("/{name}/{realm}/avatar/approve", status_code=200)
+def approve_avatar(
+    name: str, realm: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: aprueba la imagen pendiente de un personaje."""
+    char = db.query(Character).filter(
+        Character.name == name,
+        Character.realm == realm,
+        Character.deleted_at.is_(None),
+    ).first()
+    if not char:
+        raise HTTPException(404, "Personaje no encontrado")
+    if not char.pending_avatar_url:
+        raise HTTPException(400, "No hay imagen pendiente para este personaje")
+
+    # Eliminar imagen custom anterior
+    if char.custom_avatar_url:
+        old = Path("uploads") / char.custom_avatar_url
+        old.unlink(missing_ok=True)
+
+    char.custom_avatar_url = char.pending_avatar_url
+    char.pending_avatar_url = None
+    db.commit()
+    return {"message": "Imagen aprobada y publicada."}
+
+
+@router.post("/{name}/{realm}/avatar/reject", status_code=200)
+def reject_avatar(
+    name: str, realm: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: rechaza la imagen pendiente de un personaje."""
+    char = db.query(Character).filter(
+        Character.name == name,
+        Character.realm == realm,
+        Character.deleted_at.is_(None),
+    ).first()
+    if not char:
+        raise HTTPException(404, "Personaje no encontrado")
+    if not char.pending_avatar_url:
+        raise HTTPException(400, "No hay imagen pendiente para este personaje")
+
+    old = Path("uploads") / char.pending_avatar_url
+    old.unlink(missing_ok=True)
+    char.pending_avatar_url = None
+    db.commit()
+    return {"message": "Imagen rechazada y eliminada."}
+
+
+@router.delete("/{name}/{realm}/avatar", status_code=204)
+def remove_custom_avatar(
+    name: str, realm: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """El jugador puede cancelar su imagen pendiente o eliminar su imagen custom."""
+    char = _get_own_character(name, realm, current_user, db)
+
+    if char.pending_avatar_url:
+        Path("uploads/" + char.pending_avatar_url).unlink(missing_ok=True)
+        char.pending_avatar_url = None
+    if char.custom_avatar_url:
+        Path("uploads/" + char.custom_avatar_url).unlink(missing_ok=True)
+        char.custom_avatar_url = None
+
     db.commit()
