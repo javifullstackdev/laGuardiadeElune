@@ -1,9 +1,11 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, DateTime, Boolean, Enum, func, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, DateTime, Boolean, Enum, func, ForeignKey, UniqueConstraint, Integer, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from app.database import Base
 from app.models.enums import CharacterClass, CharacterFunction, CharacterProfession
+
 
 class CharacterRace(enum.Enum):
     HUMAN = "human"
@@ -31,6 +33,7 @@ class CharacterRace(enum.Enum):
     ZANDALARI = "zandalari"
     LIGHTFORGED = "lightforged"
 
+
 class Character(Base):
     __tablename__ = "characters"
     __table_args__ = (
@@ -48,6 +51,23 @@ class Character(Base):
     role_function = Column(Enum(CharacterFunction), nullable=True)
     profession = Column(Enum(CharacterProfession), nullable=True)
     is_verified = Column(Boolean, nullable=False, default=False, server_default="false")
+    # ── Datos de lore / trasfondo ──────────────────────────────────────────
+    biography   = Column(Text, nullable=True)          # historia del personaje
+    personality = Column(Text, nullable=True)          # rasgos de personalidad
+    appearance  = Column(Text, nullable=True)          # descripción física
+    level       = Column(Integer, nullable=True)       # nivel importado de Blizzard
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Título favorito que el jugador quiere mostrar debajo de su nombre
+    favorite_title_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("titles.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    favorite_title = relationship(
+        "Title",
+        foreign_keys=[favorite_title_id],
+        lazy="joined",
+    )

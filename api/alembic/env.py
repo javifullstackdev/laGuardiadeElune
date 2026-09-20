@@ -9,7 +9,7 @@ env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 from app.database import Base
-from app.models import post, season, user, character, achievement, user_achievement, point_transaction # noqa
+from app.models import post, season, user, character, achievement, user_achievement, point_transaction, title, character_title, character_relation # noqa
 
 from logging.config import fileConfig
 
