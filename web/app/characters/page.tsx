@@ -10,6 +10,7 @@ type MyCharacter = {
   wow_class: string | null;
   is_main: boolean;
   is_verified: boolean;
+  blizzard_character_id: number | null;
 };
 
 type BlizzardCharacter = {
@@ -39,6 +40,17 @@ export default async function PersonajesPage({
   const myRes = await fetch("http://localhost:8000/characters/my", { headers, cache: "no-store" });
   if (!myRes.ok && myRes.status === 401) redirect("/");
   const myCharacters: MyCharacter[] = myRes.ok ? await myRes.json() : [];
+
+  // Auto-sincronizar blizzard_character_id de los personajes retail existentes
+  // Es idempotente: solo rellena los que tienen NULL
+  const needsSync = myCharacters.some(
+    (c) => c.game !== "forever" && !c.blizzard_character_id
+  );
+  if (needsSync) {
+    fetch("http://localhost:8000/characters/sync-blizzard-ids", {
+      method: "POST", headers, cache: "no-store",
+    }).catch(() => {/* silencioso */});
+  }
 
   const bnetRes = await fetch("http://localhost:8000/characters/blizzard", { headers, cache: "no-store" });
   const bnetCharacters: BlizzardCharacter[] = bnetRes.ok ? await bnetRes.json() : [];

@@ -457,7 +457,61 @@ def add_character(
 
 # ── Soft-delete ────────────────────────────────────────────────────────────────
 
-@router.get("/pending-avatars")
+@router.post("/sync-blizzard-ids", status_code=200)
+async def sync_blizzard_ids(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Actualiza blizzard_character_id para los personajes Retail del usuario
+    que coincidan por nombre+realm con los de su cuenta de Battle.net.
+    Operación idempotente y segura: solo rellena campos NULL.
+    """
+    if not current_user.blizzard_access_token:
+        return {"synced": 0}
+
+    async with httpx.AsyncClient() as client:
+        res = await client.get(
+            f"https://{BLIZZARD_REGION}.api.blizzard.com/profile/user/wow",
+            headers={"Authorization": f"Bearer {current_user.blizzard_access_token}"},
+            params={"namespace": f"profile-{BLIZZARD_REGION}", "locale": "es_ES"},
+        )
+
+    if res.status_code != 200:
+        return {"synced": 0}
+
+    # Mapa (name_lower, realm_lower) → blizzard_character_id
+    bnet_index: dict[tuple[str, str], int] = {}
+    for account in res.json().get("wow_accounts", []):
+        for char in account.get("characters", []):
+            key = (char["name"].lower(), char["realm"]["slug"].lower())
+            bnet_index[key] = char["id"]
+
+    chars_to_sync = (
+        db.query(Character)
+        .filter(
+            Character.user_id == current_user.id,
+            Character.game == "retail",
+            Character.blizzard_character_id.is_(None),
+            Character.deleted_at.is_(None),
+        )
+        .all()
+    )
+
+    synced = 0
+    for char in chars_to_sync:
+        key = (char.name.lower(), char.realm.lower())
+        if key in bnet_index:
+            char.blizzard_character_id = bnet_index[key]
+            synced += 1
+
+    if synced:
+        db.commit()
+
+    return {"synced": synced}
+
+
+
 def list_pending_avatars(
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),

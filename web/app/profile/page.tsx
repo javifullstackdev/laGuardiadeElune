@@ -25,6 +25,17 @@ export default async function ProfilePage() {
   const characters   = charsRes.ok ? await charsRes.json() : [];
   const transactions = txRes.ok    ? await txRes.json()    : [];
 
+  // Auto-sincronizar blizzard_character_id si faltan (fire-and-forget)
+  const needsSync = characters.some(
+    (c: { game: string; blizzard_character_id: number | null }) =>
+      c.game !== "forever" && !c.blizzard_character_id
+  );
+  if (needsSync && user.has_blizzard) {
+    fetch("http://localhost:8000/characters/sync-blizzard-ids", {
+      method: "POST", headers, cache: "no-store",
+    }).catch(() => {});
+  }
+
   // Ordenar: main primero, luego alts por nombre
   const sorted = [...characters].sort((a, b) => {
     if (b.is_main !== a.is_main) return b.is_main ? 1 : -1;
