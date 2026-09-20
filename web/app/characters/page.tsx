@@ -136,6 +136,7 @@ export default async function PersonajesPage({
                   <input type="hidden" name="class_id" value={c.class_id} />
                   <input type="hidden" name="race_id" value={c.race_id} />
                   <input type="hidden" name="level" value={c.level} />
+                  <input type="hidden" name="faction" value={c.faction} />
                   <input type="hidden" name="is_main" value="false" />
                   <button
                     type="submit"
@@ -151,6 +152,7 @@ export default async function PersonajesPage({
                   <input type="hidden" name="class_id" value={c.class_id} />
                   <input type="hidden" name="race_id" value={c.race_id} />
                   <input type="hidden" name="level" value={c.level} />
+                  <input type="hidden" name="faction" value={c.faction} />
                   <input type="hidden" name="is_main" value="true" />
                   <button
                     type="submit"

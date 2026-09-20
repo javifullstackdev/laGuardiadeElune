@@ -1,13 +1,13 @@
 import { cookies } from "next/headers";
 
-/** PATCH /api/characters/bio — actualiza datos de lore de un personaje */
+/** PATCH /api/characters/bio — actualiza identidad y datos de lore de un personaje */
 export async function PATCH(req: Request) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   if (!token) return Response.json({ error: "No autenticado" }, { status: 401 });
 
   const body = await req.json();
-  const { name, realm, biography, personality, appearance } = body;
+  const { name, realm, ...fields } = body;
 
   if (!name || !realm) {
     return Response.json({ error: "Faltan nombre/realm" }, { status: 400 });
@@ -18,7 +18,7 @@ export async function PATCH(req: Request) {
     {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ biography, personality, appearance }),
+      body: JSON.stringify(fields),
     }
   );
 

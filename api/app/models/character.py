@@ -51,11 +51,19 @@ class Character(Base):
     role_function = Column(Enum(CharacterFunction), nullable=True)
     profession = Column(Enum(CharacterProfession), nullable=True)
     is_verified = Column(Boolean, nullable=False, default=False, server_default="false")
-    # ── Datos de lore / trasfondo ──────────────────────────────────────────
-    biography   = Column(Text, nullable=True)          # historia del personaje
-    personality = Column(Text, nullable=True)          # rasgos de personalidad
-    appearance  = Column(Text, nullable=True)          # descripción física
-    level       = Column(Integer, nullable=True)       # nivel importado de Blizzard
+    # ── Identidad narrativa ────────────────────────────────────────────────
+    surname      = Column(String(100), nullable=True)   # apellido (obligatorio en WF)
+    prefix_title = Column(String(100), nullable=True)   # antetítulo ("El gran", "Archimago")
+    faction      = Column(String(20),  nullable=True)   # ALLIANCE | HORDE (de Blizzard)
+    # ── Datos personales de lore ───────────────────────────────────────────
+    origin       = Column(String(255), nullable=True)   # lugar de nacimiento/origen
+    age_lore     = Column(Integer,     nullable=True)   # edad en el lore
+    residence    = Column(String(255), nullable=True)   # residencia actual
+    # ── Trasfondo narrativo ────────────────────────────────────────────────
+    biography    = Column(Text, nullable=True)
+    personality  = Column(Text, nullable=True)
+    appearance   = Column(Text, nullable=True)
+    level        = Column(Integer, nullable=True)       # nivel importado de Blizzard
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)

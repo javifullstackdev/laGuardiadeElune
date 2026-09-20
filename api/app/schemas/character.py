@@ -15,9 +15,12 @@ class TitleOut(BaseModel):
 class CharacterResponse(BaseModel):
     """Personaje completo tal como está guardado en nuestra BD."""
     name: str
+    surname: Optional[str] = None
+    prefix_title: Optional[str] = None
     realm: str
     wow_class: Optional[str] = None
     race: Optional[str] = None
+    faction: Optional[str] = None
     role_function: Optional[str] = None
     level: Optional[int] = None
     is_main: bool
@@ -28,6 +31,10 @@ class CharacterResponse(BaseModel):
     biography: Optional[str] = None
     personality: Optional[str] = None
     appearance: Optional[str] = None
+    # Datos personales de lore
+    origin: Optional[str] = None
+    age_lore: Optional[int] = None
+    residence: Optional[str] = None
 
     model_config = {
         "from_attributes": True,
@@ -56,6 +63,7 @@ class CharacterAddInput(BaseModel):
     class_id: Optional[int] = None
     race_id: Optional[int] = None
     level: Optional[int] = None
+    faction: Optional[str] = None
     is_main: bool = False
 
 
@@ -69,10 +77,18 @@ class FavoriteTitleInput(BaseModel):
 
 
 class CharacterBioUpdate(BaseModel):
-    """Actualización de datos de lore del personaje."""
-    biography: Optional[str] = None
-    personality: Optional[str] = None
-    appearance: Optional[str] = None
+    """Actualiza todos los campos editables por el jugador: identidad, trasfondo y datos personales."""
+    # Identidad
+    surname:      Optional[str] = None
+    prefix_title: Optional[str] = None
+    # Trasfondo narrativo
+    biography:    Optional[str] = None
+    personality:  Optional[str] = None
+    appearance:   Optional[str] = None
+    # Datos personales de lore
+    origin:       Optional[str] = None
+    age_lore:     Optional[int] = None
+    residence:    Optional[str] = None
 
 
 class RelationCreate(BaseModel):

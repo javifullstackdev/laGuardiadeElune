@@ -222,15 +222,20 @@ def update_bio(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Actualiza los textos de lore del personaje (historia, personalidad, aspecto)."""
+    """Actualiza identidad, trasfondo y datos personales de lore del personaje."""
     char = _get_own_character(name, realm, current_user, db)
 
-    if data.biography is not None:
-        char.biography = data.biography or None
-    if data.personality is not None:
-        char.personality = data.personality or None
-    if data.appearance is not None:
-        char.appearance = data.appearance or None
+    # Campos de identidad
+    if data.surname      is not None: char.surname      = data.surname      or None
+    if data.prefix_title is not None: char.prefix_title = data.prefix_title or None
+    # Trasfondo narrativo
+    if data.biography    is not None: char.biography    = data.biography    or None
+    if data.personality  is not None: char.personality  = data.personality  or None
+    if data.appearance   is not None: char.appearance   = data.appearance   or None
+    # Datos personales de lore
+    if data.origin       is not None: char.origin       = data.origin       or None
+    if data.age_lore     is not None: char.age_lore     = data.age_lore
+    if data.residence    is not None: char.residence    = data.residence    or None
 
     db.commit()
     db.refresh(char)
@@ -422,6 +427,7 @@ def add_character(
         wow_class=wow_class,
         race=race,
         level=data.level,
+        faction=data.faction,
         is_main=data.is_main,
         is_alt=not data.is_main,
         is_verified=True,
