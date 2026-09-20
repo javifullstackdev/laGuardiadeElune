@@ -8,6 +8,8 @@ export async function POST(request: NextRequest) {
   const title = formData.get("title") as string;
   const content = formData.get("content") as string;
   const category = formData.get("category") as string | null;
+  const subtitle = (formData.get("subtitle") as string | null)?.trim() || null;
+  const cover_url = (formData.get("cover_url") as string | null)?.trim() || null;
 
   await fetch("http://localhost:8000/posts/", {
     method: "POST",
@@ -15,7 +17,7 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
       Cookie: `token=${token}`,
     },
-    body: JSON.stringify({ title, content, category }),
+    body: JSON.stringify({ title, content, category, subtitle, cover_url }),
   });
 
   return NextResponse.redirect(new URL("/admin/posts", request.url));

@@ -14,8 +14,7 @@ router = APIRouter(
 
 @router.get("/", response_model=list[PostResponse])
 def get_posts(db: Session = Depends(get_db)):
-    posts = db.query(Post).all()
-    return posts
+    return db.query(Post).order_by(Post.published_at.desc()).all()
 
 @router.get("/{post_id}", response_model=PostResponse)
 def get_post(post_id: str, db: Session = Depends(get_db)):
@@ -35,6 +34,8 @@ def create_post(
         title=body.title,
         content=body.content,
         category=body.category,
+        subtitle=body.subtitle,
+        cover_url=body.cover_url,
     )
     db.add(post)
     db.commit()
@@ -57,6 +58,10 @@ def update_post(
         post.content = body.content
     if body.category is not None:
         post.category = body.category
+    if body.subtitle is not None:
+        post.subtitle = body.subtitle or None
+    if body.cover_url is not None:
+        post.cover_url = body.cover_url or None
     db.commit()
     db.refresh(post)
     return post

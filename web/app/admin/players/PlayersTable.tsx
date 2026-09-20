@@ -149,7 +149,6 @@ export default function PlayersTable({ players }: { players: Player[] }) {
                     {ROLE_LABEL[player.role] ?? player.role}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500">{player.guild_title}</p>
               </div>
               <div className="text-right shrink-0">
                 <p className="text-yellow-400 font-bold text-sm">

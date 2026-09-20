@@ -51,7 +51,7 @@ export default function NavbarMobile({
             onClick={() => setOpen(false)}
           />
           {/* Panel */}
-          <div className="fixed top-0 right-0 bottom-0 z-50 w-64 bg-gray-900 border-l border-gray-800 flex flex-col md:hidden shadow-2xl">
+          <div className="fixed top-0 right-0 bottom-0 z-50 w-64 bg-[#0b0b0b] border-l border-gray-800 flex flex-col md:hidden">
             {/* Header del panel */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
               <span className="font-bold text-white truncate">{username ?? "Menú"}</span>

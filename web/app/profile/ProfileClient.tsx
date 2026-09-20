@@ -210,8 +210,8 @@ export default function ProfileClient({
         className={`
           fixed inset-y-0 left-0 z-40 w-72 bg-gray-900 border-r border-gray-800
           flex flex-col transition-transform duration-300
-          md:sticky md:top-16 md:bottom-auto md:left-auto md:translate-x-0
-          md:w-72 md:shrink-0 md:h-[calc(100vh-4rem)] md:z-30
+          md:sticky md:top-12 md:bottom-auto md:left-auto md:translate-x-0
+          md:w-72 md:shrink-0 md:h-[calc(100vh-3rem)] md:z-30
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
       >
@@ -236,7 +236,6 @@ export default function ProfileClient({
             )}
             <div className="min-w-0">
               <p className="font-bold leading-tight truncate">{user.username}</p>
-              <p className="text-gray-400 text-xs truncate">{user.guild_title}</p>
             </div>
           </div>
 
@@ -296,7 +295,7 @@ export default function ProfileClient({
       </aside>
 
       {/* ── Contenido ─────────────────────────────────────────────── */}
-      <main className="flex-1 min-w-0 flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
+      <main className="flex-1 min-w-0 flex flex-col h-[calc(100vh-3rem)] overflow-hidden">
 
         {/* Barra superior mobile: solo hamburguesa */}
         <div className="flex items-center px-3 py-2 border-b border-gray-800 md:hidden shrink-0">
@@ -382,7 +381,7 @@ function CharacterDetail({
 
       {/* ── sm+: imagen fija en la derecha ───────────────────────── */}
       {hasGoodRender ? (
-        <div className="fixed right-0 top-16 bottom-0 w-[58%] pointer-events-none select-none hidden sm:block" style={{ zIndex: 0 }} aria-hidden>
+        <div className="fixed right-0 top-12 bottom-0 w-[58%] pointer-events-none select-none hidden sm:block" style={{ zIndex: 0 }} aria-hidden>
           <img
             src={char.avatar_url!}
             alt=""
@@ -402,7 +401,7 @@ function CharacterDetail({
         </div>
       ) : (
         <div
-          className="fixed right-0 top-16 bottom-0 w-[40%] pointer-events-none select-none hidden sm:block"
+          className="fixed right-0 top-12 bottom-0 w-[40%] pointer-events-none select-none hidden sm:block"
           style={{ zIndex: 0, background: `linear-gradient(to left, ${color}08 0%, transparent 100%)` }}
           aria-hidden
         />

@@ -7,12 +7,21 @@ from datetime import date
 from app.dependencies import get_current_user, require_admin
 from app.database import get_db
 from app.models.user import User
-from app.models.point_transaction import PointTransaction
+from app.routers.auth import fetch_guild_nick, fetch_guild_nicks
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me")
-def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    nick = await fetch_guild_nick(current_user.discord_id)
+    if nick and nick != current_user.username:
+        current_user.username = nick
+        db.commit()
+        db.refresh(current_user)
+
     return {
         "id": str(current_user.id),
         "username": current_user.username,
@@ -121,16 +130,37 @@ def set_my_path(
 
 
 @router.get("/admin/players")
-def list_players(
+async def list_players(
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """
     Lista todos los jugadores para el panel de admin.
     Incluye puntos, rol, cumpleaños y número de personajes.
+    Sincroniza el apodo de Discord del servidor antes de devolver la lista.
     """
     from app.models.character import Character
     from sqlalchemy import func as sqlfunc
+
+    nicks = await fetch_guild_nicks()
+    if not nicks:
+        # Listado masivo requiere Server Members Intent; fallback miembro a miembro
+        players = db.query(User).filter(User.deleted_at.is_(None)).all()
+        nicks = {}
+        for u in players:
+            nick = await fetch_guild_nick(u.discord_id)
+            if nick:
+                nicks[u.discord_id] = nick
+
+    if nicks:
+        dirty = False
+        for u in db.query(User).filter(User.deleted_at.is_(None)).all():
+            nick = nicks.get(u.discord_id)
+            if nick and nick != u.username:
+                u.username = nick
+                dirty = True
+        if dirty:
+            db.commit()
 
     rows = (
         db.query(

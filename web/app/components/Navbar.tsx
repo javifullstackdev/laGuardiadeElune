@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import NavbarMobile from "./NavbarMobile";
+import NavbarLinks from "./NavbarLinks";
 
 export default async function Navbar() {
   const cookieStore = await cookies();
@@ -17,65 +18,45 @@ export default async function Navbar() {
 
   const isAdmin = user?.role === "admin" || user?.role === "officer";
 
-  // Links para el menú móvil
-  const mobileLinks = [
-    { href: "/",        label: "Posts",   style: "default" as const },
-    { href: "/ranking", label: "Ranking", style: "default" as const },
-    ...(token ? [
-      { href: "/profile", label: "Mi perfil", style: "default" as const },
-      ...(isAdmin ? [{ href: "/admin", label: "Admin", style: "admin" as const }] : []),
-      { href: "/api/auth/logout", label: "Cerrar sesión", style: "logout" as const },
-    ] : [
-      { href: "http://localhost:8000/auth/discord/login", label: "Iniciar sesión con Discord", style: "login" as const, external: true },
-    ]),
+  const items = [
+    { href: "/", label: "Inicio" },
+    { href: "/ranking", label: "Ranking" },
+    ...(token
+      ? [
+          { href: "/profile", label: "Perfil" },
+          ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
+          { href: "/api/auth/logout", label: "Salir" },
+        ]
+      : [
+          {
+            href: "http://localhost:8000/auth/discord/login",
+            label: "Entrar",
+            external: true,
+          },
+        ]),
   ];
 
+  const mobileLinks = items.map((item) => ({
+    href: item.href,
+    label: item.label,
+    style: "default" as const,
+    external: "external" in item ? item.external : item.href.startsWith("/api/") || item.href.startsWith("http"),
+  }));
+
   return (
-    <nav className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 text-white px-6 py-4 flex items-center justify-between">
-      <Link href="/" className="text-xl font-bold shrink-0">
+    <nav className="sticky top-0 z-50 h-12 bg-[#0b0b0b] text-white px-4 sm:px-6 flex items-center justify-between gap-6">
+      <Link
+        href="/"
+        className="shrink-0 text-[11px] sm:text-xs font-semibold tracking-[0.18em] uppercase text-white hover:text-gray-200"
+      >
         La Guardia de Elune
       </Link>
 
-      {/* Links desktop (ocultos en mobile) */}
-      <div className="hidden md:flex items-center gap-6">
-        <Link href="/" className="hover:text-gray-300 text-sm">
-          Posts
-        </Link>
-        <Link href="/ranking" className="hover:text-gray-300 text-sm">
-          Ranking
-        </Link>
-        {token ? (
-          <>
-            <Link href="/profile" className="hover:text-gray-300 text-sm">
-              Mi perfil
-            </Link>
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
-              >
-                Admin
-              </Link>
-            )}
-            <a
-              href="/api/auth/logout"
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm"
-            >
-              Cerrar sesión
-            </a>
-          </>
-        ) : (
-          <a
-            href="http://localhost:8000/auth/discord/login"
-            className="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg text-sm"
-          >
-            Iniciar sesión con Discord
-          </a>
-        )}
-      </div>
+      <NavbarLinks items={items} />
 
-      {/* Hamburguesa + drawer (solo mobile) */}
-      <NavbarMobile links={mobileLinks} username={user?.username ?? null} />
+      <div className="md:hidden">
+        <NavbarMobile links={mobileLinks} username={user?.username ?? null} />
+      </div>
     </nav>
   );
 }

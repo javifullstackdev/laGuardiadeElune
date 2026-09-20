@@ -62,7 +62,6 @@ export default async function BienvenidaPage() {
               )}
               <div>
                 <p className="text-sm font-medium">{user.username}</p>
-                <p className="text-xs text-gray-400">{user.guild_title}</p>
               </div>
             </div>
           </StepCard>

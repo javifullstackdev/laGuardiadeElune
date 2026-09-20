@@ -13,4 +13,6 @@ class Post(Base):
     content = Column(Text, nullable=False)
     category = Column(String(100), nullable=True)
     published_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    subtitle = Column(String(500), nullable=True)
+    cover_url = Column(String(1000), nullable=True)
 

@@ -97,6 +97,59 @@ async def _resolve_discord_role(
 
     return best_role, best_title
 
+
+def _nick_from_member(member: dict, fallback: str = "") -> str:
+    """Apodo del servidor, o username de Discord si no tiene apodo."""
+    nick = (member.get("nick") or "").strip()
+    if nick:
+        return nick
+    user = member.get("user") or {}
+    return (user.get("username") or fallback).strip() or fallback
+
+
+async def fetch_guild_nick(discord_id: str) -> str | None:
+    """Apodo de un miembro via Bot token. None si Discord no responde."""
+    if not DISCORD_BOT_TOKEN or not DISCORD_GUILD_ID:
+        return None
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(
+                f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/members/{discord_id}",
+                headers={"Authorization": f"Bot {DISCORD_BOT_TOKEN}"},
+                timeout=5.0,
+            )
+        if res.status_code != 200:
+            return None
+        return _nick_from_member(res.json())
+    except Exception:
+        return None
+
+
+async def fetch_guild_nicks() -> dict[str, str]:
+    """Mapa discord_id → apodo del servidor (hasta 1000 miembros)."""
+    if not DISCORD_BOT_TOKEN or not DISCORD_GUILD_ID:
+        return {}
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(
+                f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/members",
+                headers={"Authorization": f"Bot {DISCORD_BOT_TOKEN}"},
+                params={"limit": 1000},
+                timeout=8.0,
+            )
+        if res.status_code != 200:
+            return {}
+        result: dict[str, str] = {}
+        for member in res.json():
+            user = member.get("user") or {}
+            uid = user.get("id")
+            if not uid:
+                continue
+            result[uid] = _nick_from_member(member, user.get("username") or "")
+        return result
+    except Exception:
+        return {}
+
 @router.get("/discord/login")
 def discord_login():
     url = (
@@ -146,7 +199,6 @@ async def discord_callback(code: str, db: Session = Depends(get_db)):
 
     discord_user = user_res.json()
     discord_id   = discord_user["id"]
-    username     = discord_user["username"]
     avatar_hash  = discord_user.get("avatar")
     avatar_url   = (
         f"https://cdn.discordapp.com/avatars/{discord_id}/{avatar_hash}.png"
@@ -167,6 +219,8 @@ async def discord_callback(code: str, db: Session = Depends(get_db)):
 
     member_data     = member_res.json()
     member_role_ids = member_data.get("roles", [])
+    # Apodo del servidor (el que pone el líder). Si no hay, username de Discord.
+    username = (member_data.get("nick") or "").strip() or discord_user["username"]
 
     # ── 4. Resolver rol y título a partir de los roles de Discord ─────────
     new_role, role_title = await _resolve_discord_role(member_role_ids)

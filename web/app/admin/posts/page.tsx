@@ -10,6 +10,8 @@ type Post = {
   content: string;
   category: string | null;
   published_at: string;
+  subtitle: string | null;
+  cover_url: string | null;
 };
 
 export default async function AdminPostsPage({
@@ -57,6 +59,22 @@ export default async function AdminPostsPage({
                 name="title"
                 placeholder="Título del post"
                 required
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Subtítulo</label>
+              <input
+                name="subtitle"
+                placeholder="Una línea que se muestra en la home"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Imagen de portada (URL)</label>
+              <input
+                name="cover_url"
+                placeholder="https://... o /hero/01.jpg"
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
               />
             </div>
@@ -116,6 +134,18 @@ export default async function AdminPostsPage({
                           defaultValue={post.title}
                           required
                           className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm font-semibold"
+                        />
+                        <input
+                          name="subtitle"
+                          defaultValue={post.subtitle ?? ""}
+                          placeholder="Subtítulo"
+                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"
+                        />
+                        <input
+                          name="cover_url"
+                          defaultValue={post.cover_url ?? ""}
+                          placeholder="URL de portada"
+                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"
                         />
                         <select
                           name="category"

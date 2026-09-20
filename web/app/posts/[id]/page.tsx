@@ -7,6 +7,8 @@ type Post = {
   content: string;
   category: string | null;
   published_at: string;
+  subtitle?: string | null;
+  cover_url?: string | null;
 };
 
 export default async function PostPage({
@@ -51,7 +53,16 @@ export default async function PostPage({
           <span className="text-sm text-gray-500">{formatDate(post.published_at)}</span>
         </div>
 
-        <h1 className="text-4xl font-bold leading-tight mb-8">{post.title}</h1>
+        <h1 className="text-4xl font-bold leading-tight mb-3">{post.title}</h1>
+        {post.subtitle && (
+          <p className="text-lg text-gray-400 mb-6">{post.subtitle}</p>
+        )}
+
+        {post.cover_url && (
+          <div className="mb-8 -mx-4 sm:mx-0 overflow-hidden rounded-xl border border-gray-800">
+            <img src={post.cover_url} alt="" className="w-full max-h-[420px] object-cover" />
+          </div>
+        )}
 
         <div className="h-px bg-gradient-to-r from-yellow-500/40 to-transparent mb-8" />
 

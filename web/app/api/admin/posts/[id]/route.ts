@@ -18,6 +18,10 @@ export async function POST(
   if (title) body.title = title;
   if (content) body.content = content;
   if (category) body.category = category;
+  const subtitle = formData.get("subtitle");
+  const cover_url = formData.get("cover_url");
+  if (subtitle !== null) body.subtitle = (subtitle as string).trim();
+  if (cover_url !== null) body.cover_url = (cover_url as string).trim();
 
   await fetch(`http://localhost:8000/posts/${id}`, {
     method: "PATCH",

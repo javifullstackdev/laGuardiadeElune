@@ -92,7 +92,7 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 ![Flujo](docs/diagrama-flujo.png)
 # 8. Estado del proyecto
 
-## Base de datos — tablas activas (20 migraciones Alembic aplicadas)
+## Base de datos — tablas activas (21 migraciones Alembic aplicadas)
 
 | Tabla | Descripción |
 |---|---|
@@ -104,7 +104,7 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 | `point_transactions` | Historial de puntos por categoría y temporada |
 | `achievements` | Catálogo de logros disponibles |
 | `user_achievements` | Junction: logros conseguidos por jugador |
-| `posts` | Publicaciones de noticias / lore con categorías |
+| `posts` | Publicaciones: título, subtítulo, cover_url, categoría, contenido |
 | `seasons` | Temporadas con fechas y estado activo |
 
 ## Fase 0 — Planificación y setup ✅
@@ -119,7 +119,8 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Modelos `Post`, `Season`; migraciones aplicadas
 - Endpoints `GET /posts/` y `GET /posts/{id}` con esquemas Pydantic
 - Next.js App Router con Server Components
-- Página home con listado de posts por categoría y página de detalle dinámica
+- Home pública estilo Battle.net: hero carrusel + tablón en grid 4×2
+- Posts con `subtitle` y `cover_url` (migración `f8c2a1b9e704`, une heads de Alembic)
 - Ranking público en `/ranking`
 
 ## Fase 2 — Modelo de datos completo ✅
@@ -131,7 +132,10 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Endpoint `GET /auth/discord/login` → OAuth2 Discord con state CSRF
 - Endpoint `GET /auth/discord/callback` → verifica membresía, upsert usuario, JWT en cookie httpOnly
 - Sincronización automática de rol en login: `Lider → admin`, `Oficial → officer`, resto → `member`
+- El nombre visible es el **apodo del servidor Discord** (`nick`); si no hay, el username
+- Se refresca al abrir perfil y el panel de jugadores (Bot token)
 - `guild_title` se asigna solo en creación (no se sobreescribe en logins posteriores)
+- En perfil y jugadores ya no se muestra `guild_title` bajo el nombre (el rol va en la etiqueta)
 - Dependencia `get_current_user` para proteger endpoints con JWT
 - Endpoint `GET /users/me`, `PATCH /users/me/birthday`
 - Página `/profile` privada con perfil completo del usuario
@@ -171,9 +175,16 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Imagen de fondo: render de Blizzard o avatar custom con aprobación admin
 - Tres tabs: Puntos y logros / Historia y relaciones / Profesiones (Blizzard API)
 
+## Home pública — rediseño visual ✅
+- Hero carrusel (7 s): texto a la izquierda, CTA, flechas, pause/play
+- 4 miniaturas-tarjeta de las otras diapositivas, superpuestas al borde del banner
+- Tablón: grid 4×2 con tarjeta tipo tienda (imagen, badge de categoría, kicker, título, subtítulo, fecha)
+- Navbar estilo Battle.net: barra `h-12`, wordmark **LA GUARDIA DE ELUNE** a la izquierda, links en mayúsculas a la derecha, activo subrayado
+- Admin de posts: campos subtítulo y URL de portada
+
 ## Layout del perfil — diseño fijo ✅
-- Navbar: `sticky top-0 z-50` con `backdrop-blur`
-- Aside: `md:sticky top-16 h-[calc(100vh-4rem)]` — solo la lista de personajes scrollea
+- Navbar: `sticky top-0 z-50 h-12`
+- Aside: `md:sticky top-12 h-[calc(100vh-3rem)]` — solo la lista de personajes scrollea
 - CharacterDetail: zona estática (cabecera + datos + tabs bar) + zona scrolleable (contenido del tab)
 - Imagen de fondo desktop: `position: fixed` con fade multi-stop de 7 paradas
 - Datos personales desktop: grid de 2 columnas limitado a `max-w-[48%]` para no tapar el render
