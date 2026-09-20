@@ -25,6 +25,9 @@ export default async function Navbar() {
         <Link href="/" className="hover:text-gray-300">
           Posts
         </Link>
+        <Link href="/ranking" className="hover:text-gray-300">
+          Ranking
+        </Link>
         {token ? (
           <>
             <Link href="/profile" className="hover:text-gray-300">

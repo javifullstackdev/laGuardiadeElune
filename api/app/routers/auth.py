@@ -104,8 +104,34 @@ async def discord_callback(code: str, db: Session = Depends(get_db)):
         "access_token": token,
         "token_type": "bearer"}
 
+@router.delete("/blizzard/unlink", status_code=204)
+def blizzard_unlink(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Desvincula la cuenta de Battle.net del usuario.
+    Los personajes se mantienen pero pierden is_verified=True —
+    ya no podemos confirmar que siguen perteneciendo a este usuario.
+    """
+    from app.models.character import Character
 
-# ── Battle.net OAuth2 ──────────────────────────────────────────────────────
+    # Limpiar token de Blizzard
+    current_user.blizzard_id = None
+    current_user.blizzard_battletag = None
+    current_user.blizzard_access_token = None
+    current_user.blizzard_token_expires_at = None
+
+    # Desmarcar personajes verificados
+    db.query(Character).filter(
+        Character.user_id == current_user.id,
+        Character.is_verified == True,
+    ).update({"is_verified": False})
+
+    db.commit()
+
+
+
 
 class BlizzardLinkRequest(BaseModel):
     code: str

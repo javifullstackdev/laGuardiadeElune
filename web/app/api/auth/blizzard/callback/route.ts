@@ -34,6 +34,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/profile?error=bnet_failed", request.url));
   }
 
-  // Battle.net vinculado → ir a la página de personajes
-  return NextResponse.redirect(new URL("/personajes", request.url));
+  // Battle.net vinculado → ir al onboarding paso 3
+  return NextResponse.redirect(new URL("/bienvenida", request.url));
 }

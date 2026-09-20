@@ -177,9 +177,20 @@ export default function ProfileClient({
 
           {/* BattleTag */}
           {user.blizzard_battletag ? (
-            <p className="text-sm text-blue-400 mb-2">
-              ⚔️ {user.blizzard_battletag}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-blue-400">
+                ⚔️ {user.blizzard_battletag}
+              </p>
+              <form method="POST" action="/api/auth/blizzard/unlink">
+                <button
+                  type="submit"
+                  title="Desconectar Battle.net"
+                  className="text-gray-600 hover:text-red-400 text-xs transition-colors"
+                >
+                  ✕
+                </button>
+              </form>
+            </div>
           ) : (
             <Link
               href="http://localhost:8000/auth/blizzard/login"
