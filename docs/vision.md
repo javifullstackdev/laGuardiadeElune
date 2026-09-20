@@ -160,7 +160,8 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Re-sync automático si el render es de tipo avatar (baja calidad)
 - Sistema de avatares custom: upload → pendiente → aprobación admin → activo
 - Detección de token Blizzard caducado con aviso en perfil
-- Pendiente: importar profesiones desde Blizzard API
+- Profesiones en tiempo real: `GET /characters/{name}/{realm}/professions` llama a la Profile API de Blizzard (`primaries` + `secondaries`, skill por expansión, recetas)
+- El tab Profesiones maneja Forever, token ausente, token caducado, vacío y datos normales
 
 ## Perfil de personaje — sistema completo ✅
 - Datos de identidad: nombre, apellido (WF), antetítulo, título favorito, facción, origen, edad, residencia
@@ -168,13 +169,15 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Árbol de relaciones narrativas con otros personajes de la hermandad
 - Sistema de títulos: otorgar/revocar (admin), establecer favorito (jugador)
 - Imagen de fondo: render de Blizzard o avatar custom con aprobación admin
-- Tres tabs: Puntos y logros / Historia y relaciones / Profesiones (placeholder)
+- Tres tabs: Puntos y logros / Historia y relaciones / Profesiones (Blizzard API)
 
 ## Layout del perfil — diseño fijo ✅
 - Navbar: `sticky top-0 z-50` con `backdrop-blur`
 - Aside: `md:sticky top-16 h-[calc(100vh-4rem)]` — solo la lista de personajes scrollea
 - CharacterDetail: zona estática (cabecera + datos + tabs bar) + zona scrolleable (contenido del tab)
-- Imagen de fondo: `position: fixed` con fade multi-stop de 7 paradas
+- Imagen de fondo desktop: `position: fixed` con fade multi-stop de 7 paradas
+- Datos personales desktop: grid de 2 columnas limitado a `max-w-[48%]` para no tapar el render
+- Mobile: banner de imagen corto; tocar la imagen abre cambiar/quitar; datos compactos a la derecha debajo del banner; el tab ocupa la mayor parte de la pantalla
 
 ## Fase 7 — Deploy 🚧 Pendiente
 - Docker Compose completo

@@ -717,3 +717,77 @@ def remove_custom_avatar(
         char.custom_avatar_url = None
 
     db.commit()
+
+
+# ── Profesiones ────────────────────────────────────────────────────────────
+
+@router.get("/{name}/{realm}/professions")
+async def get_character_professions(
+    name: str,
+    realm: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Devuelve las profesiones del personaje consultando la API de Blizzard en tiempo real.
+    Solo disponible para personajes Retail con Battle.net vinculado.
+    """
+    char = _get_own_character(name, realm, current_user, db)
+
+    # Warcraft Forever no tiene datos en la API de Blizzard
+    if char.game != "retail":
+        return {"primaries": [], "secondaries": [], "is_forever": True}
+
+    # Necesitamos el token de Battle.net
+    if not current_user.blizzard_access_token:
+        return {"primaries": [], "secondaries": [], "no_token": True}
+
+    realm_slug = realm.lower().replace(" ", "-")
+
+    async with httpx.AsyncClient() as client:
+        try:
+            res = await client.get(
+                f"https://{BLIZZARD_REGION}.api.blizzard.com/profile/wow/character"
+                f"/{realm_slug}/{name.lower()}/professions",
+                headers={"Authorization": f"Bearer {current_user.blizzard_access_token}"},
+                params={"namespace": f"profile-{BLIZZARD_REGION}", "locale": "es_ES"},
+                timeout=8.0,
+            )
+        except Exception:
+            return {"primaries": [], "secondaries": [], "error": True}
+
+    if res.status_code == 401:
+        return {"primaries": [], "secondaries": [], "token_expired": True}
+    if res.status_code != 200:
+        return {"primaries": [], "secondaries": []}
+
+    raw = res.json()
+
+    def _parse(prof_data: dict) -> dict:
+        tiers = prof_data.get("tiers", [])
+        # Los tiers están ordenados de más antiguo a más nuevo
+        # → el último es la expansión más reciente
+        latest = tiers[-1] if tiers else None
+        return {
+            "name": prof_data.get("profession", {}).get("name", ""),
+            "id":   prof_data.get("profession", {}).get("id", 0),
+            "tiers": [
+                {
+                    "name":            t.get("tier", {}).get("name", ""),
+                    "skill_points":    t.get("skill_points", 0),
+                    "max_skill_points": t.get("max_skill_points", 0),
+                    "recipe_count":    len(t.get("known_recipes", [])),
+                }
+                for t in tiers
+            ],
+            # Resumen rápido del tier más reciente
+            "current_skill":      latest.get("skill_points", 0)     if latest else 0,
+            "current_max":        latest.get("max_skill_points", 0) if latest else 0,
+            "current_tier_name":  latest.get("tier", {}).get("name", "") if latest else "",
+            "total_recipes":      sum(len(t.get("known_recipes", [])) for t in tiers),
+        }
+
+    return {
+        "primaries":   [_parse(p) for p in raw.get("primaries",   [])],
+        "secondaries": [_parse(s) for s in raw.get("secondaries", [])],
+    }

@@ -298,29 +298,19 @@ export default function ProfileClient({
       {/* ── Contenido ─────────────────────────────────────────────── */}
       <main className="flex-1 min-w-0 flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
 
-        {/* Barra superior mobile: botón ≡ + nombre del personaje activo */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-800 md:hidden shrink-0">
+        {/* Barra superior mobile: solo hamburguesa */}
+        <div className="flex items-center px-3 py-2 border-b border-gray-800 md:hidden shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="text-gray-400 hover:text-white transition-colors shrink-0"
+            className="text-gray-400 hover:text-white transition-colors"
             aria-label="Abrir menú"
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="3" y1="6" x2="21" y2="6"/>
               <line x1="3" y1="12" x2="21" y2="12"/>
               <line x1="3" y1="18" x2="21" y2="18"/>
             </svg>
           </button>
-          {selected ? (
-            <div className="min-w-0">
-              <p className="font-semibold text-sm truncate">{selected.name}</p>
-              <p className="text-xs text-gray-500 truncate">
-                {selected.favorite_title?.name ?? selected.realm}
-              </p>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">Selecciona un personaje</p>
-          )}
         </div>
 
         {selected ? (
@@ -383,33 +373,18 @@ function CharacterDetail({
     { key: "professions", label: "Profesiones" },
   ];
 
+  const [mobileAvatarOpen, setMobileAvatarOpen] = useState(false);
+
+  const hasGoodRender = !!(char.avatar_url && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url));
+
   return (
     <div className="relative flex flex-col h-full overflow-hidden">
 
-      {/* ── Mobile: render como banner superior ──────────────────── */}
-      {char.avatar_url && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url) && (
-        <div className="sm:hidden relative h-48 overflow-hidden shrink-0">
-          <img
-            src={char.avatar_url}
-            alt=""
-            className="w-full h-full object-cover object-[50%_0%]"
-          />
-          <div
-            className="absolute inset-x-0 bottom-0 h-24"
-            style={{ background: "linear-gradient(to bottom, transparent, #030712)" }}
-          />
-          <div
-            className="absolute inset-y-0 left-0 w-1/3"
-            style={{ background: "linear-gradient(to right, #030712, transparent)" }}
-          />
-        </div>
-      )}
-
-      {/* ── sm+: render fijo en la derecha (no hace scroll) ────── */}
-      {char.avatar_url && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url) ? (
+      {/* ── sm+: imagen fija en la derecha ───────────────────────── */}
+      {hasGoodRender ? (
         <div className="fixed right-0 top-16 bottom-0 w-[58%] pointer-events-none select-none hidden sm:block" style={{ zIndex: 0 }} aria-hidden>
           <img
-            src={char.avatar_url}
+            src={char.avatar_url!}
             alt=""
             className="absolute inset-0 w-full h-full object-cover object-[50%_5%]"
             style={{ opacity: 0.28 }}
@@ -433,51 +408,130 @@ function CharacterDetail({
         />
       )}
 
-      {/* ══ ZONA ESTÁTICA: cabecera + datos personales + barra de tabs ══ */}
-      <div className="relative z-10 px-4 md:px-8 pt-4 md:pt-8 pb-0 shrink-0">
+      {/* ══ MOBILE: imagen corta + datos a la derecha ═════════════ */}
+      <div className="sm:hidden shrink-0 relative z-10">
+        {/* Banner — solo imagen. Tocar para cambiar/quitar. */}
+        <button
+          type="button"
+          className="relative h-28 w-full overflow-hidden select-none"
+          onClick={() => setMobileAvatarOpen(v => !v)}
+          aria-label="Gestionar imagen del personaje"
+        >
+          {hasGoodRender ? (
+            <img
+              src={char.avatar_url!}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover object-[50%_10%]"
+            />
+          ) : (
+            <div
+              className="absolute inset-0"
+              style={{ background: `linear-gradient(160deg, ${color}25 0%, #030712 100%)` }}
+            />
+          )}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 50%, #030712 100%)" }} />
 
-        {/* Cabecera: texto a la izquierda, controles de imagen arriba-derecha */}
+          {char.pending_avatar_url && (
+            <span className="absolute top-2 left-2 text-[10px] text-amber-300 bg-black/70 rounded-full px-2 py-0.5">
+              Pendiente
+            </span>
+          )}
+        </button>
+
+        {mobileAvatarOpen && (
+          <div className="absolute inset-x-0 top-0 h-28 z-20 bg-black/85 flex items-center justify-center">
+            <MobileAvatarPanel
+              char={char}
+              onAvatarPatch={onDetailsPatch}
+              onClose={() => setMobileAvatarOpen(false)}
+            />
+          </div>
+        )}
+
+        {/* Nombre a la izquierda, datos compactos a la derecha */}
+        <div className="flex items-start gap-3 px-3 pt-2 pb-1">
+          <div className="min-w-0 flex-1">
+            {char.prefix_title && (
+              <p className="text-[10px] text-gray-400 italic truncate">{char.prefix_title}</p>
+            )}
+            <h1 className="text-lg font-bold leading-tight truncate" style={{ color }}>
+              {char.name}{char.surname ? ` ${char.surname}` : ""}
+            </h1>
+            {char.favorite_title && (
+              <p className="text-[11px] truncate" style={{ color: "#DDB96A" }}>
+                {char.favorite_title.name}
+              </p>
+            )}
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+              {char.game === "forever" && (
+                <span className="text-[9px] font-semibold" style={{ color: "#f59e0b" }}>Forever</span>
+              )}
+              {char.is_main && (
+                <span className="px-1.5 py-px rounded-full bg-yellow-500/15 text-yellow-400 text-[9px] border border-yellow-500/25">
+                  Main
+                </span>
+              )}
+              {char.is_verified && (
+                <span className="px-1.5 py-px rounded-full bg-blue-500/15 text-blue-400 text-[9px] border border-blue-500/25">
+                  Verificado
+                </span>
+              )}
+              {!char.is_main && (
+                <button
+                  onClick={onSetMain}
+                  disabled={isPending}
+                  className="px-1.5 py-px rounded-full bg-gray-800 text-gray-400 text-[9px] border border-gray-700 disabled:opacity-50"
+                >
+                  {isPending ? "..." : "Hacer main"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {personalData.length > 0 && (
+            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 w-[48%] shrink-0 pt-0.5">
+              {personalData.map((d) => (
+                <div key={d.label} className="min-w-0">
+                  <p className="text-[8px] leading-none text-gray-600 uppercase tracking-wide">{d.label}</p>
+                  <p
+                    className="text-[10px] leading-tight font-medium truncate"
+                    style={{ color: d.color ?? "#d1d5db" }}
+                  >
+                    {d.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ══ DESKTOP: cabecera + datos personales ══════════════════ */}
+      <div className="hidden sm:block relative z-10 px-8 pt-8 pb-0 shrink-0">
+
+        {/* Cabecera: texto + controles de imagen */}
         <div className="flex items-start justify-between mb-5 gap-4">
-
-          {/* Texto principal */}
           <div className="min-w-0">
-            <div className="min-w-0">
-
-            {/* Antetítulo */}
             {char.prefix_title && (
               <p className="text-sm text-gray-400 mb-1 italic">{char.prefix_title}</p>
             )}
-
-            {/* Nombre + Apellido */}
             <h1
-              className="text-3xl md:text-4xl font-bold tracking-tight"
+              className="text-4xl font-bold tracking-tight"
               style={{ color, textShadow: `0 0 24px ${color}35` }}
             >
               {char.name}
-              {char.surname && (
-                <span className="ml-3 opacity-80">{char.surname}</span>
-              )}
+              {char.surname && <span className="ml-3 opacity-80">{char.surname}</span>}
             </h1>
-
-            {/* Título favorito */}
             {char.favorite_title && (
               <p className="text-base mt-1.5" style={{ color: "#DDB96A" }}>
                 {char.favorite_title.name}
               </p>
             )}
-
-            {/* Badge de línea temporal */}
             {char.game === "forever" ? (
-              <p className="text-xs mt-1.5 font-semibold tracking-wide" style={{ color: "#f59e0b" }}>
-                Warcraft Forever
-              </p>
+              <p className="text-xs mt-1.5 font-semibold tracking-wide" style={{ color: "#f59e0b" }}>Warcraft Forever</p>
             ) : (
-              <p className="text-xs mt-1.5 text-gray-600 tracking-wide">
-                World of Warcraft
-              </p>
+              <p className="text-xs mt-1.5 text-gray-600 tracking-wide">World of Warcraft</p>
             )}
-
-            {/* Badges + acción principal */}
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               {char.is_main && (
                 <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium border border-yellow-500/25">
@@ -499,40 +553,36 @@ function CharacterDetail({
                 </button>
               )}
             </div>
-            </div>
-          </div>{/* fin texto */}
-
-          {/* Controles de imagen (esquina superior derecha) */}
-          <CharacterAvatar
-            char={char}
-            onAvatarPatch={(p) => onDetailsPatch(p)}
-          />
+          </div>
+          <CharacterAvatar char={char} onAvatarPatch={(p) => onDetailsPatch(p)} />
         </div>
 
-        {/* Separador con color de clase */}
+        {/* Separador */}
         <div className="h-px mb-4 opacity-25" style={{ background: `linear-gradient(to right, ${color}, transparent)` }} />
 
-        {/* Datos personales */}
+        {/* Datos personales — máx 2 por fila, solo lado izquierdo */}
         {personalData.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 md:gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-2 mb-4 max-w-[48%]">
             {personalData.map((d) => (
               <div key={d.label} className="bg-gray-900/70 rounded-lg px-3 py-2 border border-gray-800/50">
                 <p className="text-xs text-gray-600 mb-0.5">{d.label}</p>
-                <p className="text-xs md:text-sm font-medium truncate" style={d.color ? { color: d.color } : { color: "#e5e7eb" }}>
+                <p className="text-sm font-medium truncate" style={d.color ? { color: d.color } : { color: "#e5e7eb" }}>
                   {d.value}
                 </p>
               </div>
             ))}
           </div>
         )}
+      </div>
 
-        {/* Barra de tabs (solo los botones, sin mb para pegar con el contenido) */}
-        <div className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none -mx-4 px-4 md:mx-0 md:px-0">
+      {/* ══ TABS BAR (compartida mobile + desktop) ════════════════ */}
+      <div className="relative z-10 shrink-0 px-4 sm:px-8">
+        <div className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
           {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-3 md:px-4 py-2.5 text-xs md:text-sm font-medium transition-colors -mb-px border-b-2 whitespace-nowrap shrink-0 ${
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors -mb-px border-b-2 whitespace-nowrap shrink-0 ${
                 tab === t.key
                   ? "text-white border-current"
                   : "border-transparent text-gray-500 hover:text-gray-300"
@@ -545,8 +595,8 @@ function CharacterDetail({
         </div>
       </div>
 
-      {/* ══ ZONA SCROLLEABLE: contenido del tab activo ══════════════ */}
-      <div className="relative z-10 flex-1 overflow-y-auto min-h-0 px-4 md:px-8 py-4 md:py-6">
+      {/* ══ ZONA SCROLLEABLE ══════════════════════════════════════ */}
+      <div className="relative z-10 flex-1 overflow-y-auto min-h-0 px-4 sm:px-8 py-4 sm:py-6">
         {tab === "points" && (
           <PointsAndAchievementsTab transactions={transactions} />
         )}
@@ -558,7 +608,7 @@ function CharacterDetail({
           />
         )}
         {tab === "professions" && (
-          <ProfessionsTab />
+          <ProfessionsTab char={char} color={color} />
         )}
       </div>
 
@@ -784,13 +834,228 @@ function LoreAndRelationsTab({
 
 // ── Tab: Profesiones ──────────────────────────────────────────────────────
 
-function ProfessionsTab() {
+// ── Tab: Profesiones ─────────────────────────────────────────────────────────
+
+type ProfTier = {
+  name: string;
+  skill_points: number;
+  max_skill_points: number;
+  recipe_count: number;
+};
+
+type ProfData = {
+  name: string;
+  id: number;
+  tiers: ProfTier[];
+  current_skill: number;
+  current_max: number;
+  current_tier_name: string;
+  total_recipes: number;
+};
+
+type ProfessionsResponse = {
+  primaries: ProfData[];
+  secondaries: ProfData[];
+  is_forever?: boolean;
+  no_token?: boolean;
+  token_expired?: boolean;
+  error?: boolean;
+};
+
+function ProfessionCard({ prof, color, compact = false }: { prof: ProfData; color: string; compact?: boolean }) {
+  const pct = prof.current_max > 0 ? Math.round((prof.current_skill / prof.current_max) * 100) : 0;
+  const maxed = prof.current_skill >= prof.current_max && prof.current_max > 0;
+
   return (
-    <div className="px-4 py-8 rounded-xl bg-gray-900/50 border border-dashed border-gray-800 text-center">
-      <p className="text-gray-400 text-sm font-medium mb-1">Profesiones</p>
-      <p className="text-gray-600 text-sm">
-        Las profesiones se importarán automáticamente desde Battle.net en una próxima actualización.
-      </p>
+    <div className={`bg-gray-900/70 border border-gray-800/60 rounded-xl ${compact ? "p-3" : "p-4"}`}>
+      {/* Cabecera */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <p className={`font-semibold truncate ${compact ? "text-sm" : "text-base"}`}
+             style={{ color }}>
+            {prof.name}
+          </p>
+          {prof.current_tier_name && (
+            <p className="text-xs text-gray-500 truncate mt-0.5">{prof.current_tier_name}</p>
+          )}
+        </div>
+        <div className="text-right shrink-0">
+          <p className={`font-mono font-semibold ${compact ? "text-xs" : "text-sm"}`}
+             style={{ color: maxed ? "#22c55e" : "#e5e7eb" }}>
+            {prof.current_skill}<span className="text-gray-600">/{prof.current_max}</span>
+          </p>
+          {maxed && (
+            <p className="text-xs text-green-500 font-medium">Máximo</p>
+          )}
+        </div>
+      </div>
+
+      {/* Barra de progreso del tier actual */}
+      {prof.current_max > 0 && (
+        <div className="mb-3">
+          <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${pct}%`,
+                background: maxed ? "#22c55e" : color,
+                opacity: 0.8,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="flex items-center gap-4">
+        <div>
+          <p className="text-xs text-gray-600">Recetas totales</p>
+          <p className="text-sm font-medium text-gray-300">{prof.total_recipes}</p>
+        </div>
+        {!compact && prof.tiers.length > 1 && (
+          <div>
+            <p className="text-xs text-gray-600">Expansiones</p>
+            <p className="text-sm font-medium text-gray-300">{prof.tiers.length}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Historial de tiers (solo en vista completa) */}
+      {!compact && prof.tiers.length > 1 && (
+        <div className="mt-3 pt-3 border-t border-gray-800/60 space-y-1.5">
+          {[...prof.tiers].reverse().slice(1).map((t, i) => (
+            <div key={i} className="flex items-center justify-between gap-2">
+              <p className="text-xs text-gray-600 truncate">{t.name}</p>
+              <p className="text-xs text-gray-500 shrink-0 font-mono">
+                {t.skill_points}/{t.max_skill_points}
+                <span className="text-gray-700 ml-1">· {t.recipe_count}rec</span>
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProfessionsTab({ char, color }: { char: Character; color: string }) {
+  const [data, setData]       = useState<ProfessionsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (char.game !== "retail") { setLoading(false); return; }
+    setLoading(true);
+    setData(null);
+    fetch(`/api/characters/professions?name=${encodeURIComponent(char.name)}&realm=${encodeURIComponent(char.realm)}`)
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => { setData({ primaries: [], secondaries: [], error: true }); setLoading(false); });
+  }, [char.name, char.realm, char.game]);
+
+  // ── Warcraft Forever ──
+  if (char.game !== "retail") {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
+        <p className="text-gray-400 text-sm font-medium">Personaje de Warcraft Forever</p>
+        <p className="text-gray-600 text-sm max-w-xs">
+          Los personajes de Warcraft Forever no tienen datos de profesiones en Battle.net.
+        </p>
+      </div>
+    );
+  }
+
+  // ── Loading ──
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-3 animate-pulse">
+        {[1, 2].map(i => (
+          <div key={i} className="h-28 rounded-xl bg-gray-900/60 border border-gray-800/40" />
+        ))}
+      </div>
+    );
+  }
+
+  // ── Sin Battle.net ──
+  if (data?.no_token) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+        <p className="text-gray-400 text-sm font-medium">Battle.net no conectado</p>
+        <a
+          href="http://localhost:8000/auth/blizzard/login"
+          className="text-xs text-blue-400 hover:text-blue-300 underline"
+        >
+          Conectar Battle.net para ver las profesiones
+        </a>
+      </div>
+    );
+  }
+
+  // ── Token caducado ──
+  if (data?.token_expired) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+        <p className="text-amber-400 text-sm font-medium">Token de Battle.net caducado</p>
+        <a
+          href="http://localhost:8000/auth/blizzard/login"
+          className="text-xs text-amber-300 hover:text-amber-100 underline"
+        >
+          Reconectar Battle.net
+        </a>
+      </div>
+    );
+  }
+
+  // ── Error genérico ──
+  if (data?.error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <p className="text-gray-500 text-sm">No se pudieron cargar las profesiones.</p>
+      </div>
+    );
+  }
+
+  const hasPrimaries   = data.primaries.length > 0;
+  const hasSecondaries = data.secondaries.length > 0;
+
+  // ── Sin profesiones ──
+  if (!hasPrimaries && !hasSecondaries) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <p className="text-gray-400 text-sm font-medium">{char.name} no tiene profesiones</p>
+        <p className="text-gray-600 text-sm mt-1">Aprende una profesión en el juego para verla aquí.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Primarias */}
+      {hasPrimaries && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">
+            Profesiones primarias
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {data.primaries.map((p, i) => (
+              <ProfessionCard key={i} prof={p} color={color} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Secundarias */}
+      {hasSecondaries && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">
+            Profesiones secundarias
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {data.secondaries.map((p, i) => (
+              <ProfessionCard key={i} prof={p} color={color} compact />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1143,6 +1408,74 @@ function CharacterAvatar({
     </div>
   );
 }
+
+// ── Panel de avatar en overlay mobile ────────────────────────────────────
+
+function MobileAvatarPanel({
+  char, onAvatarPatch, onClose,
+}: {
+  char: Character;
+  onAvatarPatch: (p: CharPatch) => void;
+  onClose: () => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true); setError(null);
+    const fd = new FormData();
+    fd.append("file", file); fd.append("name", char.name); fd.append("realm", char.realm);
+    const res  = await fetch("/api/characters/avatar", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) { setError(data.error ?? data.detail ?? "Error al subir"); }
+    else { onAvatarPatch({ pending_avatar_url: "pending" }); onClose(); }
+    setUploading(false);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  async function handleRemove() {
+    const res = await fetch(
+      `/api/characters/avatar?name=${encodeURIComponent(char.name)}&realm=${encodeURIComponent(char.realm)}`,
+      { method: "DELETE" },
+    );
+    if (res.ok || res.status === 204) {
+      onAvatarPatch({ avatar_url: null, custom_avatar_url: null, pending_avatar_url: null });
+      onClose();
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-2 px-4 w-full">
+      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading || !!char.pending_avatar_url}
+          className="px-3 py-1.5 rounded-lg bg-gray-800 text-xs text-gray-200 border border-gray-700 disabled:opacity-40"
+        >
+          {uploading ? "Subiendo..." : char.pending_avatar_url ? "Pendiente" : "Cambiar imagen"}
+        </button>
+        {(char.custom_avatar_url || char.pending_avatar_url) && (
+          <button
+            onClick={handleRemove}
+            className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-xs border border-red-500/20"
+          >
+            Quitar
+          </button>
+        )}
+        <button onClick={onClose} className="px-3 py-1.5 text-xs text-gray-400">
+          Cerrar
+        </button>
+      </div>
+      {error && <p className="text-[10px] text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+// ── Controles de avatar (desktop) ─────────────────────────────────────────
 
 // ── Lista de personajes agrupada por juego ────────────────────────────────
 
