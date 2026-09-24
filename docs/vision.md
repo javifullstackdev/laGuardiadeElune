@@ -119,7 +119,8 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Modelos `Post`, `Season`; migraciones aplicadas
 - Endpoints `GET /posts/` y `GET /posts/{id}` con esquemas Pydantic
 - Next.js App Router con Server Components
-- Home pública estilo Battle.net: hero carrusel + tablón en grid 4×2
+- Home pública: intro del logo de Elune + hero carrusel + marca de agua fija + tablón
+- Listado público `/posts` con filtro por categoría
 - Posts con `subtitle` y `cover_url` (migración `f8c2a1b9e704`, une heads de Alembic)
 - Ranking público en `/ranking`
 
@@ -175,12 +176,20 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Imagen de fondo: render de Blizzard o avatar custom con aprobación admin
 - Tres tabs: Puntos y logros / Historia y relaciones / Profesiones (Blizzard API)
 
-## Home pública — rediseño visual ✅
-- Hero carrusel (7 s): texto a la izquierda, CTA, flechas, pause/play
+## Home pública — intro del logo y marca de agua ✅
+- Intro de primera visita (sessionStorage `elune-intro-v3`): pantalla oscura, logo grande centrado con revelado por fases (~17 s)
+- Al terminar, el logo se disuelve; el carrusel y el tablón entran con fade-up
+- Después aparece el logo pequeño a la izquierda, ya en estado final, con fade-up (sin repetir el revelado)
+- Saltar / Escape omiten la intro; `prefers-reduced-motion` no bloquea la secuencia (se puede saltar)
+- Marca de agua: `fixed`, 460 px, alineada en vertical con el banner, opacidad 55 %, sin blur ni mix-blend; el scroll solo mueve el contenido
+- `EluneLogoReveal`: reloj único con `requestAnimationFrame`; `time={TOTAL}` pinta el fotograma final
+- Hero carrusel (7 s): texto a la izquierda, CTA, flechas, pause/play; autoplay pausado hasta que termina la intro
 - 4 miniaturas-tarjeta de las otras diapositivas, superpuestas al borde del banner
-- Tablón: grid 4×2 con tarjeta tipo tienda (imagen, badge de categoría, kicker, título, subtítulo, fecha)
-- Navbar estilo Battle.net: barra `h-12`, wordmark **LA GUARDIA DE ELUNE** a la izquierda, links en mayúsculas a la derecha, activo subrayado
+- Tablón en home: grid 4×2 (imagen, badge, kicker, título, subtítulo, fecha)
+- `/posts`: tablón completo con chips de categoría
+- Navbar: `h-12`, sin wordmark (el logo ocupa esa identidad), enlaces en mayúsculas alineados a la derecha, activo subrayado
 - Admin de posts: campos subtítulo y URL de portada
+- Assets del emblema en `web/public/elune/`; uploads locales de avatares ignorados (`api/uploads/` en `.gitignore`)
 
 ## Layout del perfil — diseño fijo ✅
 - Navbar: `sticky top-0 z-50 h-12`
