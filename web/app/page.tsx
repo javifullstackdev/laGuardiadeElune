@@ -1,5 +1,6 @@
 import Link from "next/link";
 import HomeHero from "./components/HomeHero";
+import HomeReveal from "./components/HomeReveal";
 import { HERO_SLIDES } from "@/lib/hero";
 import { getCategoryStyle, postSubtitle, formatDate } from "@/lib/posts";
 
@@ -19,10 +20,11 @@ export default async function Home() {
   const grid = posts.slice(0, 8);
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
-      <HomeHero slides={HERO_SLIDES} />
+    <main className="relative isolate min-h-screen bg-gray-950 text-white">
+      <HomeReveal>
+        <HomeHero slides={HERO_SLIDES} />
 
-      <section id="tablon" className="max-w-7xl mx-auto px-4 py-10 sm:py-14">
+        <section id="tablon" className="px-4 py-10 sm:py-14">
         <div className="flex items-end justify-between mb-6">
           <h2 className="text-xl sm:text-2xl font-bold">Tablón</h2>
           <p className="text-xs sm:text-sm text-gray-500">Últimas publicaciones</p>
@@ -39,7 +41,8 @@ export default async function Home() {
             ))}
           </ul>
         )}
-      </section>
+        </section>
+      </HomeReveal>
     </main>
   );
 }

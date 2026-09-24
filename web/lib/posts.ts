@@ -55,6 +55,16 @@ export function getCategoryStyle(value: string | null): Category {
   );
 }
 
+export type Post = {
+  id: string;
+  title: string;
+  content: string;
+  category: string | null;
+  published_at: string;
+  subtitle: string | null;
+  cover_url: string | null;
+};
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-ES", {
     day: "numeric",

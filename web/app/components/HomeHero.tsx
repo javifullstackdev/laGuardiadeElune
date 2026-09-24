@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { HeroSlide } from "@/lib/hero";
+import { useHomeIntro } from "./HomeReveal";
 
 const INTERVAL_MS = 7000;
 
@@ -39,16 +40,17 @@ function IconPlay() {
 }
 
 export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
+  const { revealed } = useHomeIntro();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
-    if (slides.length < 2 || paused) return;
+    if (!revealed || slides.length < 2 || paused) return;
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % slides.length);
     }, INTERVAL_MS);
     return () => clearInterval(id);
-  }, [slides.length, paused]);
+  }, [revealed, slides.length, paused]);
 
   if (slides.length === 0) return null;
 
@@ -66,7 +68,7 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
   }
 
   return (
-    <section className="bg-gray-950 px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+    <section className="bg-transparent px-3 sm:px-6 lg:px-8 pt-12 sm:pt-16 lg:pt-20">
       <div className="max-w-7xl mx-auto">
         {/* Banner */}
         <div className="relative rounded-2xl overflow-hidden h-[280px] sm:h-[380px] lg:h-[440px]">

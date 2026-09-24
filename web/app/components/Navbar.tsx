@@ -1,5 +1,4 @@
 import { cookies } from "next/headers";
-import Link from "next/link";
 import NavbarMobile from "./NavbarMobile";
 import NavbarLinks from "./NavbarLinks";
 
@@ -44,14 +43,7 @@ export default async function Navbar() {
   }));
 
   return (
-    <nav className="sticky top-0 z-50 h-12 bg-[#0b0b0b] text-white px-4 sm:px-6 flex items-center justify-between gap-6">
-      <Link
-        href="/"
-        className="shrink-0 text-[11px] sm:text-xs font-semibold tracking-[0.18em] uppercase text-white hover:text-gray-200"
-      >
-        La Guardia de Elune
-      </Link>
-
+    <nav className="sticky top-0 z-50 h-12 bg-[#0b0b0b] text-white px-4 sm:px-6 flex items-center justify-end gap-6 transition-opacity duration-700 ease-out">
       <NavbarLinks items={items} />
 
       <div className="md:hidden">
