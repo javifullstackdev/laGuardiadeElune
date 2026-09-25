@@ -7,6 +7,7 @@ import httpx
 import os
 import uuid as _uuid
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
@@ -23,7 +24,9 @@ from app.schemas.character import (
     CharacterAddInput, CharacterResponse, BlizzardCharacterOut,
     SetMainInput, FavoriteTitleInput, TitleOut,
     CharacterBioUpdate, RelationCreate, RelationOut, RelationCharacterOut,
+    merge_public_fields,
 )
+from app.services.bio_questions import answers_complete, normalize_answers
 
 BLIZZARD_REGION = os.getenv("BLIZZARD_REGION", "eu")
 
@@ -231,21 +234,48 @@ def update_bio(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Actualiza identidad, trasfondo y datos personales de lore del personaje."""
+    """Actualiza identidad, datos de ficha y el cuestionario. La bio la escribe el Eremita."""
     char = _get_own_character(name, realm, current_user, db)
 
-    # Campos de identidad
     if data.surname      is not None: char.surname      = data.surname      or None
     if data.prefix_title is not None: char.prefix_title = data.prefix_title or None
-    # Trasfondo narrativo
-    if data.biography    is not None: char.biography    = data.biography    or None
-    if data.personality  is not None: char.personality  = data.personality  or None
-    if data.appearance   is not None: char.appearance   = data.appearance   or None
-    # Datos personales de lore
     if data.origin       is not None: char.origin       = data.origin       or None
     if data.age_lore     is not None: char.age_lore     = data.age_lore
     if data.residence    is not None: char.residence    = data.residence    or None
+    if data.public_fields is not None:
+        char.public_fields = merge_public_fields(data.public_fields)
+    if data.bio_answers is not None:
+        if char.bio_answers_pending:
+            raise HTTPException(
+                409,
+                "El Eremita todavía tiene este cuestionario. Espera su respuesta para cambiar las respuestas.",
+            )
+        char.bio_answers = normalize_answers(data.bio_answers)
+        char.bio_rejection_reason = None
 
+    db.commit()
+    db.refresh(char)
+    return char
+
+
+@router.post("/{name}/{realm}/bio/submit", response_model=CharacterResponse)
+def submit_bio(
+    name: str, realm: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    char = _get_own_character(name, realm, current_user, db)
+    if char.bio_answers_pending:
+        raise HTTPException(409, "Este cuestionario ya está en revisión")
+    answers = normalize_answers(char.bio_answers)
+    if not answers_complete(answers):
+        raise HTTPException(400, "Responde todas las preguntas obligatorias antes de enviarlo")
+    char.bio_answers = answers
+    char.bio_answers_pending = True
+    char.bio_submitted_at = datetime.now(timezone.utc)
+    char.bio_rejection_reason = None
+    if char.bio_status != "published":
+        char.bio_status = "pending"
     db.commit()
     db.refresh(char)
     return char

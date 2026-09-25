@@ -27,7 +27,7 @@ export default async function AdminAvatarsPage() {
   if (!me || (me.role !== "admin" && me.role !== "officer")) redirect("/admin");
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white px-4 py-12">
+    <main className="min-h-screen px-4 py-12">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <a href="/admin" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">

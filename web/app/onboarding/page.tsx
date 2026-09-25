@@ -29,7 +29,7 @@ export default async function BienvenidaPage() {
   const allDone   = step1Done && step2Done && step3Done && step4Done;
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center px-4 py-16">
+    <main className="min-h-screen flex items-center justify-center px-4 py-16">
       <div className="w-full max-w-lg">
 
         {/* Cabecera */}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { HeroSlide } from "@/lib/hero";
+import { heroObjectPosition } from "@/lib/hero";
 import { useHomeIntro } from "./HomeReveal";
 
 const INTERVAL_MS = 7000;
@@ -68,16 +69,17 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
   }
 
   return (
-    <section className="bg-transparent px-3 sm:px-6 lg:px-8 pt-12 sm:pt-16 lg:pt-20">
+    <section className="bg-transparent px-3 sm:px-6 lg:px-8 pt-[50vh] sm:pt-16 lg:pt-20 pb-10 sm:pb-14">
       <div className="max-w-7xl mx-auto">
         {/* Banner */}
-        <div className="relative rounded-2xl overflow-hidden h-[280px] sm:h-[380px] lg:h-[440px]">
+        <div id="home-carousel" className="relative rounded-2xl overflow-hidden h-[280px] sm:h-[380px] lg:h-[440px]">
           {slides.map((slide, i) => (
             <img
-              key={slide.src}
+              key={slide.id ?? `${slide.src}-${i}`}
               src={slide.src}
               alt=""
-              className={`absolute inset-0 w-full h-full object-cover object-center transition-opacity duration-700 ${
+              style={{ objectPosition: heroObjectPosition(slide) }}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
                 i === index ? "opacity-100 z-[1]" : "opacity-0 z-0"
               }`}
             />
@@ -95,10 +97,10 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
               {current.subtitle}
             </p>
             <a
-              href="#tablon"
+              href={current.href || "#tablon"}
               className="mt-5 inline-flex items-center self-start rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 transition-colors"
             >
-              Descubre las novedades
+              {current.cta || "Descubre las novedades"}
             </a>
           </div>
 
@@ -135,11 +137,11 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
         </div>
 
         {/* 4 tarjetas de las otras imágenes */}
-        <div className="relative z-[5] -mt-12 sm:-mt-16 px-4 sm:px-16 lg:px-24">
+        <div className="relative z-[5] -mt-12 sm:-mt-16 mb-6 sm:mb-8 px-4 sm:px-16 lg:px-24">
           <div className="grid grid-cols-4 gap-2 sm:gap-3">
             {thumbs.map(({ slide, i }) => (
               <button
-                key={slide.src}
+                key={slide.id ?? `${slide.src}-${i}`}
                 type="button"
                 onClick={() => setIndex(i)}
                 className="group text-left rounded-lg overflow-hidden bg-gray-900 border border-gray-800 hover:border-gray-500 transition-colors shadow-lg"
@@ -148,6 +150,7 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                   <img
                     src={slide.src}
                     alt=""
+                    style={{ objectPosition: heroObjectPosition(slide) }}
                     className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/45 to-transparent" />

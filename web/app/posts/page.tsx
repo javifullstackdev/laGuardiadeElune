@@ -16,7 +16,7 @@ export default async function PostsPage({
   const active = category ? getCategoryStyle(category) : null;
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
+    <main className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-10 sm:py-14">
         <h1 className="text-3xl font-bold">
           {active ? active.label : "Tablón"}

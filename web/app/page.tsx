@@ -1,8 +1,12 @@
 import Link from "next/link";
 import HomeHero from "./components/HomeHero";
 import HomeReveal from "./components/HomeReveal";
-import { HERO_SLIDES } from "@/lib/hero";
+import { HERO_SLIDES, type HeroSlide } from "@/lib/hero";
 import { getCategoryStyle, postSubtitle, formatDate } from "@/lib/posts";
+import StoryTile from "./components/StoryTile";
+import WikiTile from "./components/WikiTile";
+import type { StoryPublic } from "@/lib/stories";
+import type { WikiListItem } from "@/lib/wiki";
 
 type Post = {
   id: string;
@@ -15,33 +19,74 @@ type Post = {
 };
 
 export default async function Home() {
-  const res = await fetch("http://localhost:8000/posts/", { cache: "no-store" });
-  const posts: Post[] = res.ok ? await res.json() : [];
+  const [postsRes, storiesRes, wikiRes, heroRes] = await Promise.all([
+    fetch("http://localhost:8000/posts/", { cache: "no-store" }),
+    fetch("http://localhost:8000/stories/", { cache: "no-store" }),
+    fetch("http://localhost:8000/wiki/", { cache: "no-store" }),
+    fetch("http://localhost:8000/hero/", { cache: "no-store" }),
+  ]);
+  const posts: Post[] = postsRes.ok ? await postsRes.json() : [];
+  const stories: StoryPublic[] = storiesRes.ok ? await storiesRes.json() : [];
+  const wiki: WikiListItem[] = wikiRes.ok ? await wikiRes.json() : [];
+  const heroSlides: HeroSlide[] = heroRes.ok ? await heroRes.json() : [];
   const grid = posts.slice(0, 8);
+  const storyGrid = stories.slice(0, 4);
+  const wikiGrid = wiki.slice(0, 4);
 
   return (
-    <main className="relative isolate min-h-screen bg-gray-950 text-white">
+    <main className="relative min-h-screen">
       <HomeReveal>
-        <HomeHero slides={HERO_SLIDES} />
+        <HomeHero slides={heroSlides.length > 0 ? heroSlides : HERO_SLIDES} />
 
-        <section id="tablon" className="px-4 py-10 sm:py-14">
-        <div className="flex items-end justify-between mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold">Tablón</h2>
-          <p className="text-xs sm:text-sm text-gray-500">Últimas publicaciones</p>
-        </div>
-
-        {grid.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">
-            <p>Aún no hay posts publicados.</p>
-          </div>
-        ) : (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {grid.map((post) => (
-              <PostTile key={post.id} post={post} />
-            ))}
-          </ul>
+        {grid.length > 0 && (
+          <section id="tablon" className="px-4 py-10 sm:py-14">
+            <div className="flex items-end justify-between mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold">Tablón</h2>
+              <p className="text-xs sm:text-sm text-gray-500">Últimas publicaciones</p>
+            </div>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {grid.map((post) => (
+                <PostTile key={post.id} post={post} />
+              ))}
+            </ul>
+          </section>
         )}
-        </section>
+
+        {wikiGrid.length > 0 && (
+          <section className="px-4 pb-10 sm:pb-14">
+            <div className="flex items-end justify-between mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold">Personajes</h2>
+              <Link href="/personajes" className="text-xs sm:text-sm text-gray-500 hover:text-gray-300">
+                Ver todos ({wiki.length})
+              </Link>
+            </div>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {wikiGrid.map((item) => (
+                <li key={`${item.name}-${item.realm}`}>
+                  <WikiTile item={item} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {storyGrid.length > 0 && (
+          <section className="px-4 pb-10 sm:pb-14">
+            <div className="flex items-end justify-between mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold">Historias</h2>
+              <Link href="/lore" className="text-xs sm:text-sm text-gray-500 hover:text-gray-300">
+                Ver todas
+              </Link>
+            </div>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {storyGrid.map((story) => (
+                <li key={story.id}>
+                  <StoryTile story={story} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </HomeReveal>
     </main>
   );

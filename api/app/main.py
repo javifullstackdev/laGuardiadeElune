@@ -1,7 +1,7 @@
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from app.routers import posts, auth, users, characters, titles
+from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -19,3 +19,9 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(characters.router)
 app.include_router(titles.router)
+app.include_router(stories.router)
+app.include_router(likes.router)
+app.include_router(claims.router)
+app.include_router(wiki.router)
+app.include_router(hero.router)
+app.include_router(bios.router)

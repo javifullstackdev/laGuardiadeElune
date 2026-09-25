@@ -1,7 +1,7 @@
 import uuid
 import enum
 from sqlalchemy import Column, String, DateTime, Boolean, Enum, func, ForeignKey, UniqueConstraint, Integer, Text, BigInteger
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from app.database import Base
 from app.models.enums import CharacterClass, CharacterFunction, CharacterProfession
@@ -74,6 +74,18 @@ class Character(Base):
     biography    = Column(Text, nullable=True)
     personality  = Column(Text, nullable=True)
     appearance   = Column(Text, nullable=True)
+    # draft | pending | published  (published = hay ficha pública escrita por el Eremita)
+    bio_status = Column(String(20), nullable=False, server_default="draft")
+    bio_answers = Column(JSONB, nullable=True)
+    bio_answers_pending = Column(Boolean, nullable=False, default=False, server_default="false")
+    bio_rejection_reason = Column(Text, nullable=True)
+    bio_submitted_at = Column(DateTime(timezone=True), nullable=True)
+    published_story_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("character_stories.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    public_fields = Column(JSONB, nullable=False, server_default="{}", default=dict)
     level        = Column(Integer, nullable=True)       # nivel importado de Blizzard
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

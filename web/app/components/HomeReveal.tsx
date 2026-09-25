@@ -2,7 +2,6 @@
 
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import EluneLogoReveal from "./EluneLogoReveal";
-import HomeLogo from "./HomeLogo";
 
 const STORAGE = "elune-intro-v3";
 const DISSOLVE_MS = 1200;
@@ -112,9 +111,6 @@ export default function HomeReveal({ children }: { children: React.ReactNode }) 
     <HomeIntroContext.Provider value={{ revealed }}>
       <div className="relative" aria-busy={!revealed}>
         {showIntro && <IntroLogo fading={phase === "dissolve"} onComplete={startDissolve} />}
-        {(phase === "content" || phase === "ready") && (
-          <HomeLogo visible={phase === "ready"} />
-        )}
         <div
           className={`relative z-10 w-full max-w-7xl mx-auto transition-all duration-1000 ease-out ${
             revealed ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 translate-y-8"

@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { getCategoryStyle, formatDate, textToParagraphs } from "@/lib/posts";
+import ShareBar from "../../components/ShareBar";
 
 type Post = {
   id: string;
@@ -17,11 +19,13 @@ export default async function PostPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
   const res = await fetch(`http://localhost:8000/posts/${id}`, { cache: "no-store" });
 
   if (!res.ok) {
     return (
-      <main className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+      <main className="min-h-screen text-white flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-400 mb-4">Post no encontrado.</p>
           <Link href="/" className="text-yellow-400 hover:underline">
@@ -37,7 +41,7 @@ export default async function PostPage({
   const paragraphs = textToParagraphs(post.content);
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
+    <main className="min-h-screen text-white">
       <div className="max-w-2xl mx-auto px-4 py-12">
         <Link
           href="/"
@@ -73,6 +77,13 @@ export default async function PostPage({
             </p>
           ))}
         </div>
+
+        <ShareBar
+          targetType="post"
+          targetId={post.id}
+          title={post.title}
+          loggedIn={!!token}
+        />
       </div>
     </main>
   );

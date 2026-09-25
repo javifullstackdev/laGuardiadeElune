@@ -31,6 +31,27 @@ const SECTIONS = [
     color:       "border-purple-500/40 hover:border-purple-400",
     badge:       "bg-purple-500/20 text-purple-300",
   },
+  {
+    href:        "/admin/bios",
+    title:       "Fichas",
+    description: "Leer el cuestionario del jugador y escribir la biografía de la ficha.",
+    color:       "border-amber-500/40 hover:border-amber-400",
+    badge:       "bg-amber-500/20 text-amber-300",
+  },
+  {
+    href:        "/admin/stories",
+    title:       "Historias",
+    description: "Revisar relatos de los jugadores y eliminar los publicados.",
+    color:       "border-fuchsia-500/40 hover:border-fuchsia-400",
+    badge:       "bg-fuchsia-500/20 text-fuchsia-300",
+  },
+  {
+    href:        "/admin/carousel",
+    title:       "Carrusel",
+    description: "Elegir las historias y fichas que se destacan en la portada.",
+    color:       "border-cyan-500/40 hover:border-cyan-400",
+    badge:       "bg-cyan-500/20 text-cyan-300",
+  },
 ];
 
 export default async function AdminPage() {
@@ -47,7 +68,7 @@ export default async function AdminPage() {
   if (user.role !== "admin" && user.role !== "officer") redirect("/");
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
+    <main className="min-h-screen">
       <div className="max-w-3xl mx-auto px-4 py-12">
 
         <div className="mb-10">

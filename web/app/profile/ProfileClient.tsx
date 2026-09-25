@@ -3,6 +3,12 @@
 import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useWatermarkBox } from "../components/HomeLogo";
+import PublishStoryPanel from "./PublishStoryPanel";
+import BioQuestionnaire from "./BioQuestionnaire";
+import ClaimsInbox from "./ClaimsInbox";
+import { mergePublicFields, PUBLIC_FIELD_LABELS, type PublicFields } from "@/lib/wiki";
+import { answersComplete, mergeAnswers, type BioAnswers, type BioQuestion } from "@/lib/bio";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -51,6 +57,12 @@ type Character = {
   origin: string | null;
   age_lore: number | null;
   residence: string | null;
+  bio_status: "draft" | "pending" | "published";
+  bio_answers: BioAnswers;
+  bio_answers_pending: boolean;
+  bio_rejection_reason: string | null;
+  published_story_id: string | null;
+  public_fields: PublicFields;
 };
 
 type Transaction = {
@@ -129,7 +141,9 @@ function getRelationLabel(type: string) {
 type CharPatch = Partial<Pick<Character,
   "surname" | "prefix_title" | "biography" | "personality" | "appearance" |
   "origin" | "age_lore" | "residence" |
-  "avatar_url" | "custom_avatar_url" | "pending_avatar_url"
+  "avatar_url" | "custom_avatar_url" | "pending_avatar_url" |
+  "bio_status" | "published_story_id" | "public_fields" |
+  "bio_answers" | "bio_answers_pending" | "bio_rejection_reason"
 >>;
 
 // ── Componente principal ───────────────────────────────────────────────────
@@ -195,7 +209,7 @@ export default function ProfileClient({
   }
 
   return (
-    <div className="flex bg-gray-950 text-white relative">
+    <div className="flex text-white relative">
 
       {/* ── Overlay backdrop (mobile) ──────────────────────────────── */}
       {sidebarOpen && (
@@ -205,18 +219,54 @@ export default function ProfileClient({
         />
       )}
 
+      {/* ── Contenido ─────────────────────────────────────────────── */}
+      <main className="flex-1 min-w-0 flex flex-col h-[calc(100vh-3rem)] overflow-hidden">
+
+        {/* Barra superior mobile: hamburguesa a la derecha, junto al cajón */}
+        <div className="flex items-center justify-end px-3 py-2 border-b border-gray-800 md:hidden shrink-0">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-gray-400 hover:text-white transition-colors"
+            aria-label="Abrir menú"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        {selected ? (
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <CharacterDetail
+              char={selected}
+              transactions={transactions}
+              onSetMain={() => handleSetMain(selected)}
+              isPending={isPending}
+              onFavoriteTitleChange={(t) => handleFavoriteTitleChange(selected, t)}
+              onDetailsPatch={(p) => handleDetailsPatch(selected, p)}
+            />
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0">
+            <EmptyState hasBnet={user.has_blizzard} />
+          </div>
+        )}
+      </main>
+
       {/* ── Sidebar ────────────────────────────────────────────────── */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-40 w-72 bg-gray-900 border-r border-gray-800
+          fixed inset-y-0 right-0 z-40 w-72 bg-gray-900 border-l border-gray-800
           flex flex-col transition-transform duration-300
-          md:sticky md:top-12 md:bottom-auto md:left-auto md:translate-x-0
+          md:sticky md:top-12 md:inset-auto md:translate-x-0
           md:w-72 md:shrink-0 md:h-[calc(100vh-3rem)] md:z-30
-          ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
         `}
       >
         {/* Jugador */}
-        <div className="p-5 border-b border-gray-800">
+        <div className="relative p-5 border-b border-gray-800">
           {/* Botón cerrar sidebar (mobile) */}
           <button
             className="absolute top-4 right-4 text-gray-500 hover:text-white md:hidden"
@@ -293,42 +343,6 @@ export default function ProfileClient({
           </Link>
         </div>
       </aside>
-
-      {/* ── Contenido ─────────────────────────────────────────────── */}
-      <main className="flex-1 min-w-0 flex flex-col h-[calc(100vh-3rem)] overflow-hidden">
-
-        {/* Barra superior mobile: solo hamburguesa */}
-        <div className="flex items-center px-3 py-2 border-b border-gray-800 md:hidden shrink-0">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-400 hover:text-white transition-colors"
-            aria-label="Abrir menú"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <line x1="3" y1="12" x2="21" y2="12"/>
-              <line x1="3" y1="18" x2="21" y2="18"/>
-            </svg>
-          </button>
-        </div>
-
-        {selected ? (
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <CharacterDetail
-              char={selected}
-              transactions={transactions}
-              onSetMain={() => handleSetMain(selected)}
-              isPending={isPending}
-              onFavoriteTitleChange={(t) => handleFavoriteTitleChange(selected, t)}
-              onDetailsPatch={(p) => handleDetailsPatch(selected, p)}
-            />
-          </div>
-        ) : (
-          <div className="flex-1 min-h-0">
-            <EmptyState hasBnet={user.has_blizzard} />
-          </div>
-        )}
-      </main>
     </div>
   );
 }
@@ -354,34 +368,38 @@ function CharacterDetail({
   const factionLabel = char.faction ? (FACTION_ES[char.faction] ?? char.faction) : null;
   const factionColor = char.faction ? (FACTION_COLOR[char.faction] ?? "#aaa") : "#aaa";
 
-  // Datos personales para el grid
   const personalData: { label: string; value: string | null; color?: string }[] = [
-    { label: "Clase",      value: className },
     { label: "Raza",       value: raceName },
+    { label: "Clase",      value: char.wow_class ? className : null },
     { label: "Facción",    value: factionLabel, color: factionColor },
-    { label: "Nivel",      value: char.level ? String(char.level) : null },
+    { label: "Edad",       value: char.age_lore ? `${char.age_lore} años` : null },
     { label: "Origen",     value: char.origin },
     { label: "Residencia", value: char.residence },
-    { label: "Edad",       value: char.age_lore ? `${char.age_lore} años` : null },
-    { label: "Realm",      value: char.realm },
   ].filter((d) => d.value !== null) as { label: string; value: string; color?: string }[];
 
   const tabs: { key: DetailTab; label: string }[] = [
     { key: "points",      label: "Puntos y logros" },
-    { key: "lore",        label: "Historia y relaciones" },
+    { key: "lore",        label: "Trasfondo" },
     { key: "professions", label: "Profesiones" },
   ];
 
   const [mobileAvatarOpen, setMobileAvatarOpen] = useState(false);
+  const logo = useWatermarkBox();
+  const factPad = Math.round(logo.left + logo.size + 64);
+  const nameTop = `calc(5rem + 220px - ${logo.size / 2}px)`;
+  const factStyle = {
+    ["--fact-pad" as string]: `${factPad}px`,
+    ["--name-top" as string]: nameTop,
+  };
 
   const hasGoodRender = !!(char.avatar_url && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url));
 
   return (
     <div className="relative flex flex-col h-full overflow-hidden">
 
-      {/* ── sm+: imagen fija en la derecha ───────────────────────── */}
+      {/* ── sm+: imagen en la columna de detalle, sin invadir el aside ─ */}
       {hasGoodRender ? (
-        <div className="fixed right-0 top-12 bottom-0 w-[58%] pointer-events-none select-none hidden sm:block" style={{ zIndex: 0 }} aria-hidden>
+        <div className="absolute inset-y-0 right-0 w-[58%] pointer-events-none select-none hidden sm:block" style={{ zIndex: 0 }} aria-hidden>
           <img
             src={char.avatar_url!}
             alt=""
@@ -401,7 +419,7 @@ function CharacterDetail({
         </div>
       ) : (
         <div
-          className="fixed right-0 top-12 bottom-0 w-[40%] pointer-events-none select-none hidden sm:block"
+          className="absolute inset-y-0 right-0 w-[40%] pointer-events-none select-none hidden sm:block"
           style={{ zIndex: 0, background: `linear-gradient(to left, ${color}08 0%, transparent 100%)` }}
           aria-hidden
         />
@@ -447,9 +465,9 @@ function CharacterDetail({
           </div>
         )}
 
-        {/* Nombre a la izquierda, datos compactos a la derecha */}
-        <div className="flex items-start gap-3 px-3 pt-2 pb-1">
-          <div className="min-w-0 flex-1">
+        {/* Nombre y, debajo, datos del personaje */}
+        <div className="px-3 pt-2 pb-1">
+          <div className="min-w-0">
             {char.prefix_title && (
               <p className="text-[10px] text-gray-400 italic truncate">{char.prefix_title}</p>
             )}
@@ -488,9 +506,9 @@ function CharacterDetail({
           </div>
 
           {personalData.length > 0 && (
-            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 w-[48%] shrink-0 pt-0.5">
+            <div className="grid grid-cols-2 gap-1.5 mt-2">
               {personalData.map((d) => (
-                <div key={d.label} className="min-w-0">
+                <div key={d.label} className="min-w-0 bg-gray-900/70 rounded-md px-2 py-1 border border-gray-800/50">
                   <p className="text-[8px] leading-none text-gray-600 uppercase tracking-wide">{d.label}</p>
                   <p
                     className="text-[10px] leading-tight font-medium truncate"
@@ -506,7 +524,10 @@ function CharacterDetail({
       </div>
 
       {/* ══ DESKTOP: cabecera + datos personales ══════════════════ */}
-      <div className="hidden sm:block relative z-10 px-8 pt-8 pb-0 shrink-0">
+      <div
+        className="hidden sm:block relative z-10 px-8 pt-8 pb-0 shrink-0 lg:pl-[var(--fact-pad)] lg:pt-[var(--name-top)]"
+        style={factStyle}
+      >
 
         {/* Cabecera: texto + controles de imagen */}
         <div className="flex items-start justify-between mb-5 gap-4">
@@ -515,7 +536,7 @@ function CharacterDetail({
               <p className="text-sm text-gray-400 mb-1 italic">{char.prefix_title}</p>
             )}
             <h1
-              className="text-4xl font-bold tracking-tight"
+              className="text-4xl font-bold tracking-tight leading-10"
               style={{ color, textShadow: `0 0 24px ${color}35` }}
             >
               {char.name}
@@ -556,12 +577,8 @@ function CharacterDetail({
           <CharacterAvatar char={char} onAvatarPatch={(p) => onDetailsPatch(p)} />
         </div>
 
-        {/* Separador */}
-        <div className="h-px mb-4 opacity-25" style={{ background: `linear-gradient(to right, ${color}, transparent)` }} />
-
-        {/* Datos personales — máx 2 por fila, solo lado izquierdo */}
         {personalData.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 mb-4 max-w-[48%]">
+          <div className="grid grid-cols-2 xl:grid-cols-3 gap-2 mb-4 max-w-xl">
             {personalData.map((d) => (
               <div key={d.label} className="bg-gray-900/70 rounded-lg px-3 py-2 border border-gray-800/50">
                 <p className="text-xs text-gray-600 mb-0.5">{d.label}</p>
@@ -572,10 +589,16 @@ function CharacterDetail({
             ))}
           </div>
         )}
+
+        {/* Separador */}
+        <div className="h-px mb-4 opacity-25" style={{ background: `linear-gradient(to right, ${color}, transparent)` }} />
       </div>
 
       {/* ══ TABS BAR (compartida mobile + desktop) ════════════════ */}
-      <div className="relative z-10 shrink-0 px-4 sm:px-8">
+      <div
+        className="relative z-10 shrink-0 px-4 sm:px-8 lg:pl-[var(--fact-pad)]"
+        style={factStyle}
+      >
         <div className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
           {tabs.map((t) => (
             <button
@@ -595,7 +618,10 @@ function CharacterDetail({
       </div>
 
       {/* ══ ZONA SCROLLEABLE ══════════════════════════════════════ */}
-      <div className="relative z-10 flex-1 overflow-y-auto min-h-0 px-4 sm:px-8 py-4 sm:py-6">
+      <div
+        className="relative z-10 flex-1 overflow-y-auto min-h-0 px-4 sm:px-8 py-4 sm:py-6 lg:pl-[var(--fact-pad)]"
+        style={factStyle}
+      >
         {tab === "points" && (
           <PointsAndAchievementsTab transactions={transactions} />
         )}
@@ -666,46 +692,54 @@ function LoreAndRelationsTab({
   onDetailsPatch: (p: CharPatch) => void;
   onFavoriteTitleChange: (t: TitleData | null) => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const published = char.bio_status === "published" && !!char.biography;
+  const answersLocked = char.bio_answers_pending;
+  const [questions, setQuestions] = useState<BioQuestion[]>([]);
+  const [answers, setAnswers] = useState<BioAnswers>(char.bio_answers ?? {});
+  const [surname, setSurname] = useState(char.surname ?? "");
+  const [prefixTitle, setPrefix] = useState(char.prefix_title ?? "");
+  const [origin, setOrigin] = useState(char.origin ?? "");
+  const [ageLore, setAge] = useState(char.age_lore ? String(char.age_lore) : "");
+  const [residence, setResidence] = useState(char.residence ?? "");
+  const [publicFields, setPublicFields] = useState<PublicFields>(mergePublicFields(char.public_fields));
+  const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Campos editables sincronizados con el personaje
-  const [surname,      setSurname]   = useState(char.surname      ?? "");
-  const [prefixTitle,  setPrefix]    = useState(char.prefix_title  ?? "");
-  const [biography,    setBio]       = useState(char.biography     ?? "");
-  const [personality,  setPerso]     = useState(char.personality   ?? "");
-  const [appearance,   setAppear]    = useState(char.appearance    ?? "");
-  const [origin,       setOrigin]    = useState(char.origin        ?? "");
-  const [ageLore,      setAge]       = useState(char.age_lore ? String(char.age_lore) : "");
-  const [residence,    setResidence] = useState(char.residence     ?? "");
-  const [saving, setSaving]          = useState(false);
-  const [error, setError]            = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/bios/questions")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setQuestions(list);
+        setAnswers(mergeAnswers(list, char.bio_answers));
+      })
+      .catch(() => setQuestions([]));
+  }, [char.name, char.realm]);
 
   useEffect(() => {
     setSurname(char.surname ?? "");
     setPrefix(char.prefix_title ?? "");
-    setBio(char.biography ?? "");
-    setPerso(char.personality ?? "");
-    setAppear(char.appearance ?? "");
     setOrigin(char.origin ?? "");
     setAge(char.age_lore ? String(char.age_lore) : "");
     setResidence(char.residence ?? "");
-    setEditing(false);
+    setPublicFields(mergePublicFields(char.public_fields));
     setError(null);
   }, [char.name, char.realm]);
 
-  async function handleSave() {
+  async function handleSaveDraft() {
     setSaving(true);
     setError(null);
     const payload = {
-      name: char.name, realm: char.realm,
-      surname:      surname      || null,
-      prefix_title: prefixTitle  || null,
-      biography:    biography    || null,
-      personality:  personality  || null,
-      appearance:   appearance   || null,
-      origin:       origin       || null,
-      age_lore:     ageLore ? parseInt(ageLore) : null,
-      residence:    residence    || null,
+      name: char.name,
+      realm: char.realm,
+      surname: surname || null,
+      prefix_title: prefixTitle || null,
+      origin: origin || null,
+      age_lore: ageLore ? parseInt(ageLore) : null,
+      residence: residence || null,
+      public_fields: publicFields,
+      bio_answers: answersLocked ? undefined : answers,
     };
     try {
       const res = await fetch("/api/characters/bio", {
@@ -715,114 +749,189 @@ function LoreAndRelationsTab({
       });
       if (!res.ok) {
         const d = await res.json();
-        setError(d.detail ?? "Error al guardar");
+        setError(typeof d.detail === "string" ? d.detail : "Error al guardar");
       } else {
+        const updated = await res.json();
         onDetailsPatch({
-          surname:      surname      || null,
-          prefix_title: prefixTitle  || null,
-          biography:    biography    || null,
-          personality:  personality  || null,
-          appearance:   appearance   || null,
-          origin:       origin       || null,
-          age_lore:     ageLore ? parseInt(ageLore) : null,
-          residence:    residence    || null,
+          surname: surname || null,
+          prefix_title: prefixTitle || null,
+          origin: origin || null,
+          age_lore: ageLore ? parseInt(ageLore) : null,
+          residence: residence || null,
+          public_fields: publicFields,
+          bio_answers: updated.bio_answers ?? answers,
+          bio_answers_pending: updated.bio_answers_pending,
+          bio_status: updated.bio_status,
+          bio_rejection_reason: updated.bio_rejection_reason,
         });
-        setEditing(false);
       }
     } finally {
       setSaving(false);
     }
   }
 
+  async function handleSubmitAnswers() {
+    setSending(true);
+    setError(null);
+    try {
+      if (!answersLocked) {
+        const save = await fetch("/api/characters/bio", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: char.name,
+            realm: char.realm,
+            bio_answers: answers,
+          }),
+        });
+        if (!save.ok) {
+          const d = await save.json();
+          setError(typeof d.detail === "string" ? d.detail : "Error al guardar el cuestionario");
+          return;
+        }
+      }
+      const res = await fetch("/api/characters/bio/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: char.name, realm: char.realm }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(typeof data.detail === "string" ? data.detail : "No se pudo enviar");
+      } else {
+        onDetailsPatch({
+          bio_answers: data.bio_answers ?? answers,
+          bio_answers_pending: data.bio_answers_pending,
+          bio_status: data.bio_status,
+          bio_rejection_reason: data.bio_rejection_reason,
+        });
+      }
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
-
-      {/* ── Historia / trasfondo ── */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs text-gray-500 uppercase tracking-wider">Historia y trasfondo</h2>
-          {!editing && (
-            <button
-              onClick={() => setEditing(true)}
-              className="text-xs text-gray-500 hover:text-gray-300 px-2 py-1 rounded border border-gray-800 hover:border-gray-700 transition-colors"
-            >
-              Editar
-            </button>
-          )}
-        </div>
-
-        {editing ? (
-          <div className="space-y-5">
-            {/* Identidad */}
+      {published && (
+        <section className="rounded-xl border border-gray-800 bg-gray-900/40 p-4 space-y-4">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Identidad</p>
-              <div className="grid grid-cols-2 gap-3">
-                <LoreInput label="Antetítulo" placeholder="El gran, Archimago..." value={prefixTitle} onChange={setPrefix} />
-                <LoreInput label="Apellido" placeholder="(opcional en retail)" value={surname} onChange={setSurname} />
-              </div>
-            </div>
-
-            {/* Datos personales */}
-            <div>
-              <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Datos personales</p>
-              <div className="grid grid-cols-2 gap-3">
-                <LoreInput label="Origen" placeholder="Ciudad, región..." value={origin} onChange={setOrigin} />
-                <LoreInput label="Residencia" placeholder="Lugar actual..." value={residence} onChange={setResidence} />
-                <LoreInput label="Edad (lore)" placeholder="Años" value={ageLore} onChange={setAge} type="number" />
-              </div>
-            </div>
-
-            {/* Trasfondo */}
-            <div>
-              <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Trasfondo narrativo</p>
-              <div className="space-y-3">
-                <LoreTextarea label="Historia" placeholder="Cuenta la historia de tu personaje: su origen, motivaciones, grandes gestas..." value={biography} onChange={setBio} rows={6} />
-                <LoreTextarea label="Personalidad" placeholder="¿Cómo es este personaje? ¿Qué valores lo mueven?" value={personality} onChange={setPerso} rows={3} />
-                <LoreTextarea label="Aspecto físico" placeholder="Describe rasgos físicos, cicatrices, vestimenta habitual..." value={appearance} onChange={setAppear} rows={3} />
-              </div>
-            </div>
-
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-            <div className="flex gap-3">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm transition-colors disabled:opacity-50"
-              >
-                {saving ? "Guardando..." : "Guardar"}
-              </button>
-              <button
-                onClick={() => { setEditing(false); setError(null); }}
-                className="px-4 py-2 rounded-lg text-gray-400 hover:text-gray-200 text-sm transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {char.biography || char.personality || char.appearance ? (
-              <>
-                <LoreBlock title="Historia" text={char.biography} />
-                <LoreBlock title="Personalidad" text={char.personality} />
-                <LoreBlock title="Aspecto físico" text={char.appearance} />
-              </>
-            ) : (
-              <p className="text-gray-500 text-sm">
-                Aún no hay trasfondo escrito. Haz clic en Editar para dar vida a este personaje.
+              <h2 className="text-xs text-gray-500 uppercase tracking-wider">Ficha pública</h2>
+              <p className="text-sm text-gray-400 mt-1">
+                La biografía la escribe el Eremita a partir del cuestionario. Las historias van aparte.
               </p>
-            )}
+            </div>
+            <Link
+              href={`/personajes/${encodeURIComponent(char.realm)}/${encodeURIComponent(char.name)}`}
+              className="text-xs text-yellow-400 hover:underline shrink-0"
+            >
+              Ver ficha pública
+            </Link>
           </div>
+          <LoreBlock title="Biografía" text={char.biography} />
+          <LoreBlock title="Personalidad" text={char.personality} />
+          <LoreBlock title="Aspecto físico" text={char.appearance} />
+        </section>
+      )}
+
+      <section className="space-y-5">
+        <div>
+          <h2 className="text-xs text-gray-500 uppercase tracking-wider">Datos de la ficha</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Estos campos y lo que marcas para mostrar se actualizan en la ficha sin pasar por el Eremita.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <LoreInput label="Antetítulo" placeholder="El gran, Archimago..." value={prefixTitle} onChange={setPrefix} />
+          <LoreInput label="Apellido" placeholder="(opcional en retail)" value={surname} onChange={setSurname} />
+          <LoreInput label="Origen" placeholder="Ciudad, región..." value={origin} onChange={setOrigin} />
+          <LoreInput label="Residencia" placeholder="Lugar actual..." value={residence} onChange={setResidence} />
+          <LoreInput label="Edad (lore)" placeholder="Años" value={ageLore} onChange={setAge} type="number" />
+        </div>
+        <div>
+          <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Mostrar en la ficha pública</p>
+          <p className="text-xs text-gray-600 mb-3">La biografía se publica siempre. El resto lo eliges tú.</p>
+          <div className="grid grid-cols-2 gap-2">
+            {PUBLIC_FIELD_LABELS.map((field) => (
+              <label key={field.key} className="flex items-center gap-2 text-sm text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={publicFields[field.key]}
+                  onChange={(e) => setPublicFields((prev) => ({ ...prev, [field.key]: e.target.checked }))}
+                  className="rounded border-gray-600 bg-gray-800"
+                />
+                {field.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div>
+          <h2 className="text-xs text-gray-500 uppercase tracking-wider">Cuestionario para el Eremita</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Responde con las opciones o escribe la tuya. El Eremita usará esto para redactar la ficha.
+            Las historias las escribes tú más abajo.
+          </p>
+        </div>
+        {char.bio_rejection_reason && !answersLocked && (
+          <p className="text-sm text-red-300">
+            El Eremita pidió cambios: {char.bio_rejection_reason}
+          </p>
+        )}
+        {answersLocked && (
+          <p className="text-sm text-amber-300">
+            El cuestionario está en revisión. Cuando el Eremita escriba la ficha, aparecerá arriba.
+          </p>
+        )}
+        {questions.length > 0 && (
+          <BioQuestionnaire
+            key={`${char.name}-${char.realm}-${answersLocked}`}
+            questions={questions}
+            answers={answers}
+            locked={answersLocked}
+            onChange={setAnswers}
+          />
         )}
       </section>
 
-      {/* ── Títulos ── */}
+      {error && <p className="text-red-400 text-sm">{error}</p>}
+      <div className="flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={handleSaveDraft}
+          disabled={saving}
+          className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold text-sm disabled:opacity-50"
+        >
+          {saving ? "Guardando..." : "Guardar cambios"}
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmitAnswers}
+          disabled={sending || answersLocked || !answersComplete(questions, answers)}
+          className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm disabled:opacity-40"
+        >
+          {answersLocked
+            ? "Enviado al Eremita"
+            : sending
+              ? "Enviando..."
+              : published
+                ? "Pedir actualización de la ficha"
+                : "Enviar al Eremita"}
+        </button>
+      </div>
+
+      <PublishStoryPanel name={char.name} realm={char.realm} />
+
+      <ClaimsInbox />
+
       <section>
         <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Títulos</h2>
         <CharacterTitlesSection char={char} onFavoriteTitleChange={onFavoriteTitleChange} />
       </section>
 
-      {/* ── Relaciones ── */}
       <section>
         <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Relaciones</h2>
         <RelationsSection char={char} />
@@ -1595,7 +1704,7 @@ function EmptyState({ hasBnet }: { hasBnet: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center h-64 text-center p-8">
       <p className="text-gray-400 mb-4">
-        {hasBnet ? "Selecciona un personaje del panel izquierdo" : "Conecta tu cuenta de Battle.net para ver tus personajes"}
+        {hasBnet ? "Selecciona un personaje del panel derecho" : "Conecta tu cuenta de Battle.net para ver tus personajes"}
       </p>
       {!hasBnet && (
         <Link href="http://localhost:8000/auth/blizzard/login" className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm font-medium">

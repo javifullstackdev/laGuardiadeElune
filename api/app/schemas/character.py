@@ -1,8 +1,30 @@
-from pydantic import BaseModel, model_validator
+from datetime import datetime
+from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional
 from uuid import UUID
 
 BLIZZARD_REGION = "eu"  # ajusta si el servidor usa otra región
+
+DEFAULT_PUBLIC_FIELDS = {
+    "title": True,
+    "age": True,
+    "origin": True,
+    "residence": True,
+    "race": True,
+    "class": True,
+    "faction": True,
+    "personality": True,
+    "appearance": True,
+}
+
+
+def merge_public_fields(raw: dict | None) -> dict:
+    out = dict(DEFAULT_PUBLIC_FIELDS)
+    if isinstance(raw, dict):
+        for key, value in raw.items():
+            if key in out:
+                out[key] = bool(value)
+    return out
 
 
 class TitleOut(BaseModel):
@@ -45,11 +67,23 @@ class CharacterResponse(BaseModel):
     origin: Optional[str] = None
     age_lore: Optional[int] = None
     residence: Optional[str] = None
+    bio_status: str = "draft"
+    bio_answers: dict = {}
+    bio_answers_pending: bool = False
+    bio_rejection_reason: Optional[str] = None
+    bio_submitted_at: Optional[datetime] = None
+    published_story_id: Optional[UUID] = None
+    public_fields: dict = {}
 
     model_config = {
         "from_attributes": True,
         "use_enum_values": True,
     }
+
+    @field_validator("bio_answers", mode="before")
+    @classmethod
+    def default_bio_answers(cls, value):
+        return value or {}
 
     @model_validator(mode="after")
     def compute_avatar_url(self) -> "CharacterResponse":
@@ -58,6 +92,8 @@ class CharacterResponse(BaseModel):
             self.avatar_url = f"http://localhost:8000/static/{self.custom_avatar_url}"
         elif self.render_url:
             self.avatar_url = self.render_url
+        self.public_fields = merge_public_fields(self.public_fields)
+        self.bio_answers = self.bio_answers or {}
         return self
 
 
@@ -99,18 +135,14 @@ class FavoriteTitleInput(BaseModel):
 
 
 class CharacterBioUpdate(BaseModel):
-    """Actualiza todos los campos editables por el jugador: identidad, trasfondo y datos personales."""
-    # Identidad
+    """Datos de ficha y respuestas del cuestionario. La biografía la escribe el Eremita."""
     surname:      Optional[str] = None
     prefix_title: Optional[str] = None
-    # Trasfondo narrativo
-    biography:    Optional[str] = None
-    personality:  Optional[str] = None
-    appearance:   Optional[str] = None
-    # Datos personales de lore
     origin:       Optional[str] = None
     age_lore:     Optional[int] = None
     residence:    Optional[str] = None
+    public_fields: Optional[dict] = None
+    bio_answers: Optional[dict] = None
 
 
 class RelationCreate(BaseModel):
@@ -129,6 +161,53 @@ class RelationCharacterOut(BaseModel):
     owner_username: str
 
     model_config = {"from_attributes": True, "use_enum_values": True}
+
+
+class WikiRelatedOut(BaseModel):
+    name: str
+    realm: str
+    story_count: int
+    relation_types: list[str] = []
+    has_page: bool = False
+    cover_url: str | None = None
+    title: str | None = None
+
+
+class WikiStoryOut(BaseModel):
+    id: UUID
+    title: str
+    published_at: Optional[str] = None
+
+
+class WikiListItem(BaseModel):
+    name: str
+    realm: str
+    display_name: str
+    title: str | None = None
+    cover_url: str | None = None
+    excerpt: str | None = None
+    wow_class: str | None = None
+    race: str | None = None
+
+
+class WikiCharacterOut(BaseModel):
+    name: str
+    realm: str
+    display_name: str
+    title: str | None = None
+    cover_url: str | None = None
+    biography: str | None = None
+    personality: str | None = None
+    appearance: str | None = None
+    origin: str | None = None
+    age_lore: Optional[int] = None
+    residence: str | None = None
+    wow_class: str | None = None
+    race: str | None = None
+    faction: str | None = None
+    author_username: str
+    related: list[WikiRelatedOut] = []
+    stories: list[WikiStoryOut] = []
 
 
 class RelationOut(BaseModel):

@@ -19,6 +19,9 @@ export default async function Navbar() {
 
   const items = [
     { href: "/", label: "Inicio" },
+    { href: "/posts", label: "Tablón" },
+    { href: "/personajes", label: "Personajes" },
+    { href: "/lore", label: "Historias" },
     { href: "/ranking", label: "Ranking" },
     ...(token
       ? [
