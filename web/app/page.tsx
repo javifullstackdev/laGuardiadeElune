@@ -44,9 +44,19 @@ export default async function Home() {
               <h2 className="text-xl sm:text-2xl font-bold">Tablón</h2>
               <p className="text-xs sm:text-sm text-gray-500">Últimas publicaciones</p>
             </div>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <ul
+              className={
+                grid.length > 1
+                  ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none touch-pan-x overscroll-x-contain sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:overscroll-auto"
+                  : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              }
+            >
               {grid.map((post) => (
-                <PostTile key={post.id} post={post} />
+                <PostTile
+                  key={post.id}
+                  post={post}
+                  className={grid.length > 1 ? "w-[80%] shrink-0 snap-start sm:w-full" : undefined}
+                />
               ))}
             </ul>
           </section>
@@ -92,12 +102,12 @@ export default async function Home() {
   );
 }
 
-function PostTile({ post }: { post: Post }) {
+function PostTile({ post, className }: { post: Post; className?: string }) {
   const cat = getCategoryStyle(post.category);
   const subtitle = postSubtitle(post);
 
   return (
-    <li>
+    <li className={className}>
       <Link
         href={`/posts/${post.id}`}
         className="group flex flex-col h-full rounded-lg overflow-hidden bg-[#151515] hover:bg-[#1c1c1c] transition-colors"

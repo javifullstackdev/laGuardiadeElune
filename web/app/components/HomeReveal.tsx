@@ -26,7 +26,8 @@ function IntroLogo({ fading, onComplete }: { fading: boolean; onComplete: () => 
   useEffect(() => {
     const fit = () => {
       const vmin = Math.min(window.innerWidth, window.innerHeight);
-      setSize(Math.round(Math.min(880, vmin * 0.9)));
+      const mobile = window.innerWidth < 640;
+      setSize(Math.round(Math.min(880, mobile ? vmin * 1.06 : vmin * 0.9)));
     };
     fit();
     setMounted(true);

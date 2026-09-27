@@ -23,7 +23,7 @@ export default function WikiTile({ item }: { item: WikiListItem }) {
           />
         </div>
       )}
-      <div className="relative z-10 flex flex-col flex-1 px-4 pt-3 pb-4 max-w-[70%]">
+      <div className="relative z-10 mt-auto flex flex-col px-4 pt-3 pb-4 max-w-[70%]">
         <h3 className="font-bold text-[15px] leading-snug text-white line-clamp-2">
           {item.display_name}
         </h3>
