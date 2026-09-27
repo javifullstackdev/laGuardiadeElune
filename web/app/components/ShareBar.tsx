@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type LikeState = {
   count: number;
@@ -12,15 +12,24 @@ export default function ShareBar({
   targetId,
   title,
   loggedIn,
+  variant = "bar",
 }: {
   targetType: "post" | "story";
   targetId: string;
   title: string;
   loggedIn: boolean;
+  variant?: "bar" | "parchment";
 }) {
   const [likes, setLikes] = useState<LikeState>({ count: 0, liked: false });
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [url, setUrl] = useState("");
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setUrl(window.location.href);
+  }, []);
 
   useEffect(() => {
     const q = new URLSearchParams({ target_type: targetType, target_id: targetId });
@@ -30,6 +39,15 @@ export default function ShareBar({
         if (d) setLikes({ count: d.count, liked: d.liked });
       });
   }, [targetType, targetId]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
 
   async function toggleLike() {
     if (!loggedIn || busy) return;
@@ -44,12 +62,14 @@ export default function ShareBar({
     setBusy(false);
   }
 
-  const url = typeof window !== "undefined" ? window.location.href : "";
   const text = `${title} — La Guardia de Elune`;
-  const wa = `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`;
-  const x = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+  const wa = url ? `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}` : "#";
+  const x = url
+    ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
+    : "#";
 
   async function copyForInstagram() {
+    if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -57,6 +77,60 @@ export default function ShareBar({
     } catch {
       setCopied(false);
     }
+  }
+
+  if (variant === "parchment") {
+    const btn =
+      "inline-flex items-center h-7 px-2 rounded-sm text-[11px] font-semibold tracking-wide text-[#2a1c10] border border-[#4a3424]/25 hover:bg-[#2a1c10]/8 transition-colors";
+    const item =
+      "block w-full text-left px-3 py-1.5 text-[12px] text-[#2a1c10] hover:bg-[#2a1c10]/8";
+    return (
+      <div className="flex items-center gap-1.5">
+        {loggedIn ? (
+          <button type="button" onClick={toggleLike} disabled={busy} className={btn}>
+            {likes.liked ? "Te gusta" : "Me gusta"} · {likes.count}
+          </button>
+        ) : (
+          <a href="http://localhost:8000/auth/discord/login" className={btn}>
+            Me gusta · {likes.count}
+          </a>
+        )}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className={btn}
+            aria-expanded={open}
+            aria-haspopup="menu"
+          >
+            Compartir
+          </button>
+          {open && (
+            <div
+              role="menu"
+              className="absolute bottom-full left-0 mb-1.5 min-w-[9.5rem] rounded-md bg-[#f4ead2] border border-[#4a3424]/20 shadow-[0_8px_20px_rgba(0,0,0,0.28)] py-1 z-20"
+            >
+              <a href={wa} target="_blank" rel="noreferrer" role="menuitem" className={item} onClick={() => setOpen(false)}>
+                WhatsApp
+              </a>
+              <a href={x} target="_blank" rel="noreferrer" role="menuitem" className={item} onClick={() => setOpen(false)}>
+                X
+              </a>
+              <button
+                type="button"
+                role="menuitem"
+                className={item}
+                onClick={() => {
+                  copyForInstagram();
+                }}
+              >
+                {copied ? "Enlace copiado" : "Instagram"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -82,7 +156,6 @@ export default function ShareBar({
           Entrar para dar like · {likes.count}
         </a>
       )}
-
       <a
         href={wa}
         target="_blank"
