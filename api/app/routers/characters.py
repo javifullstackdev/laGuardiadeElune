@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import func as sa_func
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_admin
@@ -20,11 +21,14 @@ from app.models.character_title import CharacterTitle
 from app.models.character_relation import CharacterRelation
 from app.models.title import Title
 from app.models.enums import CharacterClass
+from app.models.achievement import Achievement
+from app.models.user_achievement import UserAchievement
+from app.models.relation_claim import RelationClaim
 from app.schemas.character import (
     CharacterAddInput, CharacterResponse, BlizzardCharacterOut,
     SetMainInput, FavoriteTitleInput, TitleOut,
     CharacterBioUpdate, RelationCreate, RelationOut, RelationCharacterOut,
-    merge_public_fields,
+    AchievementOut, merge_public_fields,
 )
 from app.services.bio_questions import answers_complete, normalize_answers
 
@@ -311,6 +315,27 @@ def get_relations(
         .all()
     )
 
+    story_counts = dict(
+        db.query(RelationClaim.to_character_id, sa_func.count(RelationClaim.id))
+        .filter(
+            RelationClaim.from_character_id == char.id,
+            RelationClaim.status == "confirmed",
+        )
+        .group_by(RelationClaim.to_character_id)
+        .all()
+    )
+    incoming_counts = dict(
+        db.query(RelationClaim.from_character_id, sa_func.count(RelationClaim.id))
+        .filter(
+            RelationClaim.to_character_id == char.id,
+            RelationClaim.status == "confirmed",
+        )
+        .group_by(RelationClaim.from_character_id)
+        .all()
+    )
+    outgoing_keys = {(rel.to_character_id, rel.relation_type) for rel, _, _ in outgoing}
+    incoming_keys = {(rel.from_character_id, rel.relation_type) for rel, _, _ in incoming}
+
     result = []
     for rel, other_char, owner_username in outgoing:
         result.append(RelationOut(
@@ -324,6 +349,8 @@ def get_relations(
                 wow_class=other_char.wow_class.value if other_char.wow_class else None,
                 owner_username=owner_username,
             ),
+            story_count=int(story_counts.get(other_char.id, 0) + incoming_counts.get(other_char.id, 0)),
+            reciprocal=(other_char.id, rel.relation_type) in incoming_keys,
         ))
     for rel, other_char, owner_username in incoming:
         result.append(RelationOut(
@@ -337,8 +364,45 @@ def get_relations(
                 wow_class=other_char.wow_class.value if other_char.wow_class else None,
                 owner_username=owner_username,
             ),
+            story_count=int(story_counts.get(other_char.id, 0) + incoming_counts.get(other_char.id, 0)),
+            reciprocal=(other_char.id, rel.relation_type) in outgoing_keys,
         ))
     return result
+
+
+@router.get("/{name}/{realm}/achievements", response_model=list[AchievementOut])
+def list_character_achievements(
+    name: str, realm: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    char = _get_own_character(name, realm, current_user, db)
+    rows = (
+        db.query(UserAchievement, Achievement)
+        .join(Achievement, Achievement.id == UserAchievement.achievement_id)
+        .filter(UserAchievement.user_id == current_user.id)
+        .order_by(UserAchievement.earned_at.desc())
+        .all()
+    )
+    items: list[AchievementOut] = []
+    for earned, ach in rows:
+        if ach.account_wide:
+            scope = "account"
+        elif earned.character_id == char.id:
+            scope = "character"
+        else:
+            continue
+        items.append(AchievementOut(
+            id=ach.id,
+            name=ach.name,
+            title=ach.achievement_title,
+            description=ach.achievement_description,
+            icon=ach.achievement_icon,
+            points_value=ach.points_value,
+            scope=scope,
+            earned_at=earned.earned_at,
+        ))
+    return items
 
 
 @router.post("/{name}/{realm}/relations", response_model=RelationOut, status_code=201)

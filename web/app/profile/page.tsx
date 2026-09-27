@@ -16,7 +16,7 @@ export default async function ProfilePage() {
   const [userRes, charsRes, txRes] = await Promise.all([
     fetch("http://localhost:8000/users/me",           { headers, cache: "no-store" }),
     fetch("http://localhost:8000/characters/my",      { headers, cache: "no-store" }),
-    fetch("http://localhost:8000/users/me/transactions?limit=10", { headers, cache: "no-store" }),
+    fetch("http://localhost:8000/users/me/transactions?limit=200", { headers, cache: "no-store" }),
   ]);
 
   if (!userRes.ok) redirect("/");

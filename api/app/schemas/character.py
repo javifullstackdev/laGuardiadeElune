@@ -217,5 +217,18 @@ class RelationOut(BaseModel):
     description: Optional[str] = None
     direction: str          # "outgoing" | "incoming"
     other: RelationCharacterOut
+    story_count: int = 0
+    reciprocal: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class AchievementOut(BaseModel):
+    id: UUID
+    name: str
+    title: Optional[str] = None
+    description: str
+    icon: str
+    points_value: int
+    scope: str  # account | character
+    earned_at: datetime
