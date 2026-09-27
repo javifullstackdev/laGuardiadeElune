@@ -6,11 +6,14 @@ La idea principal es que tanto la web como Bubu obtengan los datos de una sola f
 # 2. User Stories
 1. Como **visitante**, quiero leer posts y conocer lore tanto de la guild como de Blizzard
 2. Como **miembro**, quiero poder consultar el ranking de puntos, logros conseguidos y logros pendientes
+2b. Como **miembro**, quiero un perfil por pestañas (Bio, Puntos, Logros, Títulos, Historias, Relaciones, Profesiones) para cada personaje
+2c. Como **miembro**, quiero enviar historias al Eremita y completar un cuestionario para que él escriba la ficha pública
 3. Como **sistema** quiero poder sincronizar automáticamente las míticas/raids con compañeros de hermandad para asignar puntos sin que el jugador tenga que apuntarse
 4. Como **Bubu**, quiero poder anunciar mítica/raid futura y permitir que los miembros se apunten para optimizar la organización
 5. Como **admin** quiero poder escribir post y noticias en la web
 6. Como **admin** quiero poder penalizar o premiar a los jugadores sumando o restando puntos
 7. Como **miembro** quiero poder elegir qué itinerario quiero seguir para puntuar en el ranking de la season
+8. Como **admin** quiero registrar un personaje desde Discord solo si existe en la armería de WoW (Retail)
 # 3. Reglas de negocio
 ## 1. ¿Cuántos guildies mínimo en una party de 5?
 Al menos 3 de los 5 personajes del grupo tienen que ser miembros de la hermandad para que los puntos se contabilicen.
@@ -35,10 +38,15 @@ Otra de las diferencias principales es que cada raid tiene diferentes bosses y c
 ## 5. Puntos: ¿a nivel de cuenta o de personaje?
 A nivel de cuenta
 ## 6. Logros: ¿a nivel de cuenta o de personaje?
-La mayoría de logros son a nivel de cuenta, pero hay logros que sólamente se pueden conseguir con algunos personajes.
-Por ejemplo: el logro "El mejor pollo de todos" solamente lo puede tener un personaje de clase "Druida". Este logro otorga el título "Elegido/a de Elune" solamente al personaje que lo haya conseguido.
+La mayoría de logros son a nivel de cuenta (`account_wide`): si el jugador los gana, aparecen en **todos** sus personajes.
+Hay logros de personaje (`character_specific`): solo se muestran en el toon que los consiguió.
+Ejemplo: "El mejor pollo de todos" solo lo puede tener un Druida; el título asociado ("Elegido/a de Elune") va a ese personaje.
 ## 7. Títulos: ¿a nivel de cuenta o de personaje?
-Los títulos son a nivel de personaje.
+Los títulos son a nivel de personaje. De momento el jugador elige **uno** para mostrar (`favorite_title`) en perfil y ficha.
+## 7b. Ficha vs historias
+La **ficha pública** (biografía, personalidad, aspecto) la escribe el Eremita a partir de un cuestionario. Las **historias** las escribe el jugador y el Eremita las revisa; no sustituyen la ficha.
+## 7c. Premium (previsto, no implementado)
+Más adelante: mostrar más de un título, bio más extensa, más historias por personaje. Límites actuales (free) en `web/lib/entitlements.ts`.
 ## 8. Puntos de temporada y puntos totales
 Cada temporada dura unos 3 meses aproximadamente. Al comenzar la temporada los puntos de season_points deberían reiniciarse, pero total_points no.
 ## 9. ¿Cuál es la fuente de verdad?
@@ -59,14 +67,23 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 ## 12. Premios de fin de season
 - Automáticos por sistema: Mejor [rol] de M+ (calculado por season_points filtrado por character.role_function en itinerario competitivo)
 - Por votación: premios creativos. Nominaciones a través de la web.
+## 13. Alta de personajes
+- **Web:** importar desde Battle.net (lista real de la cuenta). Retail o Forever (apellido obligatorio en Forever).
+- **Discord `/registrar_personaje`:** solo admin. En Retail consulta la armería (EU) antes de guardar; si no existe, no se crea. Forever no pasa por la armería.
+- Grado de relación: Ocasional / Cercana / Estrecha según historias en común confirmadas; badge Recíproca si ambos se relacionan con el mismo tipo.
 # 4. Entidades
 - user: jugador de Discord vinculado a la hermandad
-- character: personaje WoW del jugador
-- achievement: catálogo de logros disponibles para los jugadores por conseguir objetivos con compañeros de la hermandad
-- user achievement: logros conseguidos por un jugador
+- character: personaje WoW del jugador (Retail o Forever)
+- achievement: catálogo de logros (`account_wide` / `character_specific`)
+- user achievement: logro ganado por un jugador (opcionalmente ligado a un personaje)
+- title / character title: catálogo y títulos ganados por personaje
+- character relation: relación narrativa (tipo, dirección)
+- relation claim: mención en historia pendiente de confirmar
+- character story: relato del jugador revisado por el Eremita
+- hero slide: diapositiva del carrusel de la home
 - point transaction: transacción de puntos al realizar raid/míticas o conseguir logros
 - group: grupo de juego organizado a través de Bubu o la web (mítica, raid, evento)
-- group member: cada uno de los participantes del gruipo
+- group member: cada uno de los participantes del grupo
 - post: publicación de noticias/historia/lore en la web
 - character blizzard cache: datos de los personajes obtenidos de la API de Blizzard
 - processed run: registro de las míticas/raid realizadas
@@ -92,18 +109,21 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 ![Flujo](docs/diagrama-flujo.png)
 # 8. Estado del proyecto
 
-## Base de datos — tablas activas (21 migraciones Alembic aplicadas)
+## Base de datos — tablas activas (~28 migraciones Alembic)
 
 | Tabla | Descripción |
 |---|---|
 | `users` | Jugadores: Discord OAuth, Blizzard OAuth, rol, path, puntos, birthday |
-| `characters` | Personajes: Retail/Forever, lore, avatares, render_url Blizzard |
+| `characters` | Personajes: Retail/Forever, ficha, cuestionario, avatares, render Blizzard |
 | `titles` | Catálogo de títulos de hermandad (source: achievement/points/rank/custom) |
-| `character_titles` | Junction: qué personaje tiene qué título, cuándo y otorgado por quién |
-| `character_relations` | Árbol de relaciones narrativas entre personajes (ally, rival, family, …) |
+| `character_titles` | Junction: qué personaje tiene qué título |
+| `character_relations` | Relaciones narrativas (ally, rival, family, …) |
+| `relation_claims` | Menciones en historias pendientes de confirmar |
+| `character_stories` | Relatos del jugador (pending / approved / rejected) |
+| `hero_slides` | Carrusel de la home |
 | `point_transactions` | Historial de puntos por categoría y temporada |
-| `achievements` | Catálogo de logros disponibles |
-| `user_achievements` | Junction: logros conseguidos por jugador |
+| `achievements` | Catálogo (`account_wide`, `character_specific`) |
+| `user_achievements` | Logros ganados (user_id, character_id opcional) |
 | `posts` | Publicaciones: título, subtítulo, cover_url, categoría, contenido |
 | `seasons` | Temporadas con fechas y estado activo |
 
@@ -144,7 +164,7 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 ## Fase 4 — Roles admin + CRUD protegido ✅
 - Dependencia `require_admin` encadenada sobre `get_current_user`
 - CRUD completo de posts protegido (`POST`, `PATCH`, `DELETE /posts/{id}`)
-- Panel `/admin` — hub central con secciones: Posts, Títulos, Jugadores, Avatares
+- Panel `/admin` — hub: Posts, Títulos, Jugadores, Avatares, Bios, Historias, Carrusel
 - Panel `/admin/posts` — formulario de creación, edición inline y borrado
 - Panel `/admin/titles` — crear títulos y otorgar/revocar a personajes
 - Panel `/admin/players` — gestión de jugadores (tabla con roles y datos)
@@ -152,10 +172,13 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Navbar con botón Admin visible solo para admin/officer
 
 ## Fase 5 — Bot Bubu 🚧 En progreso
-- Estructura de Cogs creada en `bubu/cogs/`
-- Capa de base de datos `bubu/db/database.py` con asyncpg
-- Cog `admin` con `/ping` y `/sync`
-- Pendiente: conectar a PostgreSQL compartida y migrar comandos originales
+- Conectado a la misma PostgreSQL (`bubu/db/database.py`, asyncpg)
+- Cogs cargados: admin, characters, points, achievements, ranking, profile, dungeon, raid, birthdays, missions, raffles, orders, donations
+- `/registrar_personaje` (admin): Retail o Forever; clase y función por desplegable; clave única `(user_id, name, realm, game)`
+- Retail: valida existencia en la armería EU (`bubu/utils/blizzard.py`, client credentials) antes de insertar; rellena clase e id de Blizzard
+- Forever: apellido obligatorio; no pasa por la armería
+- `/asignar_main`, `/roster`
+- Pendiente: migrar el resto de comandos del Bubu original (míticas, raids, etc.)
 
 ## Fase 6 — Blizzard API + personajes ✅ (parcial)
 - OAuth2 Blizzard: login, callback, tokens guardados en BD
@@ -168,13 +191,25 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Profesiones en tiempo real: `GET /characters/{name}/{realm}/professions` llama a la Profile API de Blizzard (`primaries` + `secondaries`, skill por expansión, recetas)
 - El tab Profesiones maneja Forever, token ausente, token caducado, vacío y datos normales
 
-## Perfil de personaje — sistema completo ✅
-- Datos de identidad: nombre, apellido (WF), antetítulo, título favorito, facción, origen, edad, residencia
-- Lore: biografía, personalidad, aspecto (campos de texto libres)
-- Árbol de relaciones narrativas con otros personajes de la hermandad
-- Sistema de títulos: otorgar/revocar (admin), establecer favorito (jugador)
-- Imagen de fondo: render de Blizzard o avatar custom con aprobación admin
-- Tres tabs: Puntos y logros / Historia y relaciones / Profesiones (Blizzard API)
+## Perfil de personaje — pestañas (2026-09-26) ✅
+Orden: **Bio · Puntos · Logros · Títulos · Historias · Relaciones · Profesiones**
+
+- Cabecera: nombre, render/avatar, raza/clase/facción, origen, edad, residencia
+- **Bio:** si el Eremita publicó la ficha → biografía, personalidad, aspecto + datos editables. Si no → cuestionario (una pregunta cada vez) para enviarle. Pedir actualización cuando ya hay ficha.
+- **Puntos:** total de cuenta + historial completo de transacciones (`GET /users/me/transactions?limit=200`)
+- **Logros:** `GET /characters/{name}/{realm}/achievements` — de cuenta (todos los toons) y de este personaje
+- **Títulos:** lista de títulos ganados; **Usar** / **Quitar** el que se muestra (`favorite_title`). De momento solo uno.
+- **Historias:** escribir y enviar al Eremita + resumen (título, extracto, fecha, estado)
+- **Relaciones:** tipo, grado (Ocasional / Cercana / Estrecha), Recíproca; inbox de menciones
+- **Profesiones:** Profile API de Blizzard (Retail); Forever / sin token / caducado / vacío
+- Premium previsto (no activo): más títulos visibles, bio más larga, más historias — `web/lib/entitlements.ts`
+
+## Lore público (sesión anterior, ya en marcha) ✅
+- Ficha del personaje en `/personajes` (wiki); la escribe el Eremita, no el jugador
+- Historias públicas en `/lore`; borrado solo staff
+- Cuestionario de bio desacoplado de las historias (`bio_answers`, `bio_status`)
+- Admin: bios pendientes, historias, carrusel con encuadre
+- Home: se ocultan secciones vacías
 
 ## Home pública — intro del logo y marca de agua ✅
 - Intro de primera visita (sessionStorage `elune-intro-v3`): pantalla oscura, logo grande centrado con revelado por fases (~17 s)
