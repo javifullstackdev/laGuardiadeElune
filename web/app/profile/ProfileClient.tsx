@@ -10,6 +10,7 @@ import ClaimsInbox from "./ClaimsInbox";
 import { mergePublicFields, PUBLIC_FIELD_LABELS, type PublicFields } from "@/lib/wiki";
 import { answersComplete, mergeAnswers, type BioAnswers, type BioQuestion } from "@/lib/bio";
 import { getEntitlements } from "@/lib/entitlements";
+import { classLabel, raceLabel, factionLabel, factionColor, classColor, realmLabel, genderLabel } from "@/lib/wow";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ type Character = {
   wow_class: string | null;
   race: string | null;
   faction: string | null;
+  gender: string | null;
   role_function: string | null;
   level: number | null;
   is_main: boolean;
@@ -92,41 +94,6 @@ type AchievementData = {
   points_value: number;
   scope: "account" | "character";
   earned_at: string;
-};
-
-// ── Lookups ───────────────────────────────────────────────────────────────
-
-const CLASS_COLOR: Record<string, string> = {
-  WARRIOR: "#C79C6E", PALADIN: "#F58CBA", HUNTER: "#ABD473",
-  ROGUE: "#FFF569", PRIEST: "#FFFFFF", DEATH_KNIGHT: "#C41F3B",
-  SHAMAN: "#0070DE", MAGE: "#69CCF0", WARLOCK: "#9482C9",
-  MONK: "#00FF96", DRUID: "#FF7D0A", DEMONHUNTER: "#A330C9", EVOKER: "#33937F",
-};
-
-const CLASS_NAME_ES: Record<string, string> = {
-  WARRIOR: "Guerrero", PALADIN: "Paladín", HUNTER: "Cazador",
-  ROGUE: "Pícaro", PRIEST: "Sacerdote", DEATH_KNIGHT: "Caballero de la Muerte",
-  SHAMAN: "Chamán", MAGE: "Mago", WARLOCK: "Brujo",
-  MONK: "Monje", DRUID: "Druida", DEMONHUNTER: "Cazador de Demonios", EVOKER: "Evocador",
-};
-
-const RACE_NAME_ES: Record<string, string> = {
-  HUMAN: "Humano", ORC: "Orco", DWARF: "Enano", NIGHT_ELF: "Elfo de la noche",
-  UNDEAD: "No-muerto", TAUREN: "Tauren", GNOME: "Gnomo", TROLL: "Troll",
-  BLOOD_ELF: "Elfo de sangre", DRAENEI: "Draenei", WORGEN: "Huargen",
-  PANDAREN: "Pandaren", NIGHTBORNE: "Nacido de la noche",
-  HIGHMOUNTAIN_TAUREN: "Tauren de la Cima", VOID_ELF: "Elfo del vacío",
-  LIGHTFORGED: "Forjado a la Luz", DARK_IRON_DWARF: "Enano Hierro Negro",
-  KUL_TIRAN: "Kul Tirano", MECHAGNOME: "Mecagnomo", ZANDALARI: "Trol zandalari",
-  GOBLIN: "Goblin", VULPERA: "Vulpera", MAGHAR_ORC: "Orco Mag'har", DRACTHYR: "Dracthyr",
-};
-
-const FACTION_ES: Record<string, string> = {
-  ALLIANCE: "Alianza", HORDE: "Horda", NEUTRAL: "Neutral",
-};
-
-const FACTION_COLOR: Record<string, string> = {
-  ALLIANCE: "#6699FF", HORDE: "#CC3300",
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -178,6 +145,16 @@ export default function ProfileClient({
   const [characters, setCharacters] = useState<Character[]>(initialChars);
   const [selected, setSelected] = useState<Character | null>(initialChars[0] ?? null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    setCharacters(initialChars);
+    setSelected((prev) => {
+      if (!prev) return initialChars[0] ?? null;
+      return initialChars.find((c) =>
+        c.name === prev.name && c.realm === prev.realm && (c.game ?? "retail") === (prev.game ?? "retail")
+      ) ?? initialChars[0] ?? null;
+    });
+  }, [initialChars]);
 
   function handleSelect(char: Character) {
     const fresh = characters.find((c) => c.name === char.name && c.realm === char.realm) ?? char;
@@ -378,16 +355,18 @@ function CharacterDetail({
   onDetailsPatch: (p: CharPatch) => void;
 }) {
   const [tab, setTab] = useState<DetailTab>("bio");
-  const color     = CLASS_COLOR[char.wow_class ?? ""] ?? "#888888";
-  const className = CLASS_NAME_ES[char.wow_class ?? ""] ?? char.wow_class ?? "Desconocida";
-  const raceName  = RACE_NAME_ES[char.race ?? ""] ?? char.race ?? null;
-  const factionLabel = char.faction ? (FACTION_ES[char.faction] ?? char.faction) : null;
-  const factionColor = char.faction ? (FACTION_COLOR[char.faction] ?? "#aaa") : "#aaa";
+  const color = classColor(char.wow_class);
+  const className = classLabel(char.wow_class, char.gender);
+  const raceName = raceLabel(char.race, char.gender);
+  const factionName = factionLabel(char.faction);
+  const factionTint = factionColor(char.faction);
+  const realmName = char.game !== "forever" ? realmLabel(char.realm) : null;
 
   const personalData: { label: string; value: string | null; color?: string }[] = [
     { label: "Raza",       value: raceName },
-    { label: "Clase",      value: char.wow_class ? className : null },
-    { label: "Facción",    value: factionLabel, color: factionColor },
+    { label: "Clase",      value: className },
+    { label: "Facción",    value: factionName, color: factionTint },
+    { label: "Reino",      value: realmName },
     { label: "Edad",       value: char.age_lore ? `${char.age_lore} años` : null },
     { label: "Origen",     value: char.origin },
     { label: "Residencia", value: char.residence },
@@ -1060,8 +1039,31 @@ function DetailsTab({
     }
   }
 
+  const identity = [
+    { label: "Raza", value: raceLabel(char.race, char.gender) },
+    { label: "Clase", value: classLabel(char.wow_class, char.gender) },
+    { label: "Facción", value: factionLabel(char.faction), color: factionColor(char.faction) },
+    { label: "Género", value: genderLabel(char.gender) },
+    { label: "Reino", value: char.game !== "forever" ? realmLabel(char.realm) : char.realm },
+  ].filter((d) => d.value);
+
   return (
     <div className="space-y-6">
+      {identity.length > 0 && (
+        <div>
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Identidad de juego</p>
+          <div className="grid grid-cols-2 gap-2">
+            {identity.map((d) => (
+              <div key={d.label} className="bg-gray-900/70 rounded-lg px-3 py-2 border border-gray-800/50">
+                <p className="text-xs text-gray-600 mb-0.5">{d.label}</p>
+                <p className="text-sm font-medium truncate" style={"color" in d && d.color ? { color: d.color } : { color: "#e5e7eb" }}>
+                  {d.value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <p className="text-sm text-gray-400">
         Datos de la ficha. Se actualizan sin pasar por el Eremita.
       </p>
@@ -1486,7 +1488,7 @@ function RelationsSection({ char }: { char: Character }) {
 }
 
 function RelationCard({ rel, onDelete }: { rel: RelationData; onDelete: (id: string) => void }) {
-  const color = CLASS_COLOR[rel.other.wow_class ?? ""] ?? "#888";
+  const color = classColor(rel.other.wow_class);
   const count = rel.story_count ?? 0;
   return (
     <div className="px-4 py-3 rounded-lg bg-gray-900/70 border border-gray-800/50 flex gap-3 items-start">
@@ -1587,8 +1589,8 @@ function AddRelationForm({
                 ) : results.map((r) => (
                   <button key={`${r.name}-${r.realm}`} onClick={() => { setTarget(r); setQuery(""); setResults([]); }}
                     className="w-full text-left px-3 py-2 hover:bg-gray-700 transition-colors flex items-center gap-2">
-                    <span className="text-sm font-medium" style={{ color: CLASS_COLOR[r.wow_class ?? ""] ?? "#888" }}>{r.name}</span>
-                    <span className="text-xs text-gray-500">{r.realm}</span>
+                    <span className="text-sm font-medium" style={{ color: classColor(r.wow_class) }}>{r.name}</span>
+                    <span className="text-xs text-gray-500">{realmLabel(r.realm) ?? r.realm}</span>
                     <span className="ml-auto text-xs text-gray-600">{r.owner_username}</span>
                   </button>
                 ))}
@@ -1825,7 +1827,7 @@ function CharacterList({
             </p>
             <ul className="space-y-0.5">
               {group.map((char) => {
-                const color   = CLASS_COLOR[char.wow_class ?? ""] ?? "#888";
+                const color   = classColor(char.wow_class);
                 const isActive = selected?.name === char.name && selected?.realm === char.realm && (selected?.game ?? "retail") === game;
                 return (
                   <li key={`${char.name}-${char.realm}-${game}`}>
@@ -1844,7 +1846,7 @@ function CharacterList({
                         <p className="text-xs truncate mt-0.5">
                           {char.favorite_title
                             ? <span className="text-yellow-500/80">{char.favorite_title.name}</span>
-                            : <span className="text-gray-500">{char.realm}</span>}
+                            : <span className="text-gray-500">{char.game !== "forever" ? realmLabel(char.realm) : char.realm}</span>}
                         </p>
                       </div>
                       {char.is_verified && <span title="Verificado" className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}

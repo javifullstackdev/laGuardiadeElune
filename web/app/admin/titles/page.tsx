@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { classLabel, realmLabel } from "@/lib/wow";
 
 const SOURCE_OPTIONS = [
   { value: "rank",        label: "Rango" },
@@ -215,9 +216,9 @@ export default async function AdminTitlesPage({
                               <div className="flex items-center gap-2 text-sm">
                                 <span className="font-medium text-gray-200">{h.name}</span>
                                 <span className="text-gray-500">·</span>
-                                <span className="text-gray-400">{h.realm}</span>
+                                <span className="text-gray-400">{realmLabel(h.realm) ?? h.realm}</span>
                                 {h.wow_class && (
-                                  <span className="text-gray-600 text-xs">{h.wow_class}</span>
+                                  <span className="text-gray-600 text-xs">{classLabel(h.wow_class)}</span>
                                 )}
                               </div>
                               {/* Formulario de revocación */}

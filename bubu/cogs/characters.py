@@ -84,6 +84,9 @@ class CharactersCog(commands.Cog, name="Characters"):
             verified = False
             stored_name = nombre
             stored_realm = realm
+            race = None
+            faction = None
+            gender = None
 
             if juego != "forever":
                 found = await lookup_wow_character(nombre, realm)
@@ -91,6 +94,9 @@ class CharactersCog(commands.Cog, name="Characters"):
                 stored_realm = found["realm"]
                 bnet_id = found["blizzard_character_id"]
                 wow_class = wow_class or found["wow_class"]
+                race = found.get("race")
+                faction = found.get("faction")
+                gender = found.get("gender")
                 verified = True
 
             await self.bot.db.upsert_user(str(miembro.id), miembro.display_name)
@@ -105,6 +111,9 @@ class CharactersCog(commands.Cog, name="Characters"):
                 surname=apellido.strip() if apellido else None,
                 blizzard_character_id=bnet_id,
                 is_verified=verified,
+                race=race,
+                faction=faction,
+                gender=gender,
             )
             linea = "Forever" if juego == "forever" else "Retail"
             extra = f" {apellido}" if apellido else ""

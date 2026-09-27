@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { textToParagraphs } from "@/lib/posts";
 import { relationLabel } from "@/lib/relations";
-import { classLabel, raceLabel, factionLabel, classColor } from "@/lib/wow";
+import { classLabel, raceLabel, factionLabel, classColor, realmLabel } from "@/lib/wow";
 import type { WikiCharacter } from "@/lib/wiki";
 
 function Block({ title, text }: { title: string; text: string | null }) {
@@ -46,8 +46,8 @@ export default async function WikiCharacterPage({
   const color = classColor(char.wow_class);
   const facts = [
     { label: "Título", value: char.title },
-    { label: "Raza", value: raceLabel(char.race) },
-    { label: "Clase", value: classLabel(char.wow_class) },
+    { label: "Raza", value: raceLabel(char.race, char.gender) },
+    { label: "Clase", value: classLabel(char.wow_class, char.gender) },
     { label: "Facción", value: factionLabel(char.faction) },
     { label: "Edad", value: char.age_lore ? `${char.age_lore} años` : null },
     { label: "Origen", value: char.origin },
@@ -115,7 +115,7 @@ export default async function WikiCharacterPage({
               {char.display_name}
             </h1>
             <p className="text-gray-500 mb-6">
-              {char.realm}
+              {realmLabel(char.realm) ?? char.realm}
               {" · "}
               {char.author_username}
             </p>

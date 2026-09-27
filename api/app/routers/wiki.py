@@ -171,6 +171,7 @@ def get_wiki_character(realm: str, name: str, db: Session = Depends(get_db)):
         wow_class=_enum_val(char.wow_class) if fields.get("class") else None,
         race=_enum_val(char.race) if fields.get("race") else None,
         faction=char.faction if fields.get("faction") else None,
+        gender=char.gender,
         author_username=author.username,
         related=related,
         stories=[

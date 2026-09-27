@@ -12,6 +12,7 @@ type BlizzardCharacter = {
   race_name: string;
   level: number;
   faction: string;
+  gender?: string | null;
   blizzard_character_id: number;
 };
 
@@ -80,6 +81,7 @@ export default function AddCharacterRow({ c }: { c: BlizzardCharacter }) {
         <input type="hidden" name="race_id"                value={c.race_id} />
         <input type="hidden" name="level"                  value={c.level} />
         <input type="hidden" name="faction"                value={c.faction} />
+        <input type="hidden" name="gender"                 value={c.gender ?? ""} />
         <input type="hidden" name="blizzard_character_id"  value={c.blizzard_character_id} />
         <input type="hidden" name="game"                   value={game} />
         <input type="hidden" name="surname"                value={surname} />

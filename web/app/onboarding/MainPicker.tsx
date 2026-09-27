@@ -2,21 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-
-const CLASS_COLOR: Record<string, string> = {
-  WARRIOR: "#C79C6E", PALADIN: "#F58CBA", HUNTER: "#ABD473",
-  ROGUE: "#FFF569", PRIEST: "#FFFFFF", DEATH_KNIGHT: "#C41F3B",
-  SHAMAN: "#0070DE", MAGE: "#69CCF0", WARLOCK: "#9482C9",
-  MONK: "#00FF96", DRUID: "#FF7D0A", DEMONHUNTER: "#A330C9", EVOKER: "#33937F",
-};
-
-const CLASS_NAME_ES: Record<string, string> = {
-  WARRIOR: "Guerrero", PALADIN: "Paladín", HUNTER: "Cazador",
-  ROGUE: "Pícaro", PRIEST: "Sacerdote", DEATH_KNIGHT: "Caballero de la Muerte",
-  SHAMAN: "Chamán", MAGE: "Mago", WARLOCK: "Brujo",
-  MONK: "Monje", DRUID: "Druida", DEMONHUNTER: "Cazador de Demonios",
-  EVOKER: "Evocador",
-};
+import { classColor, classLabel, realmLabel } from "@/lib/wow";
 
 type Character = {
   name: string;
@@ -48,8 +34,8 @@ export default function MainPicker({ characters }: { characters: Character[] }) 
   return (
     <ul className="space-y-2 mt-3">
       {characters.map((char) => {
-        const color = CLASS_COLOR[char.wow_class ?? ""] ?? "#888";
-        const className = CLASS_NAME_ES[char.wow_class ?? ""] ?? char.wow_class ?? null;
+        const color = classColor(char.wow_class);
+        const className = classLabel(char.wow_class);
         const isSelected = selected === char.name;
 
         return (
@@ -67,7 +53,7 @@ export default function MainPicker({ characters }: { characters: Character[] }) 
                 <p className="font-semibold text-sm" style={{ color }}>
                   {char.name}
                   <span className="text-gray-500 font-normal ml-1">
-                    -{char.realm}
+                    -{realmLabel(char.realm) ?? char.realm}
                   </span>
                 </p>
                 {className && (

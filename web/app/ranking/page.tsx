@@ -1,18 +1,4 @@
-const CLASS_COLOR: Record<string, string> = {
-  WARRIOR:      "#C79C6E", PALADIN:      "#F58CBA", HUNTER:       "#ABD473",
-  ROGUE:        "#FFF569", PRIEST:       "#FFFFFF", DEATH_KNIGHT: "#C41F3B",
-  SHAMAN:       "#0070DE", MAGE:         "#69CCF0", WARLOCK:      "#9482C9",
-  MONK:         "#00FF96", DRUID:        "#FF7D0A", DEMONHUNTER:  "#A330C9",
-  EVOKER:       "#33937F",
-};
-
-const CLASS_NAME_ES: Record<string, string> = {
-  WARRIOR: "Guerrero", PALADIN: "Paladín", HUNTER: "Cazador",
-  ROGUE: "Pícaro", PRIEST: "Sacerdote", DEATH_KNIGHT: "Caballero de la Muerte",
-  SHAMAN: "Chamán", MAGE: "Mago", WARLOCK: "Brujo",
-  MONK: "Monje", DRUID: "Druida", DEMONHUNTER: "Cazador de Demonios",
-  EVOKER: "Evocador",
-};
+import { classColor, classLabel, realmLabel } from "@/lib/wow";
 
 const PODIUM_STYLE = [
   { border: "border-yellow-400", glow: "#FFD70033", label: "1", size: "text-2xl font-bold text-yellow-400" },
@@ -57,8 +43,8 @@ export default async function RankingPage() {
             {[top3[1], top3[0], top3[2]].filter(Boolean).map((entry) => {
               const style = PODIUM_STYLE[entry.position - 1];
               const charClass = entry.character?.wow_class ?? null;
-              const color = CLASS_COLOR[charClass ?? ""] ?? "#888";
-              const className = CLASS_NAME_ES[charClass ?? ""] ?? null;
+              const color = classColor(charClass);
+              const className = classLabel(charClass);
 
               return (
                 <div
@@ -101,8 +87,8 @@ export default async function RankingPage() {
           <ul className="space-y-2">
             {rest.map((entry) => {
               const charClass = entry.character?.wow_class ?? null;
-              const color = CLASS_COLOR[charClass ?? ""] ?? "#888";
-              const className = CLASS_NAME_ES[charClass ?? ""] ?? null;
+              const color = classColor(charClass);
+              const className = classLabel(charClass);
 
               return (
                 <li key={entry.discord_id} className="flex items-center gap-4 px-4 py-3 rounded-xl bg-gray-900 hover:bg-gray-800 transition-colors">
@@ -118,7 +104,7 @@ export default async function RankingPage() {
                     <p className="font-semibold text-sm truncate">{entry.username}</p>
                     {entry.character ? (
                       <p className="text-xs truncate" style={{ color }}>
-                        {entry.character.name}-{entry.character.realm}
+                        {entry.character.name}-{realmLabel(entry.character.realm) ?? entry.character.realm}
                         {className && ` · ${className}`}
                         {entry.character.is_verified && (
                           <span className="ml-1 text-gray-500">· verificado</span>

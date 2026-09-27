@@ -80,6 +80,7 @@ export type WikiCharacter = {
   wow_class: string | null;
   race: string | null;
   faction: string | null;
+  gender?: string | null;
   author_username: string;
   related: WikiRelated[];
   stories: WikiStory[];

@@ -27,9 +27,24 @@ export default async function ProfilePage() {
 
   // 2. Si hay personajes Retail sin render_url o con render de baja calidad (avatar),
   //    ejecutar sync ANTES de renderizar para que la primera visita ya muestre las imágenes.
-  const needsSync = user.has_blizzard && characters.some(
-    (c: { game: string; render_url: string | null }) =>
-      c.game !== "forever" && (!c.render_url || (c.render_url as string).endsWith("-avatar.jpg"))
+  const needsSync = characters.some(
+    (c: {
+      game: string;
+      render_url: string | null;
+      race: string | null;
+      faction: string | null;
+      wow_class: string | null;
+      gender: string | null;
+    }) =>
+      c.game !== "forever" && (
+        !c.race
+        || !c.faction
+        || !c.wow_class
+        || !c.gender
+        || (user.has_blizzard && (
+          !c.render_url || (c.render_url as string).endsWith("-avatar.jpg")
+        ))
+      )
   );
   if (needsSync) {
     try {

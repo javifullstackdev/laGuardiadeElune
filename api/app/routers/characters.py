@@ -33,6 +33,8 @@ from app.schemas.character import (
 from app.services.bio_questions import answers_complete, normalize_answers
 
 BLIZZARD_REGION = os.getenv("BLIZZARD_REGION", "eu")
+BLIZZARD_CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID")
+BLIZZARD_CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET")
 
 UPLOAD_DIR = Path("uploads/avatars")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -128,6 +130,7 @@ async def get_blizzard_characters(
                 race_name=char["playable_race"]["name"],
                 level=char["level"],
                 faction=char["faction"]["type"],
+                gender=(char.get("gender") or {}).get("type"),
                 blizzard_character_id=char["id"],
             ))
 
@@ -548,6 +551,7 @@ async def add_character(
         race=race,
         level=data.level,
         faction=data.faction,
+        gender=data.gender,
         is_main=data.is_main,
         is_alt=not data.is_main,
         is_verified=True,
@@ -559,6 +563,59 @@ async def add_character(
 
 
 # ── Soft-delete ────────────────────────────────────────────────────────────────
+
+async def _blizzard_client_token(client: httpx.AsyncClient) -> str | None:
+    if not BLIZZARD_CLIENT_ID or not BLIZZARD_CLIENT_SECRET:
+        return None
+    try:
+        res = await client.post(
+            "https://oauth.battle.net/token",
+            data={"grant_type": "client_credentials"},
+            auth=(BLIZZARD_CLIENT_ID, BLIZZARD_CLIENT_SECRET),
+            timeout=8.0,
+        )
+        if res.status_code != 200:
+            return None
+        return res.json().get("access_token")
+    except Exception:
+        return None
+
+
+def _identity_from_blizzard(class_id: int | None, race_id: int | None):
+    wow_class = None
+    race = None
+    cls_name = BLIZZARD_CLASS_MAP.get(class_id) if class_id else None
+    if cls_name:
+        wow_class = CharacterClass[cls_name]
+    race_name = BLIZZARD_RACE_MAP.get(race_id) if race_id else None
+    if race_name:
+        race = CharacterRace[race_name]
+    return wow_class, race
+
+
+def _apply_blizzard_identity(char: Character, info: dict) -> bool:
+    changed = False
+    blizzard_id = info.get("id")
+    if blizzard_id and not char.blizzard_character_id:
+        char.blizzard_character_id = blizzard_id
+        changed = True
+    wow_class, race = _identity_from_blizzard(info.get("class_id"), info.get("race_id"))
+    if wow_class and char.wow_class != wow_class:
+        char.wow_class = wow_class
+        changed = True
+    if race and char.race != race:
+        char.race = race
+        changed = True
+    faction = info.get("faction")
+    if faction and char.faction != faction:
+        char.faction = faction
+        changed = True
+    gender = info.get("gender")
+    if gender and char.gender != gender:
+        char.gender = gender
+        changed = True
+    return changed
+
 
 async def _fetch_character_render_url(
     client: httpx.AsyncClient,
@@ -590,37 +647,70 @@ async def _fetch_character_render_url(
     return None
 
 
+async def _fetch_character_identity(
+    client: httpx.AsyncClient,
+    name: str,
+    realm: str,
+    access_token: str,
+) -> dict | None:
+    """Datos públicos de identidad (clase, raza, facción) desde la armería."""
+    try:
+        res = await client.get(
+            f"https://{BLIZZARD_REGION}.api.blizzard.com/profile/wow/character/{realm}/{name.lower()}",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"namespace": f"profile-{BLIZZARD_REGION}", "locale": "es_ES"},
+            timeout=8.0,
+        )
+        if res.status_code != 200:
+            return None
+        data = res.json()
+        race = data.get("playable_race") or data.get("race") or {}
+        return {
+            "id": data.get("id"),
+            "class_id": (data.get("character_class") or {}).get("id"),
+            "race_id": race.get("id"),
+            "faction": (data.get("faction") or {}).get("type"),
+            "gender": (data.get("gender") or {}).get("type"),
+        }
+    except Exception:
+        return None
+
+
 @router.post("/sync-blizzard-ids", status_code=200)
 async def sync_blizzard_ids(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Actualiza blizzard_character_id y render_url para los personajes Retail del usuario
-    que coincidan por nombre+realm con los de su cuenta de Battle.net.
-    Operacion idempotente y segura.
+    Actualiza id de Blizzard, render, clase, raza y facción de los Retail del usuario.
+    Usa el roster de la cuenta si hay token; la identidad también se rellena
+    desde la armería pública (client credentials) si falta.
     """
-    if not current_user.blizzard_access_token:
-        return {"synced": 0}
+    user_token = current_user.blizzard_access_token
+    client_token: str | None = None
 
     async with httpx.AsyncClient() as client:
-        res = await client.get(
-            f"https://{BLIZZARD_REGION}.api.blizzard.com/profile/user/wow",
-            headers={"Authorization": f"Bearer {current_user.blizzard_access_token}"},
-            params={"namespace": f"profile-{BLIZZARD_REGION}", "locale": "es_ES"},
-        )
+        bnet_index: dict[tuple[str, str], dict] = {}
+        if user_token:
+            res = await client.get(
+                f"https://{BLIZZARD_REGION}.api.blizzard.com/profile/user/wow",
+                headers={"Authorization": f"Bearer {user_token}"},
+                params={"namespace": f"profile-{BLIZZARD_REGION}", "locale": "es_ES"},
+            )
+            if res.status_code == 200:
+                for account in res.json().get("wow_accounts", []):
+                    for bnet_char in account.get("characters", []):
+                        key = (bnet_char["name"].lower(), bnet_char["realm"]["slug"].lower())
+                        bnet_index[key] = {
+                            "id": bnet_char["id"],
+                            "class_id": (bnet_char.get("playable_class") or {}).get("id"),
+                            "race_id": (bnet_char.get("playable_race") or {}).get("id"),
+                            "faction": (bnet_char.get("faction") or {}).get("type"),
+                            "gender": (bnet_char.get("gender") or {}).get("type"),
+                        }
+            else:
+                user_token = None
 
-        if res.status_code != 200:
-            return {"synced": 0}
-
-        # Mapa (name_lower, realm_lower) -> blizzard_character_id
-        bnet_index: dict[tuple[str, str], int] = {}
-        for account in res.json().get("wow_accounts", []):
-            for char in account.get("characters", []):
-                key = (char["name"].lower(), char["realm"]["slug"].lower())
-                bnet_index[key] = char["id"]
-
-        # Sincronizar todos los personajes retail para asegurar render_url
         chars_to_sync = (
             db.query(Character)
             .filter(
@@ -634,20 +724,28 @@ async def sync_blizzard_ids(
         synced = 0
         for char in chars_to_sync:
             key = (char.name.lower(), char.realm.lower())
-            if key not in bnet_index:
-                continue
+            info = bnet_index.get(key)
+            needs_identity = not char.race or not char.faction or not char.wow_class or not char.gender
+            if needs_identity and (info is None or not info.get("gender")):
+                token = user_token
+                if not token:
+                    if client_token is None:
+                        client_token = await _blizzard_client_token(client)
+                    token = client_token
+                if token:
+                    extra = await _fetch_character_identity(
+                        client, char.name, char.realm, token
+                    )
+                    if extra:
+                        info = {**(info or {}), **{k: v for k, v in extra.items() if v}}
 
             changed = False
+            if info:
+                changed = _apply_blizzard_identity(char, info)
 
-            # Rellenar blizzard_character_id si falta
-            if not char.blizzard_character_id:
-                char.blizzard_character_id = bnet_index[key]
-                changed = True
-
-            # Rellenar render_url si falta O si solo tiene el tipo avatar (baja calidad)
-            if not char.render_url or char.render_url.endswith("-avatar.jpg"):
+            if user_token and (not char.render_url or char.render_url.endswith("-avatar.jpg")):
                 url = await _fetch_character_render_url(
-                    client, char.name, char.realm, current_user.blizzard_access_token
+                    client, char.name, char.realm, user_token
                 )
                 if url:
                     char.render_url = url

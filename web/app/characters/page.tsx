@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import AddCharacterRow from "./AddCharacterRow";
+import { realmLabel } from "@/lib/wow";
 
 type MyCharacter = {
   name: string;
@@ -147,7 +148,7 @@ function CharacterBadge({ char }: { char: MyCharacter }) {
     <li className="flex items-center gap-2 border rounded px-4 py-2">
       <span className="font-semibold">{char.name}</span>
       {char.surname && <span className="text-gray-500 text-sm">{char.surname}</span>}
-      <span className="text-gray-400 text-sm">· {char.realm}</span>
+      <span className="text-gray-400 text-sm">· {char.game !== "forever" ? realmLabel(char.realm) ?? char.realm : char.realm}</span>
       {char.is_main && (
         <span className="text-xs text-yellow-600 border border-yellow-400/40 rounded-full px-2 py-0.5">main</span>
       )}
