@@ -169,11 +169,21 @@ class Database:
         wow_class: str | None = None,
         role_function: str | None = None,
         is_main: bool = False,
+        game: str = "retail",
+        surname: str | None = None,
+        blizzard_character_id: int | None = None,
+        is_verified: bool = False,
     ) -> asyncpg.Record:
         """
         Registra un personaje y lo vincula a un usuario.
-        Si el personaje ya existe para ese usuario, lo devuelve sin duplicar.
+        Si el personaje ya existe para ese usuario y línea temporal, lo actualiza.
         """
+        game = (game or "retail").lower()
+        if game not in ("retail", "forever"):
+            raise ValueError("El juego debe ser retail o forever")
+        if game == "forever" and not (surname or "").strip():
+            raise ValueError("Los personajes de Warcraft Forever necesitan apellido")
+
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 user = await conn.fetchrow(
@@ -187,26 +197,42 @@ class Database:
                     """
                     SELECT u.discord_id FROM characters c
                     JOIN users u ON c.user_id = u.id
-                    WHERE c.name = $1 AND c.realm = $2 AND u.discord_id != $3
-                    AND c.deleted_at IS NULL
+                    WHERE c.name = $1 AND c.realm = $2 AND c.game = $3
+                      AND u.discord_id != $4
+                      AND c.deleted_at IS NULL
                     """,
-                    name, realm, discord_id,
+                    name, realm, game, discord_id,
                 )
                 if conflict:
-                    raise ValueError(f"El personaje {name}-{realm} ya está vinculado a otro usuario")
+                    raise ValueError(f"El personaje {name}-{realm} ({game}) ya está vinculado a otro usuario")
 
-                # Upsert del personaje
                 character = await conn.fetchrow(
                     """
-                    INSERT INTO characters (id, user_id, name, realm, is_main, is_alt, wow_class, role_function)
-                    VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6::characterclass, $7::characterfunction)
-                    ON CONFLICT (user_id, name, realm) DO UPDATE
+                    INSERT INTO characters (
+                        id, user_id, name, realm, game, surname,
+                        is_main, is_alt, wow_class, role_function,
+                        blizzard_character_id, is_verified
+                    )
+                    VALUES (
+                        gen_random_uuid(), $1, $2, $3, $4, $5,
+                        $6, $7, $8::characterclass, $9::characterfunction,
+                        $10, $11
+                    )
+                    ON CONFLICT (user_id, name, realm, game) DO UPDATE
                         SET is_main = EXCLUDED.is_main,
+                            is_alt = EXCLUDED.is_alt,
+                            surname = COALESCE(EXCLUDED.surname, characters.surname),
+                            wow_class = COALESCE(EXCLUDED.wow_class, characters.wow_class),
+                            role_function = COALESCE(EXCLUDED.role_function, characters.role_function),
+                            blizzard_character_id = COALESCE(EXCLUDED.blizzard_character_id, characters.blizzard_character_id),
+                            is_verified = characters.is_verified OR EXCLUDED.is_verified,
                             updated_at = now()
                     RETURNING *
                     """,
-                    user["id"], name, realm, is_main, not is_main,
+                    user["id"], name, realm, game, surname,
+                    is_main, not is_main,
                     wow_class, role_function,
+                    blizzard_character_id, is_verified,
                 )
                 return character
 
