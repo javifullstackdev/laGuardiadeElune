@@ -109,6 +109,8 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 ![Flujo](docs/diagrama-flujo.png)
 # 8. Estado del proyecto
 
+Arranque local y uso de la web: [web-guide.md](web-guide.md).
+
 ## Base de datos — tablas activas (~28 migraciones Alembic)
 
 | Tabla | Descripción |
