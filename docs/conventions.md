@@ -26,3 +26,9 @@ feat: add a Details tab and hide profile scrollbars
 
 Keep the public sheet in Bio and move editable identity fields to their own tab.
 ```
+
+## Git: el usuario ejecuta los comandos
+
+Cuando pida **subir, hacer commit, crear rama o abrir un PR**, dale los comandos de PowerShell para copiarlos y ejecutarlos. No los lances tú salvo que lo pida de forma explícita.
+
+Así aprende Git. Recuérdalo en cada sesión.
