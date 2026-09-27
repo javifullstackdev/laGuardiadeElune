@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { StoryMine } from "@/lib/stories";
+import { storyExcerpt, type StoryMine } from "@/lib/stories";
 import { RELATION_TYPES } from "@/lib/relations";
 
 type Mention = {
@@ -158,87 +158,17 @@ export default function PublishStoryPanel({
     setSending(false);
   }
 
-  if (loading) return null;
+  if (loading) {
+    return <p className="text-gray-600 text-sm">Cargando historias...</p>;
+  }
 
   return (
-    <section className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 space-y-6">
-      <div>
-        <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-2">Envíos anteriores</h3>
-        <p className="text-sm text-gray-400">
-          Relatos que escribes tú. El Eremita los revisa antes de publicarlos en Historias. No sustituyen la ficha.
-        </p>
-      </div>
-
-      {stories.length === 0 ? (
-        <p className="text-sm text-gray-500">Todavía no has enviado ninguna historia de este personaje.</p>
-      ) : (
-        <ul className="space-y-3">
-          {stories.map((story) => {
-            const open = openId === story.id;
-            return (
-              <li key={story.id} className="rounded-lg border border-gray-800 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setOpenId(open ? null : story.id)}
-                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-800/50"
-                >
-                  <div className="w-14 h-14 shrink-0 rounded-md overflow-hidden bg-gray-800 border border-gray-700">
-                    {story.cover_url ? (
-                      <img src={story.cover_url} alt="" className="w-full h-full object-cover object-top" />
-                    ) : null}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-gray-100 truncate">{story.title}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{formatShort(story.submitted_at)}</p>
-                  </div>
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full border shrink-0 ${STATUS_CLASS[story.status]}`}>
-                    {STATUS_LABEL[story.status]}
-                  </span>
-                </button>
-                {open && (
-                  <div className="px-3 pb-3 space-y-3 border-t border-gray-800 pt-3">
-                    {story.awaiting_relations && (
-                      <p className="text-xs text-amber-400">
-                        Aún faltan confirmaciones de los personajes mencionados.
-                      </p>
-                    )}
-                    {story.status === "rejected" && story.rejection_reason && (
-                      <p className="text-xs text-red-300">{story.rejection_reason}</p>
-                    )}
-                    {story.biography && (
-                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{story.biography}</p>
-                    )}
-                    {story.personality && (
-                      <p className="text-sm text-gray-400">
-                        <span className="text-gray-500">Personalidad: </span>
-                        {story.personality}
-                      </p>
-                    )}
-                    {story.appearance && (
-                      <p className="text-sm text-gray-400">
-                        <span className="text-gray-500">Aspecto: </span>
-                        {story.appearance}
-                      </p>
-                    )}
-                    <Link
-                      href={`/lore/${story.id}`}
-                      className="inline-block text-xs text-yellow-400 hover:underline"
-                    >
-                      Abrir en página completa
-                    </Link>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <div className="border-t border-gray-800 pt-4 space-y-4">
+    <section className="space-y-8">
+      <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 space-y-4">
         <div>
           <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-2">Nueva historia</h3>
           <p className="text-sm text-gray-400">
-            Escribe el relato aquí. Si nombra a alguien de la hermandad, elígelo debajo — no hace falta un @.
+            Escríbela y envíala al Eremita. Si nombra a alguien de la hermandad, elígelo debajo — no hace falta un @.
             Si no adjuntas imagen, se usará la del personaje.
           </p>
         </div>
@@ -361,9 +291,85 @@ export default function PublishStoryPanel({
           disabled={sending || body.trim().length < 80}
           className="px-3 py-1.5 rounded-lg text-sm bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-40"
         >
-          {sending ? "Enviando..." : body.trim().length < 80 ? "Escribe la historia primero" : "Enviar a revisión"}
+          {sending ? "Enviando..." : body.trim().length < 80 ? "Escribe la historia primero" : "Enviar al Eremita"}
         </button>
       </div>
+
+      <div>
+        <h3 className="text-xs text-gray-500 uppercase tracking-wider mb-2">Historias de este personaje</h3>
+        <p className="text-sm text-gray-400 mb-4">
+          Resumen de todo lo que ha escrito. El Eremita las revisa antes de publicarlas. No sustituyen la ficha.
+        </p>
+      </div>
+
+      {stories.length === 0 ? (
+        <p className="text-sm text-gray-500">Todavía no ha enviado ninguna historia.</p>
+      ) : (
+        <ul className="space-y-3">
+          {stories.map((story) => {
+            const open = openId === story.id;
+            const excerpt = storyExcerpt(story);
+            return (
+              <li key={story.id} className="rounded-lg border border-gray-800 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setOpenId(open ? null : story.id)}
+                  className="w-full flex items-center gap-3 p-3 text-left hover:bg-gray-800/50"
+                >
+                  <div className="w-14 h-14 shrink-0 rounded-md overflow-hidden bg-gray-800 border border-gray-700">
+                    {story.cover_url ? (
+                      <img src={story.cover_url} alt="" className="w-full h-full object-cover object-top" />
+                    ) : null}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-gray-100 truncate">{story.title}</p>
+                    {excerpt && (
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{excerpt}</p>
+                    )}
+                    <p className="text-xs text-gray-600 mt-0.5">{formatShort(story.submitted_at)}</p>
+                  </div>
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full border shrink-0 ${STATUS_CLASS[story.status]}`}>
+                    {STATUS_LABEL[story.status]}
+                  </span>
+                </button>
+                {open && (
+                  <div className="px-3 pb-3 space-y-3 border-t border-gray-800 pt-3">
+                    {story.awaiting_relations && (
+                      <p className="text-xs text-amber-400">
+                        Aún faltan confirmaciones de los personajes mencionados.
+                      </p>
+                    )}
+                    {story.status === "rejected" && story.rejection_reason && (
+                      <p className="text-xs text-red-300">{story.rejection_reason}</p>
+                    )}
+                    {story.biography && (
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">{story.biography}</p>
+                    )}
+                    {story.personality && (
+                      <p className="text-sm text-gray-400">
+                        <span className="text-gray-500">Personalidad: </span>
+                        {story.personality}
+                      </p>
+                    )}
+                    {story.appearance && (
+                      <p className="text-sm text-gray-400">
+                        <span className="text-gray-500">Aspecto: </span>
+                        {story.appearance}
+                      </p>
+                    )}
+                    <Link
+                      href={`/lore/${story.id}`}
+                      className="inline-block text-xs text-yellow-400 hover:underline"
+                    >
+                      Abrir en página completa
+                    </Link>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }

@@ -7,6 +7,7 @@ from datetime import date
 from app.dependencies import get_current_user, require_admin
 from app.database import get_db
 from app.models.user import User
+from app.models.point_transaction import PointTransaction
 from app.routers.auth import fetch_guild_nick, fetch_guild_nicks
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -86,7 +87,7 @@ def set_user_birthday(
 
 @router.get("/me/transactions")
 def get_my_transactions(
-    limit: int = 10,
+    limit: int = Query(default=200, le=500),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

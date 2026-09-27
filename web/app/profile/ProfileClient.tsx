@@ -9,6 +9,7 @@ import BioQuestionnaire from "./BioQuestionnaire";
 import ClaimsInbox from "./ClaimsInbox";
 import { mergePublicFields, PUBLIC_FIELD_LABELS, type PublicFields } from "@/lib/wiki";
 import { answersComplete, mergeAnswers, type BioAnswers, type BioQuestion } from "@/lib/bio";
+import { getEntitlements } from "@/lib/entitlements";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,19 @@ type RelationData = {
   description: string | null;
   direction: "outgoing" | "incoming";
   other: { name: string; realm: string; wow_class: string | null; owner_username: string };
+  story_count?: number;
+  reciprocal?: boolean;
+};
+
+type AchievementData = {
+  id: string;
+  name: string;
+  title: string | null;
+  description: string;
+  icon: string;
+  points_value: number;
+  scope: "account" | "character";
+  earned_at: string;
 };
 
 // ── Lookups ───────────────────────────────────────────────────────────────
@@ -242,6 +256,7 @@ export default function ProfileClient({
             <CharacterDetail
               char={selected}
               transactions={transactions}
+              totalPoints={user.total_points}
               onSetMain={() => handleSetMain(selected)}
               isPending={isPending}
               onFavoriteTitleChange={(t) => handleFavoriteTitleChange(selected, t)}
@@ -349,19 +364,20 @@ export default function ProfileClient({
 
 // ── Detalle del personaje ─────────────────────────────────────────────────
 
-type DetailTab = "points" | "lore" | "professions";
+type DetailTab = "bio" | "points" | "achievements" | "titles" | "stories" | "relations" | "professions";
 
 function CharacterDetail({
-  char, transactions, onSetMain, isPending, onFavoriteTitleChange, onDetailsPatch,
+  char, transactions, totalPoints, onSetMain, isPending, onFavoriteTitleChange, onDetailsPatch,
 }: {
   char: Character;
   transactions: Transaction[];
+  totalPoints: number;
   onSetMain: () => void;
   isPending: boolean;
   onFavoriteTitleChange: (t: TitleData | null) => void;
   onDetailsPatch: (p: CharPatch) => void;
 }) {
-  const [tab, setTab] = useState<DetailTab>("points");
+  const [tab, setTab] = useState<DetailTab>("bio");
   const color     = CLASS_COLOR[char.wow_class ?? ""] ?? "#888888";
   const className = CLASS_NAME_ES[char.wow_class ?? ""] ?? char.wow_class ?? "Desconocida";
   const raceName  = RACE_NAME_ES[char.race ?? ""] ?? char.race ?? null;
@@ -378,9 +394,13 @@ function CharacterDetail({
   ].filter((d) => d.value !== null) as { label: string; value: string; color?: string }[];
 
   const tabs: { key: DetailTab; label: string }[] = [
-    { key: "points",      label: "Puntos y logros" },
-    { key: "lore",        label: "Trasfondo" },
-    { key: "professions", label: "Profesiones" },
+    { key: "bio",          label: "Bio" },
+    { key: "points",       label: "Puntos" },
+    { key: "achievements", label: "Logros" },
+    { key: "titles",       label: "Títulos" },
+    { key: "stories",      label: "Historias" },
+    { key: "relations",    label: "Relaciones" },
+    { key: "professions",  label: "Profesiones" },
   ];
 
   const [mobileAvatarOpen, setMobileAvatarOpen] = useState(false);
@@ -622,16 +642,19 @@ function CharacterDetail({
         className="relative z-10 flex-1 overflow-y-auto min-h-0 px-4 sm:px-8 py-4 sm:py-6 lg:pl-[var(--fact-pad)]"
         style={factStyle}
       >
-        {tab === "points" && (
-          <PointsAndAchievementsTab transactions={transactions} />
-        )}
-        {tab === "lore" && (
-          <LoreAndRelationsTab
+        {tab === "bio" && (
+          <BioTab
             char={char}
             onDetailsPatch={onDetailsPatch}
-            onFavoriteTitleChange={onFavoriteTitleChange}
           />
         )}
+        {tab === "points" && <PointsTab transactions={transactions} totalPoints={totalPoints} />}
+        {tab === "achievements" && <AchievementsTab char={char} />}
+        {tab === "titles" && (
+          <TitlesTab char={char} onFavoriteTitleChange={onFavoriteTitleChange} />
+        )}
+        {tab === "stories" && <StoriesTab char={char} />}
+        {tab === "relations" && <RelationsTab char={char} />}
         {tab === "professions" && (
           <ProfessionsTab char={char} color={color} />
         )}
@@ -641,21 +664,100 @@ function CharacterDetail({
   );
 }
 
-// ── Tab: Puntos y logros ──────────────────────────────────────────────────
+function relationDegree(count: number) {
+  if (count >= 3) return "Estrecha";
+  if (count >= 1) return "Cercana";
+  return "Ocasional";
+}
 
-function PointsAndAchievementsTab({ transactions }: { transactions: Transaction[] }) {
+// ── Tab: Logros ───────────────────────────────────────────────────────────
+
+function AchievementsTab({ char }: { char: Character }) {
+  const [items, setItems] = useState<AchievementData[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setItems(null);
+    fetch(`/api/characters/achievements?name=${encodeURIComponent(char.name)}&realm=${encodeURIComponent(char.realm)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => { if (!cancelled) setItems(Array.isArray(data) ? data : []); })
+      .catch(() => { if (!cancelled) setItems([]); });
+    return () => { cancelled = true; };
+  }, [char.name, char.realm]);
+
+  if (items === null) {
+    return <p className="text-gray-600 text-sm">Cargando logros...</p>;
+  }
+
+  const account = items.filter((a) => a.scope === "account");
+  const personal = items.filter((a) => a.scope === "character");
+
   return (
     <div className="space-y-8">
+      <p className="text-sm text-gray-400">
+        Los de cuenta se ven en todos tus personajes. Los de personaje solo en este.
+      </p>
+      <AchievementGroup title="De cuenta" items={account} empty="Aún no hay logros de cuenta." />
+      <AchievementGroup title="De este personaje" items={personal} empty="Este personaje aún no tiene logros propios." />
+    </div>
+  );
+}
 
-      {/* Historial de puntos */}
+function AchievementGroup({
+  title, items, empty,
+}: {
+  title: string;
+  items: AchievementData[];
+  empty: string;
+}) {
+  return (
+    <section>
+      <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4">{title}</h2>
+      {items.length === 0 ? (
+        <p className="text-gray-500 text-sm">{empty}</p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((item) => (
+            <li key={item.id} className="flex items-start gap-3 px-4 py-3 rounded-lg bg-gray-900 border border-gray-800/50">
+              {item.icon.startsWith("http") || item.icon.startsWith("/") ? (
+                <img src={item.icon} alt="" className="w-10 h-10 rounded-md object-cover shrink-0" />
+              ) : (
+                <div className="w-10 h-10 rounded-md bg-gray-800 border border-gray-700 shrink-0 flex items-center justify-center text-sm text-yellow-400">
+                  {item.icon.slice(0, 2)}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-gray-100">{item.title || item.name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {item.points_value} pts · {new Date(item.earned_at).toLocaleDateString("es-ES")}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// ── Tab: Puntos ───────────────────────────────────────────────────────────
+
+function PointsTab({ transactions, totalPoints }: { transactions: Transaction[]; totalPoints: number }) {
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-gray-800 bg-gray-900/40 px-4 py-3">
+        <p className="text-xs uppercase tracking-wider text-gray-500">Total de la cuenta</p>
+        <p className="text-2xl font-bold text-yellow-400 mt-1">{totalPoints}</p>
+      </div>
       <section>
-        <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Historial de puntos</h2>
+        <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Historial</h2>
         {transactions.length === 0 ? (
           <p className="text-gray-500 text-sm">Sin actividad registrada aún.</p>
         ) : (
           <ul className="space-y-2">
             {transactions.map((t, i) => (
-              <li key={i} className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-900 border border-gray-800/50">
+              <li key={`${t.created_at}-${i}`} className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-900 border border-gray-800/50">
                 <span className={`text-sm font-bold w-14 text-right shrink-0 ${t.amount > 0 ? "text-green-400" : "text-red-400"}`}>
                   {t.amount > 0 ? "+" : ""}{t.amount}
                 </span>
@@ -671,30 +773,22 @@ function PointsAndAchievementsTab({ transactions }: { transactions: Transaction[
           </ul>
         )}
       </section>
-
-      {/* Logros — próximamente */}
-      <section>
-        <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Logros</h2>
-        <div className="px-4 py-6 rounded-lg bg-gray-900/50 border border-dashed border-gray-800 text-center">
-          <p className="text-gray-500 text-sm">Los logros del gremio se mostrarán aquí próximamente.</p>
-        </div>
-      </section>
     </div>
   );
 }
 
-// ── Tab: Historia y relaciones ────────────────────────────────────────────
+// ── Tab: Bio ──────────────────────────────────────────────────────────────
 
-function LoreAndRelationsTab({
-  char, onDetailsPatch, onFavoriteTitleChange,
+function BioTab({
+  char, onDetailsPatch,
 }: {
   char: Character;
   onDetailsPatch: (p: CharPatch) => void;
-  onFavoriteTitleChange: (t: TitleData | null) => void;
 }) {
   const published = char.bio_status === "published" && !!char.biography;
   const answersLocked = char.bio_answers_pending;
   const [questions, setQuestions] = useState<BioQuestion[]>([]);
+  const [questionsReady, setQuestionsReady] = useState(false);
   const [answers, setAnswers] = useState<BioAnswers>(char.bio_answers ?? {});
   const [surname, setSurname] = useState(char.surname ?? "");
   const [prefixTitle, setPrefix] = useState(char.prefix_title ?? "");
@@ -704,9 +798,11 @@ function LoreAndRelationsTab({
   const [publicFields, setPublicFields] = useState<PublicFields>(mergePublicFields(char.public_fields));
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setQuestionsReady(false);
     fetch("/api/bios/questions")
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
@@ -714,7 +810,8 @@ function LoreAndRelationsTab({
         setQuestions(list);
         setAnswers(mergeAnswers(list, char.bio_answers));
       })
-      .catch(() => setQuestions([]));
+      .catch(() => setQuestions([]))
+      .finally(() => setQuestionsReady(true));
   }, [char.name, char.realm]);
 
   useEffect(() => {
@@ -724,6 +821,7 @@ function LoreAndRelationsTab({
     setAge(char.age_lore ? String(char.age_lore) : "");
     setResidence(char.residence ?? "");
     setPublicFields(mergePublicFields(char.public_fields));
+    setUpdating(false);
     setError(null);
   }, [char.name, char.realm]);
 
@@ -811,6 +909,8 @@ function LoreAndRelationsTab({
     }
   }
 
+  const showQuiz = !published || updating || answersLocked;
+
   return (
     <div className="space-y-8">
       {published && (
@@ -819,7 +919,7 @@ function LoreAndRelationsTab({
             <div>
               <h2 className="text-xs text-gray-500 uppercase tracking-wider">Ficha pública</h2>
               <p className="text-sm text-gray-400 mt-1">
-                La biografía la escribe el Eremita a partir del cuestionario. Las historias van aparte.
+                Lo que aparece en la ficha pública de este personaje.
               </p>
             </div>
             <Link
@@ -835,6 +935,52 @@ function LoreAndRelationsTab({
         </section>
       )}
 
+      {showQuiz && (
+        <section className="space-y-5">
+          <div>
+            <h2 className="text-xs text-gray-500 uppercase tracking-wider">
+              {published ? "Actualizar ficha" : "Cuestionario para el Eremita"}
+            </h2>
+            <p className="text-sm text-gray-400 mt-1">
+              {published
+                ? "Si quieres cambiar la ficha, responde de nuevo y el Eremita la reescribirá."
+                : "Una pregunta cada vez. Con esto el Eremita redactará tu biografía."}
+            </p>
+          </div>
+          {char.bio_rejection_reason && !answersLocked && (
+            <p className="text-sm text-red-300">
+              El Eremita pidió cambios: {char.bio_rejection_reason}
+            </p>
+          )}
+          {answersLocked && (
+            <p className="text-sm text-amber-300">
+              El cuestionario está en revisión. Cuando el Eremita escriba la ficha, aparecerá aquí.
+            </p>
+          )}
+          {!questionsReady && !answersLocked && (
+            <p className="text-gray-600 text-sm">Cargando la primera pregunta...</p>
+          )}
+          {questionsReady && questions.length > 0 && !answersLocked && (
+            <BioQuestionnaire
+              key={`${char.name}-${char.realm}-${updating}`}
+              questions={questions}
+              answers={answers}
+              onChange={setAnswers}
+            />
+          )}
+          {published && updating && (
+            <button
+              type="button"
+              onClick={() => setUpdating(false)}
+              className="text-xs text-gray-500 hover:text-gray-300"
+            >
+              Cancelar
+            </button>
+          )}
+        </section>
+      )}
+
+      {published && (
       <section className="space-y-5">
         <div>
           <h2 className="text-xs text-gray-500 uppercase tracking-wider">Datos de la ficha</h2>
@@ -867,71 +1013,73 @@ function LoreAndRelationsTab({
           </div>
         </div>
       </section>
+      )}
 
-      <section className="space-y-5">
-        <div>
-          <h2 className="text-xs text-gray-500 uppercase tracking-wider">Cuestionario para el Eremita</h2>
-          <p className="text-sm text-gray-400 mt-1">
-            Responde con las opciones o escribe la tuya. El Eremita usará esto para redactar la ficha.
-            Las historias las escribes tú más abajo.
-          </p>
-        </div>
-        {char.bio_rejection_reason && !answersLocked && (
-          <p className="text-sm text-red-300">
-            El Eremita pidió cambios: {char.bio_rejection_reason}
-          </p>
-        )}
-        {answersLocked && (
-          <p className="text-sm text-amber-300">
-            El cuestionario está en revisión. Cuando el Eremita escriba la ficha, aparecerá arriba.
-          </p>
-        )}
-        {questions.length > 0 && (
-          <BioQuestionnaire
-            key={`${char.name}-${char.realm}-${answersLocked}`}
-            questions={questions}
-            answers={answers}
-            locked={answersLocked}
-            onChange={setAnswers}
-          />
-        )}
-      </section>
+      {published && !updating && !answersLocked && (
+        <button
+          type="button"
+          onClick={() => setUpdating(true)}
+          className="text-xs text-gray-400 hover:text-gray-200 px-3 py-1.5 rounded-lg border border-gray-800"
+        >
+          Pedir actualización de la ficha
+        </button>
+      )}
 
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <div className="flex flex-wrap gap-3">
-        <button
-          type="button"
-          onClick={handleSaveDraft}
-          disabled={saving}
-          className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold text-sm disabled:opacity-50"
-        >
-          {saving ? "Guardando..." : "Guardar cambios"}
-        </button>
-        <button
-          type="button"
-          onClick={handleSubmitAnswers}
-          disabled={sending || answersLocked || !answersComplete(questions, answers)}
-          className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm disabled:opacity-40"
-        >
-          {answersLocked
-            ? "Enviado al Eremita"
-            : sending
-              ? "Enviando..."
-              : published
-                ? "Pedir actualización de la ficha"
-                : "Enviar al Eremita"}
-        </button>
+        {(published || (!answersLocked && showQuiz)) && (
+          <button
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={saving}
+            className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold text-sm disabled:opacity-50"
+          >
+            {saving ? "Guardando..." : published ? "Guardar cambios" : "Guardar progreso"}
+          </button>
+        )}
+        {(!published || updating) && !answersLocked && (
+          <button
+            type="button"
+            onClick={handleSubmitAnswers}
+            disabled={sending || !questionsReady || !answersComplete(questions, answers)}
+            className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm disabled:opacity-40"
+          >
+            {sending ? "Enviando..." : published ? "Enviar actualización" : "Enviar al Eremita"}
+          </button>
+        )}
       </div>
+    </div>
+  );
+}
 
-      <PublishStoryPanel name={char.name} realm={char.realm} />
+function TitlesTab({
+  char, onFavoriteTitleChange,
+}: {
+  char: Character;
+  onFavoriteTitleChange: (t: TitleData | null) => void;
+}) {
+  const { maxDisplayedTitles } = getEntitlements();
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-gray-400">
+        Títulos que ha ganado este personaje. Elige cuál se muestra en el perfil y en la ficha.
+        {maxDisplayedTitles === 1
+          ? " De momento solo uno."
+          : ` Puedes mostrar hasta ${maxDisplayedTitles}.`}
+      </p>
+      <CharacterTitlesSection char={char} onFavoriteTitleChange={onFavoriteTitleChange} />
+    </div>
+  );
+}
 
+function StoriesTab({ char }: { char: Character }) {
+  return <PublishStoryPanel name={char.name} realm={char.realm} />;
+}
+
+function RelationsTab({ char }: { char: Character }) {
+  return (
+    <div className="space-y-8">
       <ClaimsInbox />
-
-      <section>
-        <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Títulos</h2>
-        <CharacterTitlesSection char={char} onFavoriteTitleChange={onFavoriteTitleChange} />
-      </section>
-
       <section>
         <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Relaciones</h2>
         <RelationsSection char={char} />
@@ -1289,18 +1437,24 @@ function RelationsSection({ char }: { char: Character }) {
 
 function RelationCard({ rel, onDelete }: { rel: RelationData; onDelete: (id: string) => void }) {
   const color = CLASS_COLOR[rel.other.wow_class ?? ""] ?? "#888";
+  const count = rel.story_count ?? 0;
   return (
     <div className="px-4 py-3 rounded-lg bg-gray-900/70 border border-gray-800/50 flex gap-3 items-start">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold" style={{ color }}>{rel.other.name}</span>
           <span className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">{getRelationLabel(rel.relation_type)}</span>
+          <span className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">{relationDegree(count)}</span>
+          {rel.reciprocal && (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Recíproca</span>
+          )}
           <span className="text-xs text-gray-600">({rel.other.owner_username})</span>
         </div>
         <p className="text-xs text-gray-600 mt-0.5 italic">
           {rel.direction === "outgoing"
             ? `Consideras a ${rel.other.name} tu ${getRelationLabel(rel.relation_type).toLowerCase()}`
             : `${rel.other.name} te considera su ${getRelationLabel(rel.relation_type).toLowerCase()}`}
+          {count > 0 ? ` · ${count} historia${count === 1 ? "" : "s"} en común` : ""}
         </p>
         {rel.description && <p className="text-sm text-gray-300 mt-1.5 leading-relaxed">{rel.description}</p>}
       </div>
