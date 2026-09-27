@@ -1,20 +1,72 @@
 import Link from "next/link";
 import { textToParagraphs } from "@/lib/posts";
 import { relationLabel } from "@/lib/relations";
-import { classLabel, raceLabel, factionLabel, classColor, realmLabel } from "@/lib/wow";
+import { classLabel, raceLabel, factionLabel, factionColor } from "@/lib/wow";
 import type { WikiCharacter } from "@/lib/wiki";
+import Breadcrumb from "@/app/components/Breadcrumb";
+import Parchment from "@/app/components/ui/Parchment";
+import WikiMobileStage from "./WikiMobileStage";
 
-function Block({ title, text }: { title: string; text: string | null }) {
+function ScrollSection({ title, text }: { title?: string; text: string | null }) {
   if (!text?.trim()) return null;
   return (
-    <section className="space-y-4">
-      <h2 className="text-xs uppercase tracking-widest text-gray-500">{title}</h2>
+    <section>
+      {title ? <h2>{title}</h2> : null}
       {textToParagraphs(text).map((p, i) => (
-        <p key={i} className="text-gray-300 leading-relaxed text-[1.05rem]">
-          {p}
-        </p>
+        <p key={i}>{p}</p>
       ))}
     </section>
+  );
+}
+
+function CharacterHeading({
+  prefixTitle,
+  displayName,
+  title,
+  className,
+}: {
+  prefixTitle?: string | null;
+  displayName: string;
+  title?: string | null;
+  className?: string;
+}) {
+  return (
+    <h1 className={className ?? "text-[#f3eee4]"}>
+      {prefixTitle ? (
+        <span className="block text-[1.15rem] font-semibold tracking-wide opacity-90">
+          {prefixTitle}
+        </span>
+      ) : null}
+      <span className="mt-1 block text-[2rem] font-bold leading-tight tracking-wide">
+        {displayName}
+      </span>
+      {title ? (
+        <span className="mt-1.5 block text-[1.2rem] font-semibold leading-snug tracking-wide text-[#e4ddd0]">
+          {title}
+        </span>
+      ) : null}
+    </h1>
+  );
+}
+
+function LoreParchment({ char }: { char: WikiCharacter }) {
+  const title = char.biography
+    ? "Biografía"
+    : char.personality
+      ? "Personalidad"
+      : "Aspecto físico";
+  return (
+    <Parchment title={title}>
+      <ScrollSection text={char.biography} />
+      <ScrollSection
+        title={char.biography ? "Personalidad" : undefined}
+        text={char.personality}
+      />
+      <ScrollSection
+        title={char.biography || char.personality ? "Aspecto físico" : undefined}
+        text={char.appearance}
+      />
+    </Parchment>
   );
 }
 
@@ -31,34 +83,45 @@ export default async function WikiCharacterPage({
 
   if (!res.ok) {
     return (
-      <main className="min-h-screen text-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-400 mb-4">Esta ficha aún no es pública.</p>
-          <Link href="/personajes" className="text-yellow-400 hover:underline">
-            Volver a personajes
-          </Link>
+      <main className="min-h-screen text-white">
+        <div className="max-w-7xl mx-auto px-4 py-10 sm:py-12">
+          <Breadcrumb
+            items={[
+              { href: "/", label: "Inicio" },
+              { href: "/personajes", label: "Personajes" },
+            ]}
+          />
+          <p className="text-gray-400">Esta ficha aún no es pública.</p>
         </div>
       </main>
     );
   }
 
   const char: WikiCharacter = await res.json();
-  const color = classColor(char.wow_class);
-  const facts = [
-    { label: "Título", value: char.title },
-    { label: "Raza", value: raceLabel(char.race, char.gender) },
-    { label: "Clase", value: classLabel(char.wow_class, char.gender) },
-    { label: "Facción", value: factionLabel(char.faction) },
-    { label: "Edad", value: char.age_lore ? `${char.age_lore} años` : null },
-    { label: "Origen", value: char.origin },
-    { label: "Residencia", value: char.residence },
-  ].filter((f) => f.value);
+  const facts = (
+    [
+      { label: "Raza", value: raceLabel(char.race, char.gender) },
+      { label: "Clase", value: classLabel(char.wow_class, char.gender) },
+      { label: "Facción", value: factionLabel(char.faction), color: factionColor(char.faction) },
+      { label: "Edad", value: char.age_lore ? `${char.age_lore} años` : null },
+      { label: "Origen", value: char.origin },
+      { label: "Residencia", value: char.residence },
+    ] as { label: string; value: string | null; color?: string }[]
+  ).filter((f): f is { label: string; value: string; color?: string } => Boolean(f.value));
+  const hasLore = Boolean(char.biography || char.personality || char.appearance);
+  const crumbs = [
+    { href: "/", label: "Inicio" },
+    { href: "/personajes", label: "Personajes" },
+    { label: char.display_name },
+  ];
+
+  const lore = hasLore ? <LoreParchment char={char} /> : null;
 
   return (
-    <main className="relative min-h-screen text-white overflow-hidden">
+    <main className="relative text-white">
       {char.cover_url && (
         <div
-          className="absolute inset-y-0 right-0 w-[58%] pointer-events-none select-none hidden sm:block"
+          className="fixed inset-y-0 right-0 w-[58%] pointer-events-none select-none hidden sm:block"
           style={{ zIndex: 0 }}
           aria-hidden
         >
@@ -81,63 +144,60 @@ export default async function WikiCharacterPage({
         </div>
       )}
 
-      <div className="relative z-10">
-        {char.cover_url && (
-          <div className="sm:hidden relative h-36 overflow-hidden">
-            <img
-              src={char.cover_url}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover object-[50%_10%]"
-            />
-            <div
-              className="absolute inset-0"
-              style={{ background: "linear-gradient(to bottom, transparent 40%, #030712 100%)" }}
-            />
-          </div>
-        )}
+      <WikiMobileStage
+        coverUrl={char.cover_url}
+        prefixTitle={char.prefix_title}
+        displayName={char.display_name}
+        title={char.title}
+        facts={facts}
+        crumbs={crumbs}
+      >
+        {lore}
+      </WikiMobileStage>
 
-        <div className="max-w-7xl mx-auto px-4 py-10 sm:py-12">
-          <Link
-            href="/personajes"
-            className="text-sm text-gray-500 hover:text-gray-300 transition-colors mb-8 inline-block"
-          >
-            Volver a personajes
-          </Link>
+      <div className="relative z-10 hidden sm:block">
+        <div className="max-w-7xl mx-auto px-4 pt-7 pb-6">
+          <Breadcrumb className="mb-4" items={crumbs} />
 
-          <div className="max-w-2xl">
-            {char.title && (
-              <p className="text-sm mb-1" style={{ color: "#DDB96A" }}>{char.title}</p>
-            )}
-            <h1
-              className="text-4xl font-bold leading-tight mb-2"
-              style={{ color, textShadow: `0 0 24px ${color}35` }}
-            >
-              {char.display_name}
-            </h1>
-            <p className="text-gray-500 mb-6">
-              {realmLabel(char.realm) ?? char.realm}
-              {" · "}
-              {char.author_username}
-            </p>
-
-            {facts.length > 0 && (
-              <div className="grid grid-cols-2 gap-2 mb-10 max-w-xl">
-                {facts.map((f) => (
-                  <div key={f.label} className="bg-gray-900/70 rounded-lg px-3 py-2 border border-gray-800/50">
-                    <p className="text-xs text-gray-600 mb-0.5">{f.label}</p>
-                    <p className="text-sm font-medium text-gray-100 truncate">{f.value}</p>
-                  </div>
-                ))}
+          <div className="flex flex-col lg:flex-row lg:items-end gap-5 lg:gap-8">
+            {hasLore && (
+              <div className="shrink-0 max-w-full">
+                <LoreParchment char={char} />
               </div>
             )}
 
-            <div className="space-y-10">
-              <Block title="Biografía" text={char.biography} />
-              <Block title="Personalidad" text={char.personality} />
-              <Block title="Aspecto físico" text={char.appearance} />
-            </div>
+            <aside className="w-full flex-1 min-w-0 lg:self-end lg:mb-16">
+              <CharacterHeading
+                className="mb-6 text-center text-[#f3eee4]"
+                prefixTitle={char.prefix_title}
+                displayName={char.display_name}
+                title={char.title}
+              />
+              {facts.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {facts.map((f) => (
+                    <div
+                      key={f.label}
+                      className="rounded-lg px-3 py-2.5 border border-white/20 bg-white/15 backdrop-blur-[2px]"
+                    >
+                      <p className="text-xs text-white/55 mb-0.5">{f.label}</p>
+                      <p
+                        className="text-sm font-medium truncate text-white"
+                        style={f.color ? { color: f.color } : undefined}
+                      >
+                        {f.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </aside>
           </div>
+        </div>
+      </div>
 
+      {(char.related.length > 0 || char.stories.length > 0) && (
+        <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
           {char.related.length > 0 && (
             <section className="mt-14 pt-8 border-t border-gray-800 max-w-4xl">
               <h2 className="text-xs uppercase tracking-widest text-gray-500 mb-4">
@@ -196,7 +256,7 @@ export default async function WikiCharacterPage({
             </section>
           )}
         </div>
-      </div>
+      )}
     </main>
   );
 }

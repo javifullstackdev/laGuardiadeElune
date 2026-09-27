@@ -34,6 +34,25 @@ html[data-elune-intro="playing"] nav {
   pointer-events: none;
 }
 
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.page-fade-in {
+  animation: page-fade-in 0.55s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-fade-in {
+    animation: none;
+  }
+}
+
 /* Scroll usable, barra invisible (Firefox, Chromium, Safari, Edge) */
 .scrollbar-none {
   scrollbar-width: none;
@@ -44,4 +63,263 @@ html[data-elune-intro="playing"] nav {
   display: none;
   width: 0;
   height: 0;
+}
+
+.quest-sheet {
+  --chrome-side: 7.4rem;
+}
+
+.quest-sheet-title {
+  padding-left: var(--chrome-side);
+}
+
+.quest-parchment {
+  --chrome-side: 7.4rem;
+  --head-top: 8.1rem;
+  --head-h: 3.15rem;
+  --foot-bot: 7.8rem;
+  --foot-h: 0.08rem;
+  --line-gap: 1.35rem;
+  --fade-band: 1.7rem;
+  --fade-top-start: calc(var(--head-top) + var(--head-h) + var(--line-gap));
+  --fade-top: calc(var(--fade-top-start) + var(--fade-band));
+  --fade-bot-end: calc(var(--foot-bot) + var(--foot-h) + var(--line-gap));
+  --fade-bot: calc(var(--fade-bot-end) + var(--fade-band));
+  --frame-w: 561;
+  --frame-h: 653;
+  --sheet-chrome: 15.25rem;
+  container-type: inline-size;
+  position: relative;
+  width: min(56rem, calc((100dvh - var(--sheet-chrome)) * var(--frame-w) / var(--frame-h)));
+  max-width: 100%;
+  max-height: calc(100dvh - var(--sheet-chrome));
+  aspect-ratio: var(--frame-w) / var(--frame-h);
+  height: auto;
+}
+
+.quest-parchment-art {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.quest-parchment-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.55));
+}
+
+.quest-parchment-head,
+.quest-parchment-foot {
+  position: absolute;
+  left: var(--chrome-side);
+  right: var(--chrome-side);
+  z-index: 4;
+  pointer-events: none;
+  color: #2a1c10;
+  font-family: Georgia, "Palatino Linotype", Palatino, "Times New Roman", serif;
+}
+
+.quest-parchment-head {
+  top: var(--head-top);
+}
+
+.quest-parchment-head h2 {
+  margin: 0 0 1.05rem;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-align: left;
+  color: #2a1c10;
+}
+
+.quest-parchment-foot {
+  bottom: var(--foot-bot);
+}
+
+.quest-parchment-actions-foot {
+  --foot-bot: 9.35rem;
+  --line-gap: 2.55rem;
+  --fade-band: 2.15rem;
+}
+
+.quest-parchment-foot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+}
+
+.quest-parchment-actions-foot .quest-parchment-foot-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 0.65rem;
+}
+
+.quest-parchment-actions {
+  pointer-events: auto;
+  min-width: 0;
+}
+
+.quest-parchment-author {
+  margin: 0;
+  font-size: 0.95rem;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: right;
+  color: #2a1c10;
+  flex-shrink: 0;
+}
+
+.quest-parchment-rule {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: #4a3424;
+  opacity: 0.42;
+}
+
+.quest-parchment-body {
+  position: relative;
+  z-index: 3;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: calc(var(--fade-top) + 0.15rem) var(--chrome-side)
+    calc(var(--fade-bot) + 0.55rem);
+  color: #2a1c10;
+  font-family: Georgia, "Palatino Linotype", Palatino, "Times New Roman", serif;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent var(--fade-top-start),
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)),
+    transparent calc(100% - var(--fade-bot-end)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent var(--fade-top-start),
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bot)),
+    transparent calc(100% - var(--fade-bot-end)),
+    transparent 100%
+  );
+}
+
+.quest-parchment-body h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: none;
+  text-align: left;
+  color: #2a1c10;
+}
+
+.quest-parchment-body p {
+  margin: 0 0 1.85rem;
+  line-height: 1.85;
+  font-size: 1.2rem;
+  letter-spacing: 0.03em;
+  color: #2a1c10;
+}
+
+.quest-parchment-body.is-ready h2,
+.quest-parchment-body.is-ready p {
+  opacity: 0;
+  transform: translateY(1.25rem);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.quest-parchment-body.is-ready h2.is-in,
+.quest-parchment-body.is-ready p.is-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.quest-parchment-body.is-ready h2.is-above,
+.quest-parchment-body.is-ready p.is-above {
+  opacity: 0;
+  transform: translateY(-1.25rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quest-parchment-body.is-ready h2,
+  .quest-parchment-body.is-ready p {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+.quest-parchment-body p:last-child {
+  margin-bottom: 0;
+}
+
+.quest-parchment-body section + section {
+  margin-top: 2.1rem;
+}
+
+@media (max-width: 640px) {
+  .quest-sheet,
+  .quest-parchment {
+    --chrome-side: 3.4rem;
+  }
+
+  .quest-parchment {
+    width: 100%;
+    max-height: none;
+    --head-top: 4.8rem;
+    --head-h: 3.2rem;
+    --foot-bot: 4.6rem;
+    --foot-h: 0.08rem;
+    --line-gap: 0.85rem;
+    --fade-band: 1.6rem;
+  }
+
+  .quest-parchment-actions-foot {
+    --foot-bot: 6.25rem;
+    --line-gap: 1.85rem;
+    --fade-band: 1.9rem;
+  }
+
+  .quest-parchment-head h2 {
+    font-size: 1.25rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .quest-parchment-body p {
+    font-size: 1.08rem;
+    line-height: 1.8;
+  }
+
+  .wiki-mobile-lore .quest-parchment {
+    width: 100%;
+    height: 75%;
+    max-width: 100%;
+    max-height: 75%;
+    aspect-ratio: auto;
+  }
+
+  .wiki-mobile-lore .quest-parchment-frame {
+    object-fit: fill;
+  }
 }
