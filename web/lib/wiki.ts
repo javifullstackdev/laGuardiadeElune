@@ -1,5 +1,6 @@
 export type PublicFields = {
   title: boolean;
+  prefix: boolean;
   age: boolean;
   origin: boolean;
   residence: boolean;
@@ -12,6 +13,7 @@ export type PublicFields = {
 
 export const DEFAULT_PUBLIC_FIELDS: PublicFields = {
   title: true,
+  prefix: true,
   age: true,
   origin: true,
   residence: true,
@@ -24,6 +26,7 @@ export const DEFAULT_PUBLIC_FIELDS: PublicFields = {
 
 export const PUBLIC_FIELD_LABELS: { key: keyof PublicFields; label: string }[] = [
   { key: "title", label: "Título" },
+  { key: "prefix", label: "Antetítulo" },
   { key: "age", label: "Edad" },
   { key: "origin", label: "Origen" },
   { key: "residence", label: "Residencia" },
@@ -70,6 +73,7 @@ export type WikiCharacter = {
   realm: string;
   display_name: string;
   title: string | null;
+  prefix_title?: string | null;
   cover_url: string | null;
   biography: string | null;
   personality: string | null;
@@ -80,6 +84,7 @@ export type WikiCharacter = {
   wow_class: string | null;
   race: string | null;
   faction: string | null;
+  gender?: string | null;
   author_username: string;
   related: WikiRelated[];
   stories: WikiStory[];

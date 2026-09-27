@@ -7,6 +7,7 @@ BLIZZARD_REGION = "eu"  # ajusta si el servidor usa otra región
 
 DEFAULT_PUBLIC_FIELDS = {
     "title": True,
+    "prefix": True,
     "age": True,
     "origin": True,
     "residence": True,
@@ -53,6 +54,7 @@ class CharacterResponse(BaseModel):
     wow_class: Optional[str] = None
     race: Optional[str] = None
     faction: Optional[str] = None
+    gender: Optional[str] = None
     role_function: Optional[str] = None
     level: Optional[int] = None
     is_main: bool
@@ -108,6 +110,7 @@ class BlizzardCharacterOut(BaseModel):
     race_name: str
     level: int
     faction: str
+    gender: Optional[str] = None
     blizzard_character_id: int
 
 
@@ -121,6 +124,7 @@ class CharacterAddInput(BaseModel):
     race_id: Optional[int] = None
     level: Optional[int] = None
     faction: Optional[str] = None
+    gender: Optional[str] = None
     surname: Optional[str] = None
     is_main: bool = False
 
@@ -195,6 +199,7 @@ class WikiCharacterOut(BaseModel):
     realm: str
     display_name: str
     title: str | None = None
+    prefix_title: str | None = None
     cover_url: str | None = None
     biography: str | None = None
     personality: str | None = None
@@ -205,6 +210,7 @@ class WikiCharacterOut(BaseModel):
     wow_class: str | None = None
     race: str | None = None
     faction: str | None = None
+    gender: str | None = None
     author_username: str
     related: list[WikiRelatedOut] = []
     stories: list[WikiStoryOut] = []

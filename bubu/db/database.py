@@ -173,6 +173,9 @@ class Database:
         surname: str | None = None,
         blizzard_character_id: int | None = None,
         is_verified: bool = False,
+        race: str | None = None,
+        faction: str | None = None,
+        gender: str | None = None,
     ) -> asyncpg.Record:
         """
         Registra un personaje y lo vincula a un usuario.
@@ -211,12 +214,12 @@ class Database:
                     INSERT INTO characters (
                         id, user_id, name, realm, game, surname,
                         is_main, is_alt, wow_class, role_function,
-                        blizzard_character_id, is_verified
+                        blizzard_character_id, is_verified, race, faction, gender
                     )
                     VALUES (
                         gen_random_uuid(), $1, $2, $3, $4, $5,
                         $6, $7, $8::characterclass, $9::characterfunction,
-                        $10, $11
+                        $10, $11, $12::characterrace, $13, $14
                     )
                     ON CONFLICT (user_id, name, realm, game) DO UPDATE
                         SET is_main = EXCLUDED.is_main,
@@ -226,6 +229,9 @@ class Database:
                             role_function = COALESCE(EXCLUDED.role_function, characters.role_function),
                             blizzard_character_id = COALESCE(EXCLUDED.blizzard_character_id, characters.blizzard_character_id),
                             is_verified = characters.is_verified OR EXCLUDED.is_verified,
+                            race = COALESCE(EXCLUDED.race, characters.race),
+                            faction = COALESCE(EXCLUDED.faction, characters.faction),
+                            gender = COALESCE(EXCLUDED.gender, characters.gender),
                             updated_at = now()
                     RETURNING *
                     """,
@@ -233,6 +239,7 @@ class Database:
                     is_main, not is_main,
                     wow_class, role_function,
                     blizzard_character_id, is_verified,
+                    race, faction, gender,
                 )
                 return character
 

@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
   const bchar_raw = formData.get("blizzard_character_id");
   const blizzard_character_id = bchar_raw ? parseInt(bchar_raw as string) : undefined;
   const faction = (formData.get("faction") as string) || undefined;
+  const gender = (formData.get("gender") as string) || undefined;
   const game    = (formData.get("game")    as string) || "retail";
   const surname = (formData.get("surname") as string) || undefined;
   const is_main = formData.get("is_main") === "true";
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`,
     },
-    body: JSON.stringify({ name, realm, class_id, race_id, level, blizzard_character_id, faction, game, surname, is_main }),
+    body: JSON.stringify({ name, realm, class_id, race_id, level, blizzard_character_id, faction, gender, game, surname, is_main }),
   });
 
   if (!res.ok) {

@@ -66,6 +66,7 @@ class Character(Base):
     surname      = Column(String(100), nullable=True)   # apellido (obligatorio en WF)
     prefix_title = Column(String(100), nullable=True)   # antetítulo ("El gran", "Archimago")
     faction      = Column(String(20),  nullable=True)   # ALLIANCE | HORDE (de Blizzard)
+    gender       = Column(String(10),  nullable=True)   # MALE | FEMALE (de Blizzard)
     # ── Datos personales de lore ───────────────────────────────────────────
     origin       = Column(String(255), nullable=True)   # lugar de nacimiento/origen
     age_lore     = Column(Integer,     nullable=True)   # edad en el lore

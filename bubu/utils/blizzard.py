@@ -19,6 +19,16 @@ CLASS_BY_ID = {
     11: "DRUID", 12: "DEMONHUNTER", 13: "EVOKER",
 }
 
+RACE_BY_ID = {
+    1: "HUMAN", 2: "ORC", 3: "DWARF", 4: "NIGHT_ELF", 5: "UNDEAD",
+    6: "TAUREN", 7: "GNOME", 8: "TROLL", 9: "GOBLIN", 10: "BLOOD_ELF",
+    11: "DRAENEI", 22: "WORGEN", 24: "PANDAREN", 25: "PANDAREN", 26: "PANDAREN",
+    27: "NIGHTBORNE", 28: "HIGHMOUNTAIN_TAUREN", 29: "VOID_ELF",
+    30: "LIGHTFORGED", 31: "ZANDALARI", 32: "KUL_TIRAN",
+    34: "DARK_IRON_DWARF", 35: "VULPERA", 36: "MAGHAR_ORC",
+    37: "MECHAGNOME", 52: "DRACTHYR", 70: "DRACTHYR",
+}
+
 _token: str | None = None
 _token_expires_at = 0.0
 
@@ -74,11 +84,14 @@ async def lookup_wow_character(name: str, realm: str) -> dict:
             data = await res.json()
 
     playable = data.get("character_class") or {}
+    race = data.get("playable_race") or data.get("race") or {}
     return {
         "name": data.get("name") or name,
         "realm": slug,
         "blizzard_character_id": data.get("id"),
         "wow_class": CLASS_BY_ID.get(playable.get("id")),
+        "race": RACE_BY_ID.get(race.get("id")),
         "level": data.get("level"),
         "faction": (data.get("faction") or {}).get("type"),
+        "gender": (data.get("gender") or {}).get("type"),
     }
