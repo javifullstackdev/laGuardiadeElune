@@ -6,7 +6,7 @@ La idea principal es que tanto la web como Bubu obtengan los datos de una sola f
 # 2. User Stories
 1. Como **visitante**, quiero leer posts y conocer lore tanto de la guild como de Blizzard
 2. Como **miembro**, quiero poder consultar el ranking de puntos, logros conseguidos y logros pendientes
-2b. Como **miembro**, quiero un perfil por pestañas (Bio, Puntos, Logros, Títulos, Historias, Relaciones, Profesiones) para cada personaje
+2b. Como **miembro**, quiero un perfil por pestañas (Bio, Datos, Puntos, Logros, Títulos, Historias, Relaciones, Profesiones) para cada personaje
 2c. Como **miembro**, quiero enviar historias al Eremita y completar un cuestionario para que él escriba la ficha pública
 3. Como **sistema** quiero poder sincronizar automáticamente las míticas/raids con compañeros de hermandad para asignar puntos sin que el jugador tenga que apuntarse
 4. Como **Bubu**, quiero poder anunciar mítica/raid futura y permitir que los miembros se apunten para optimizar la organización
@@ -43,8 +43,10 @@ Hay logros de personaje (`character_specific`): solo se muestran en el toon que 
 Ejemplo: "El mejor pollo de todos" solo lo puede tener un Druida; el título asociado ("Elegido/a de Elune") va a ese personaje.
 ## 7. Títulos: ¿a nivel de cuenta o de personaje?
 Los títulos son a nivel de personaje. De momento el jugador elige **uno** para mostrar (`favorite_title`) en perfil y ficha.
+El **antetítulo** (`prefix_title`, p. ej. «El gran») es otro campo: lo edita el jugador en Datos y se publica aparte si `public_fields.prefix` está activo. No es el título de hermandad.
 ## 7b. Ficha vs historias
-La **ficha pública** (biografía, personalidad, aspecto) la escribe el Eremita a partir de un cuestionario. Las **historias** las escribe el jugador y el Eremita las revisa; no sustituyen la ficha.
+La **ficha pública** (biografía, personalidad, aspecto) la escribe el Eremita a partir de un cuestionario. Edad, origen, residencia, antetítulo y qué campos se ven los edita el jugador en la pestaña Datos, sin pasar por el Eremita.
+Las **historias** las escribe el jugador y el Eremita las revisa; no sustituyen la ficha. Publicada, no hay Eliminar en la web pública: solo staff desde `/admin/stories`.
 ## 7c. Premium (previsto, no implementado)
 Más adelante: mostrar más de un título, bio más extensa, más historias por personaje. Límites actuales (free) en `web/lib/entitlements.ts`.
 ## 8. Puntos de temporada y puntos totales
@@ -193,11 +195,12 @@ Ramas, archivos y commits en inglés: [conventions.md](conventions.md).
 - Profesiones en tiempo real: `GET /characters/{name}/{realm}/professions` llama a la Profile API de Blizzard (`primaries` + `secondaries`, skill por expansión, recetas)
 - El tab Profesiones maneja Forever, token ausente, token caducado, vacío y datos normales
 
-## Perfil de personaje — pestañas (2026-09-26) ✅
-Orden: **Bio · Puntos · Logros · Títulos · Historias · Relaciones · Profesiones**
+## Perfil de personaje — pestañas (2026-09-27) ✅
+Orden: **Bio · Datos · Puntos · Logros · Títulos · Historias · Relaciones · Profesiones**
 
-- Cabecera: nombre, render/avatar, raza/clase/facción, origen, edad, residencia
-- **Bio:** si el Eremita publicó la ficha → biografía, personalidad, aspecto + datos editables. Si no → cuestionario (una pregunta cada vez) para enviarle. Pedir actualización cuando ya hay ficha.
+- Cabecera: nombre, antetítulo, render/avatar, raza/clase/facción (género Blizzard en las etiquetas)
+- **Bio:** si el Eremita publicó la ficha → biografía, personalidad, aspecto. Si no → cuestionario (una pregunta cada vez) para enviarle. Pedir actualización cuando ya hay ficha. Los datos editables ya no viven aquí.
+- **Datos:** identidad de juego (solo lectura) + antetítulo, apellido, origen, residencia, edad lore + checkboxes `public_fields` (qué se ve en la wiki). Se guarda sin el Eremita.
 - **Puntos:** total de cuenta + historial completo de transacciones (`GET /users/me/transactions?limit=200`)
 - **Logros:** `GET /characters/{name}/{realm}/achievements` — de cuenta (todos los toons) y de este personaje
 - **Títulos:** lista de títulos ganados; **Usar** / **Quitar** el que se muestra (`favorite_title`). De momento solo uno.
@@ -206,12 +209,15 @@ Orden: **Bio · Puntos · Logros · Títulos · Historias · Relaciones · Profe
 - **Profesiones:** Profile API de Blizzard (Retail); Forever / sin token / caducado / vacío
 - Premium previsto (no activo): más títulos visibles, bio más larga, más historias — `web/lib/entitlements.ts`
 
-## Lore público (sesión anterior, ya en marcha) ✅
-- Ficha del personaje en `/personajes` (wiki); la escribe el Eremita, no el jugador
-- Historias públicas en `/lore`; borrado solo staff
-- Cuestionario de bio desacoplado de las historias (`bio_answers`, `bio_status`)
-- Admin: bios pendientes, historias, carrusel con encuadre
-- Home: se ocultan secciones vacías
+## Lore público — ficha e historias (2026-09-28) ✅
+- Ficha en `/personajes/[realm]/[name]`: pergamino de misión (`Parchment.tsx` + `web/public/parchment/frame.png`)
+- Desktop: pergamino a la izquierda, render a la derecha (hueco para la marca de agua)
+- Móvil: `WikiMobileStage` — mazo a ~3/4 de alto, swipe para volver al listado; breadcrumb clicable por encima
+- Wiki API: `title` = título favorito; `prefix_title` = antetítulo; visibilidad por `public_fields`
+- Historias `/lore/[id]`: portada a fondo (móvil full; desktop ~58 % derecha); mismo pergamino; título en cabecera; autor a la derecha del pie
+- Me gusta y Compartir dentro del pie (menú WhatsApp / X / Instagram). La raya, el fade y el corte del texto suben juntos; el párrafo no llega a la línea
+- Borrado público quitado; staff en `/admin/stories`
+- Marca de agua de la Guardia visible en `/lore` y `/lore/[id]` (en móvil se oculta en Personajes/ficha)
 
 ## Home pública — intro del logo y marca de agua ✅
 - Intro de primera visita (sessionStorage `elune-intro-v3`): pantalla oscura, logo grande centrado con revelado por fases (~17 s)
@@ -221,8 +227,11 @@ Orden: **Bio · Puntos · Logros · Títulos · Historias · Relaciones · Profe
 - Marca de agua: `fixed`, 460 px, alineada en vertical con el banner, opacidad 55 %, sin blur ni mix-blend; el scroll solo mueve el contenido
 - `EluneLogoReveal`: reloj único con `requestAnimationFrame`; `time={TOTAL}` pinta el fotograma final
 - Hero carrusel (7 s): texto a la izquierda, CTA, flechas, pause/play; autoplay pausado hasta que termina la intro
-- 4 miniaturas-tarjeta de las otras diapositivas, superpuestas al borde del banner
-- Tablón en home: grid 4×2 (imagen, badge, kicker, título, subtítulo, fecha)
+- Móvil: descripción y CTA abajo del banner; en desktop siguen centrados
+- Miniaturas: las 4 primeras slides, fijas (no se quita la actual); la activa lleva borde más claro; solo cambia el banner
+- Tablón en home: desktop grid; móvil 1 post = 100 % ancho, 2+ = 80 % + peek, scroll-snap
+- Listado Personajes: nombre/título/extracto abajo de la tarjeta (`mt-auto`)
+- Cambio de ruta: fade de entrada 0,55 s (`app/template.tsx`, `.page-fade-in`); la navbar no se mueve; `prefers-reduced-motion` lo anula
 - `/posts`: tablón completo con chips de categoría
 - Navbar: `h-12`, sin wordmark (el logo ocupa esa identidad), enlaces en mayúsculas alineados a la derecha, activo subrayado
 - Admin de posts: campos subtítulo y URL de portada
@@ -237,6 +246,16 @@ Orden: **Bio · Puntos · Logros · Títulos · Historias · Relaciones · Profe
 - Mobile: banner de imagen corto; tocar la imagen abre cambiar/quitar; datos compactos a la derecha debajo del banner; el tab ocupa la mayor parte de la pantalla
 
 ## Fase 7 — Deploy 🚧 Pendiente
+- Decisión actual: **preview gratis primero**, dominio después (no comprar aún)
+- La web aún pega a `localhost:8000` en varios `fetch`; hay que pasar a URL de API por entorno
+- Redirects Discord/Blizzard en `.env` hay que ampliarlos al host público
+- Uploads (avatares, portadas) viven en disco de la API; en deploy hace falta storage persistente
 - Docker Compose completo
-- Deploy: Vercel (web) + Railway o Render (API)
+- Candidatos: Vercel (web) + Railway o Render (API)
 - README portfolio
+
+## Próxima sesión — por dónde seguir
+1. Preview online (arreglar `localhost` en fetches + redirects OAuth), o
+2. Fase 5 Bubu (más comandos / auto-sync M+), o
+3. Premium de verdad (`entitlements.ts`) y catálogo de logros
+No retocar la ficha de escritorio ni el pergamino salvo que lo pida.
