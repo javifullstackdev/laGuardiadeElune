@@ -18,7 +18,7 @@ export const RACE_NAME_ES: Record<string, string> = {
   BLOOD_ELF: "Elfo de sangre", DRAENEI: "Draenei", WORGEN: "Huargen",
   PANDAREN: "Pandaren", NIGHTBORNE: "Nacido de la noche",
   HIGHMOUNTAIN_TAUREN: "Tauren de la Cima", VOID_ELF: "Elfo del vacío",
-  LIGHTFORGED: "Forjado a la Luz", DARK_IRON_DWARF: "Enano Hierro Negro",
+  LIGHTFORGED: "Forjado por la Luz", DARK_IRON_DWARF: "Enano Hierro Negro",
   KUL_TIRAN: "Kul Tirano", MECHAGNOME: "Mecagnomo", ZANDALARI: "Trol zandalari",
   GOBLIN: "Goblin", VULPERA: "Vulpera", MAGHAR_ORC: "Orco Mag'har", DRACTHYR: "Dracthyr",
 };
@@ -29,7 +29,7 @@ const RACE_NAME_ES_F: Record<string, string> = {
   BLOOD_ELF: "Elfa de sangre", DRAENEI: "Draenei", WORGEN: "Huargen",
   PANDAREN: "Pandaren", NIGHTBORNE: "Nacida de la noche",
   HIGHMOUNTAIN_TAUREN: "Tauren de la Cima", VOID_ELF: "Elfa del vacío",
-  LIGHTFORGED: "Forjada a la Luz", DARK_IRON_DWARF: "Enana Hierro Negro",
+  LIGHTFORGED: "Forjada por la Luz", DARK_IRON_DWARF: "Enana Hierro Negro",
   KUL_TIRAN: "Kul Tirana", MECHAGNOME: "Mecagnoma", ZANDALARI: "Trol zandalari",
   GOBLIN: "Goblin", VULPERA: "Vulpera", MAGHAR_ORC: "Orca Mag'har", DRACTHYR: "Dracthyr",
 };

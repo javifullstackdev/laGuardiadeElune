@@ -7,6 +7,7 @@ BLIZZARD_REGION = "eu"  # ajusta si el servidor usa otra región
 
 DEFAULT_PUBLIC_FIELDS = {
     "title": True,
+    "prefix": True,
     "age": True,
     "origin": True,
     "residence": True,
@@ -198,6 +199,7 @@ class WikiCharacterOut(BaseModel):
     realm: str
     display_name: str
     title: str | None = None
+    prefix_title: str | None = None
     cover_url: str | None = None
     biography: str | None = None
     personality: str | None = None

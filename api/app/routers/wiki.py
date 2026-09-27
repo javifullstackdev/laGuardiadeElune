@@ -41,7 +41,13 @@ def _shown_title(char: Character, fields: dict) -> str | None:
         return None
     if char.favorite_title and getattr(char.favorite_title, "name", None):
         return char.favorite_title.name
-    return char.prefix_title
+    return None
+
+
+def _shown_prefix(char: Character, fields: dict) -> str | None:
+    if not fields.get("prefix"):
+        return None
+    return char.prefix_title or None
 
 
 def _excerpt(text: str | None) -> str | None:
@@ -161,6 +167,7 @@ def get_wiki_character(realm: str, name: str, db: Session = Depends(get_db)):
         realm=char.realm,
         display_name=_display_name(char),
         title=_shown_title(char, fields),
+        prefix_title=_shown_prefix(char, fields),
         cover_url=_portrait(char),
         biography=char.biography,
         personality=char.personality if fields.get("personality") else None,
