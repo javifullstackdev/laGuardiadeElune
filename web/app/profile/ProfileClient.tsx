@@ -340,7 +340,7 @@ export default function ProfileClient({
         <BirthdaySection birthday={user.birthday} isAdmin={user.role === "admin" || user.role === "officer"} />
 
         {/* Lista de personajes — agrupada por juego */}
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto scrollbar-none p-3">
           {characters.length === 0 ? (
             <p className="text-gray-500 text-sm px-2">Sin personajes</p>
           ) : (
@@ -364,7 +364,7 @@ export default function ProfileClient({
 
 // ── Detalle del personaje ─────────────────────────────────────────────────
 
-type DetailTab = "bio" | "points" | "achievements" | "titles" | "stories" | "relations" | "professions";
+type DetailTab = "bio" | "details" | "points" | "achievements" | "titles" | "stories" | "relations" | "professions";
 
 function CharacterDetail({
   char, transactions, totalPoints, onSetMain, isPending, onFavoriteTitleChange, onDetailsPatch,
@@ -395,6 +395,7 @@ function CharacterDetail({
 
   const tabs: { key: DetailTab; label: string }[] = [
     { key: "bio",          label: "Bio" },
+    { key: "details",      label: "Datos" },
     { key: "points",       label: "Puntos" },
     { key: "achievements", label: "Logros" },
     { key: "titles",       label: "Títulos" },
@@ -639,11 +640,17 @@ function CharacterDetail({
 
       {/* ══ ZONA SCROLLEABLE ══════════════════════════════════════ */}
       <div
-        className="relative z-10 flex-1 overflow-y-auto min-h-0 px-4 sm:px-8 py-4 sm:py-6 lg:pl-[var(--fact-pad)]"
+        className="relative z-10 flex-1 overflow-y-auto scrollbar-none min-h-0 px-4 sm:px-8 py-4 sm:py-6 lg:pl-[var(--fact-pad)]"
         style={factStyle}
       >
         {tab === "bio" && (
           <BioTab
+            char={char}
+            onDetailsPatch={onDetailsPatch}
+          />
+        )}
+        {tab === "details" && (
+          <DetailsTab
             char={char}
             onDetailsPatch={onDetailsPatch}
           />
@@ -790,12 +797,6 @@ function BioTab({
   const [questions, setQuestions] = useState<BioQuestion[]>([]);
   const [questionsReady, setQuestionsReady] = useState(false);
   const [answers, setAnswers] = useState<BioAnswers>(char.bio_answers ?? {});
-  const [surname, setSurname] = useState(char.surname ?? "");
-  const [prefixTitle, setPrefix] = useState(char.prefix_title ?? "");
-  const [origin, setOrigin] = useState(char.origin ?? "");
-  const [ageLore, setAge] = useState(char.age_lore ? String(char.age_lore) : "");
-  const [residence, setResidence] = useState(char.residence ?? "");
-  const [publicFields, setPublicFields] = useState<PublicFields>(mergePublicFields(char.public_fields));
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -815,12 +816,6 @@ function BioTab({
   }, [char.name, char.realm]);
 
   useEffect(() => {
-    setSurname(char.surname ?? "");
-    setPrefix(char.prefix_title ?? "");
-    setOrigin(char.origin ?? "");
-    setAge(char.age_lore ? String(char.age_lore) : "");
-    setResidence(char.residence ?? "");
-    setPublicFields(mergePublicFields(char.public_fields));
     setUpdating(false);
     setError(null);
   }, [char.name, char.realm]);
@@ -828,22 +823,15 @@ function BioTab({
   async function handleSaveDraft() {
     setSaving(true);
     setError(null);
-    const payload = {
-      name: char.name,
-      realm: char.realm,
-      surname: surname || null,
-      prefix_title: prefixTitle || null,
-      origin: origin || null,
-      age_lore: ageLore ? parseInt(ageLore) : null,
-      residence: residence || null,
-      public_fields: publicFields,
-      bio_answers: answersLocked ? undefined : answers,
-    };
     try {
       const res = await fetch("/api/characters/bio", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          name: char.name,
+          realm: char.realm,
+          bio_answers: answersLocked ? undefined : answers,
+        }),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -851,12 +839,6 @@ function BioTab({
       } else {
         const updated = await res.json();
         onDetailsPatch({
-          surname: surname || null,
-          prefix_title: prefixTitle || null,
-          origin: origin || null,
-          age_lore: ageLore ? parseInt(ageLore) : null,
-          residence: residence || null,
-          public_fields: publicFields,
           bio_answers: updated.bio_answers ?? answers,
           bio_answers_pending: updated.bio_answers_pending,
           bio_status: updated.bio_status,
@@ -980,41 +962,6 @@ function BioTab({
         </section>
       )}
 
-      {published && (
-      <section className="space-y-5">
-        <div>
-          <h2 className="text-xs text-gray-500 uppercase tracking-wider">Datos de la ficha</h2>
-          <p className="text-sm text-gray-400 mt-1">
-            Estos campos y lo que marcas para mostrar se actualizan en la ficha sin pasar por el Eremita.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <LoreInput label="Antetítulo" placeholder="El gran, Archimago..." value={prefixTitle} onChange={setPrefix} />
-          <LoreInput label="Apellido" placeholder="(opcional en retail)" value={surname} onChange={setSurname} />
-          <LoreInput label="Origen" placeholder="Ciudad, región..." value={origin} onChange={setOrigin} />
-          <LoreInput label="Residencia" placeholder="Lugar actual..." value={residence} onChange={setResidence} />
-          <LoreInput label="Edad (lore)" placeholder="Años" value={ageLore} onChange={setAge} type="number" />
-        </div>
-        <div>
-          <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Mostrar en la ficha pública</p>
-          <p className="text-xs text-gray-600 mb-3">La biografía se publica siempre. El resto lo eliges tú.</p>
-          <div className="grid grid-cols-2 gap-2">
-            {PUBLIC_FIELD_LABELS.map((field) => (
-              <label key={field.key} className="flex items-center gap-2 text-sm text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={publicFields[field.key]}
-                  onChange={(e) => setPublicFields((prev) => ({ ...prev, [field.key]: e.target.checked }))}
-                  className="rounded border-gray-600 bg-gray-800"
-                />
-                {field.label}
-              </label>
-            ))}
-          </div>
-        </div>
-      </section>
-      )}
-
       {published && !updating && !answersLocked && (
         <button
           type="button"
@@ -1027,14 +974,14 @@ function BioTab({
 
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <div className="flex flex-wrap gap-3">
-        {(published || (!answersLocked && showQuiz)) && (
+        {showQuiz && !answersLocked && (
           <button
             type="button"
             onClick={handleSaveDraft}
             disabled={saving}
             className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold text-sm disabled:opacity-50"
           >
-            {saving ? "Guardando..." : published ? "Guardar cambios" : "Guardar progreso"}
+            {saving ? "Guardando..." : "Guardar progreso"}
           </button>
         )}
         {(!published || updating) && !answersLocked && (
@@ -1048,6 +995,109 @@ function BioTab({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function DetailsTab({
+  char, onDetailsPatch,
+}: {
+  char: Character;
+  onDetailsPatch: (p: CharPatch) => void;
+}) {
+  const [surname, setSurname] = useState(char.surname ?? "");
+  const [prefixTitle, setPrefix] = useState(char.prefix_title ?? "");
+  const [origin, setOrigin] = useState(char.origin ?? "");
+  const [ageLore, setAge] = useState(char.age_lore ? String(char.age_lore) : "");
+  const [residence, setResidence] = useState(char.residence ?? "");
+  const [publicFields, setPublicFields] = useState<PublicFields>(mergePublicFields(char.public_fields));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSurname(char.surname ?? "");
+    setPrefix(char.prefix_title ?? "");
+    setOrigin(char.origin ?? "");
+    setAge(char.age_lore ? String(char.age_lore) : "");
+    setResidence(char.residence ?? "");
+    setPublicFields(mergePublicFields(char.public_fields));
+    setError(null);
+  }, [char.name, char.realm]);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/characters/bio", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: char.name,
+          realm: char.realm,
+          surname: surname || null,
+          prefix_title: prefixTitle || null,
+          origin: origin || null,
+          age_lore: ageLore ? parseInt(ageLore) : null,
+          residence: residence || null,
+          public_fields: publicFields,
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        setError(typeof d.detail === "string" ? d.detail : "Error al guardar");
+      } else {
+        onDetailsPatch({
+          surname: surname || null,
+          prefix_title: prefixTitle || null,
+          origin: origin || null,
+          age_lore: ageLore ? parseInt(ageLore) : null,
+          residence: residence || null,
+          public_fields: publicFields,
+        });
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-gray-400">
+        Datos de la ficha. Se actualizan sin pasar por el Eremita.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <LoreInput label="Antetítulo" placeholder="El gran, Archimago..." value={prefixTitle} onChange={setPrefix} />
+        <LoreInput label="Apellido" placeholder="(opcional en retail)" value={surname} onChange={setSurname} />
+        <LoreInput label="Origen" placeholder="Ciudad, región..." value={origin} onChange={setOrigin} />
+        <LoreInput label="Residencia" placeholder="Lugar actual..." value={residence} onChange={setResidence} />
+        <LoreInput label="Edad (lore)" placeholder="Años" value={ageLore} onChange={setAge} type="number" />
+      </div>
+      <div>
+        <p className="text-xs text-gray-500 mb-2 uppercase tracking-wider">Mostrar en la ficha pública</p>
+        <p className="text-xs text-gray-600 mb-3">La biografía se publica siempre. El resto lo eliges tú.</p>
+        <div className="grid grid-cols-2 gap-2">
+          {PUBLIC_FIELD_LABELS.map((field) => (
+            <label key={field.key} className="flex items-center gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={publicFields[field.key]}
+                onChange={(e) => setPublicFields((prev) => ({ ...prev, [field.key]: e.target.checked }))}
+                className="rounded border-gray-600 bg-gray-800"
+              />
+              {field.label}
+            </label>
+          ))}
+        </div>
+      </div>
+      {error && <p className="text-red-400 text-sm">{error}</p>}
+      <button
+        type="button"
+        onClick={handleSave}
+        disabled={saving}
+        className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold text-sm disabled:opacity-50"
+      >
+        {saving ? "Guardando..." : "Guardar datos"}
+      </button>
     </div>
   );
 }
