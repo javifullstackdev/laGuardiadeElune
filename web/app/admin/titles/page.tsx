@@ -27,6 +27,7 @@ type TitleWithHolders = {
   id: string;
   name: string;
   source: string;
+  slot?: string;
   description: string | null;
   holders: CharacterBrief[];
 };
@@ -87,10 +88,20 @@ export default async function AdminTitlesPage({
               <label className="block text-sm text-gray-400 mb-1">Nombre del título *</label>
               <input
                 name="name"
-                placeholder='p.ej. "Líder de la Guardia"'
+                placeholder='p.ej. "Líder de la Guardia" o "Comandante"'
                 required
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Posición</label>
+              <select
+                name="slot"
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
+              >
+                <option value="title">Título (debajo del nombre)</option>
+                <option value="prefix">Antetítulo (delante del nombre)</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">Origen</label>
@@ -137,7 +148,10 @@ export default async function AdminTitlesPage({
               >
                 <option value="">-- Selecciona un título --</option>
                 {titles.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                    {t.slot === "prefix" ? " (antetítulo)" : ""}
+                  </option>
                 ))}
               </select>
             </div>
@@ -189,6 +203,11 @@ export default async function AdminTitlesPage({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <p className="font-semibold">{title.name}</p>
+                          {title.slot === "prefix" && (
+                            <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-amber-500/15 text-amber-200 border-amber-500/30">
+                              Antetítulo
+                            </span>
+                          )}
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full border font-medium ${badgeClass}`}
                           >

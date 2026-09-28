@@ -225,7 +225,39 @@ def set_favorite_title(
         ).first()
         if not has_title:
             raise HTTPException(400, "Este personaje no tiene ese título")
+        title = db.query(Title).filter(Title.id == data.title_id).first()
+        if not title or title.slot == "prefix":
+            raise HTTPException(400, "Ese es un antetítulo; elígelo en Antetítulos")
         char.favorite_title_id = data.title_id
+
+    db.commit()
+    db.refresh(char)
+    return char
+
+
+@router.patch("/{name}/{realm}/favorite-prefix", response_model=CharacterResponse)
+def set_favorite_prefix(
+    name: str, realm: str,
+    data: FavoriteTitleInput,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    char = _get_own_character(name, realm, current_user, db)
+    if data.title_id is None:
+        char.favorite_prefix_id = None
+        char.prefix_title = None
+    else:
+        title = db.query(Title).filter(Title.id == data.title_id, Title.is_active == True).first()
+        if not title or title.slot != "prefix":
+            raise HTTPException(400, "Ese no es un antetítulo")
+        has_title = db.query(CharacterTitle).filter(
+            CharacterTitle.character_id == char.id,
+            CharacterTitle.title_id == data.title_id,
+        ).first()
+        if not has_title:
+            raise HTTPException(400, "Este personaje no tiene ese antetítulo")
+        char.favorite_prefix_id = data.title_id
+        char.prefix_title = title.name
 
     db.commit()
     db.refresh(char)
@@ -241,16 +273,31 @@ def update_bio(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Actualiza identidad, datos de ficha y el cuestionario. La bio la escribe el Eremita."""
+    """Actualiza identidad, datos de ficha, borrador de lore y el cuestionario."""
     char = _get_own_character(name, realm, current_user, db)
 
     if data.surname      is not None: char.surname      = data.surname      or None
-    if data.prefix_title is not None: char.prefix_title = data.prefix_title or None
     if data.origin       is not None: char.origin       = data.origin       or None
     if data.age_lore     is not None: char.age_lore     = data.age_lore
     if data.residence    is not None: char.residence    = data.residence    or None
     if data.public_fields is not None:
         char.public_fields = merge_public_fields(data.public_fields)
+    if char.bio_answers_pending and (
+        data.biography is not None or data.personality is not None or data.appearance is not None
+    ):
+        raise HTTPException(
+            409,
+            "El Eremita todavía tiene esta ficha. Espera su respuesta para cambiar el texto.",
+        )
+    if data.biography is not None:
+        bio = data.biography.strip()
+        if char.bio_status == "published" and len(bio) < 40:
+            raise HTTPException(400, "La biografía es demasiado corta")
+        char.biography = bio or None
+    if data.personality is not None:
+        char.personality = data.personality.strip() or None
+    if data.appearance is not None:
+        char.appearance = data.appearance.strip() or None
     if data.bio_answers is not None:
         if char.bio_answers_pending:
             raise HTTPException(
@@ -275,8 +322,9 @@ def submit_bio(
     if char.bio_answers_pending:
         raise HTTPException(409, "Este cuestionario ya está en revisión")
     answers = normalize_answers(char.bio_answers)
-    if not answers_complete(answers):
-        raise HTTPException(400, "Responde todas las preguntas obligatorias antes de enviarlo")
+    has_sheet = len((char.biography or "").strip()) >= 40
+    if not answers_complete(answers) and not has_sheet:
+        raise HTTPException(400, "Escribe la biografía en el pergamino antes de publicarla")
     char.bio_answers = answers
     char.bio_answers_pending = True
     char.bio_submitted_at = datetime.now(timezone.utc)

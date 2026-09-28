@@ -64,7 +64,7 @@ class Character(Base):
     is_verified = Column(Boolean, nullable=False, default=False, server_default="false")
     # ── Identidad narrativa ────────────────────────────────────────────────
     surname      = Column(String(100), nullable=True)   # apellido (obligatorio en WF)
-    prefix_title = Column(String(100), nullable=True)   # antetítulo ("El gran", "Archimago")
+    prefix_title = Column(String(100), nullable=True)   # espejo del antetítulo favorito
     faction      = Column(String(20),  nullable=True)   # ALLIANCE | HORDE (de Blizzard)
     gender       = Column(String(10),  nullable=True)   # MALE | FEMALE (de Blizzard)
     # ── Datos personales de lore ───────────────────────────────────────────
@@ -101,5 +101,15 @@ class Character(Base):
     favorite_title = relationship(
         "Title",
         foreign_keys=[favorite_title_id],
+        lazy="joined",
+    )
+    favorite_prefix_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("titles.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    favorite_prefix = relationship(
+        "Title",
+        foreign_keys=[favorite_prefix_id],
         lazy="joined",
     )

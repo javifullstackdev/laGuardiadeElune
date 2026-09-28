@@ -26,6 +26,7 @@ router = APIRouter(prefix="/titles", tags=["titles"])
 class TitleCreateInput(BaseModel):
     name: str
     source: str = "custom"
+    slot: str = "title"
     description: Optional[str] = None
 
 
@@ -86,6 +87,7 @@ def list_titles_admin(
             id=title.id,
             name=title.name,
             source=title.source,
+            slot=getattr(title, "slot", None) or "title",
             description=title.description,
             holders=[
                 CharacterBrief(
@@ -107,7 +109,8 @@ def create_title(
 ):
     """Crea un nuevo título en el catálogo. Solo admin/officer."""
 
-    existing = db.query(Title).filter(Title.name == data.name).first()
+    slot = data.slot if data.slot in ("title", "prefix") else "title"
+    existing = db.query(Title).filter(Title.name == data.name, Title.slot == slot).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un título con ese nombre")
 
@@ -115,6 +118,7 @@ def create_title(
         id=uuid.uuid4(),
         name=data.name,
         source=data.source,
+        slot=slot,
         description=data.description,
     )
     db.add(title)
@@ -210,6 +214,9 @@ def revoke_title(
     # Si era el favorito, quitarlo también
     if char.favorite_title_id == title_id:
         char.favorite_title_id = None
+    if char.favorite_prefix_id == title_id:
+        char.favorite_prefix_id = None
+        char.prefix_title = None
 
     db.delete(ct)
     db.commit()

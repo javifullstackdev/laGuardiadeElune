@@ -32,6 +32,7 @@ class TitleOut(BaseModel):
     id: UUID
     name: str
     source: str
+    slot: str = "title"
     description: Optional[str] = None
 
     model_config = {"from_attributes": True}
@@ -61,6 +62,7 @@ class CharacterResponse(BaseModel):
     is_alt: bool
     is_verified: bool
     favorite_title: Optional[TitleOut] = None
+    favorite_prefix: Optional[TitleOut] = None
     # Lore / trasfondo
     biography: Optional[str] = None
     personality: Optional[str] = None
@@ -139,14 +141,16 @@ class FavoriteTitleInput(BaseModel):
 
 
 class CharacterBioUpdate(BaseModel):
-    """Datos de ficha y respuestas del cuestionario. La biografía la escribe el Eremita."""
+    """Datos de ficha, borrador de lore y respuestas del cuestionario."""
     surname:      Optional[str] = None
-    prefix_title: Optional[str] = None
     origin:       Optional[str] = None
     age_lore:     Optional[int] = None
     residence:    Optional[str] = None
     public_fields: Optional[dict] = None
     bio_answers: Optional[dict] = None
+    biography: Optional[str] = None
+    personality: Optional[str] = None
+    appearance: Optional[str] = None
 
 
 class RelationCreate(BaseModel):
@@ -195,6 +199,7 @@ class WikiListItem(BaseModel):
 
 
 class WikiCharacterOut(BaseModel):
+    id: UUID
     name: str
     realm: str
     display_name: str
