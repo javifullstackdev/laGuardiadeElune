@@ -42,13 +42,20 @@ La mayoría de logros son a nivel de cuenta (`account_wide`): si el jugador los 
 Hay logros de personaje (`character_specific`): solo se muestran en el toon que los consiguió.
 Ejemplo: "El mejor pollo de todos" solo lo puede tener un Druida; el título asociado ("Elegido/a de Elune") va a ese personaje.
 ## 7. Títulos: ¿a nivel de cuenta o de personaje?
-Los títulos son a nivel de personaje. De momento el jugador elige **uno** para mostrar (`favorite_title`) en perfil y ficha.
-El **antetítulo** (`prefix_title`, p. ej. «El gran») es otro campo: lo edita el jugador en Datos y se publica aparte si `public_fields.prefix` está activo. No es el título de hermandad.
+Los títulos son a nivel de personaje. El jugador elige **uno** para mostrar (`favorite_title`) debajo del nombre en perfil y ficha.
+El **antetítulo** (`favorite_prefix`, p. ej. «Comandante») también se desbloquea por logros y se otorga como un título con `slot=prefix`. El jugador elige cuál mostrar delante del nombre. Ya no se edita a mano en Datos. Visibilidad pública: `public_fields.prefix` / `public_fields.title`.
 ## 7b. Ficha vs historias
-La **ficha pública** (biografía, personalidad, aspecto) la escribe el Eremita a partir de un cuestionario. Edad, origen, residencia, antetítulo y qué campos se ven los edita el jugador en la pestaña Datos, sin pasar por el Eremita.
-Las **historias** las escribe el jugador y el Eremita las revisa; no sustituyen la ficha. Publicada, no hay Eliminar en la web pública: solo staff desde `/admin/stories`.
+La **ficha pública** (biografía, personalidad, aspecto) la escribe el jugador en Bio; puede abrir **Vista previa** (misma UI que `/personajes/...`). Al pulsar Publicar, el Eremita la revisa (`bio_answers_pending`). Edad, origen, residencia y qué campos se ven se editan en Datos, sin pasar por el Eremita.
+Las **historias** las escribe el jugador y el Eremita las revisa; no sustituyen la ficha. En la ficha pública **no** se lista Relatos: el relato vive en `/lore/[id]`. Publicada, no hay Eliminar en la web pública: solo staff desde `/admin/stories`.
 ## 7c. Premium (previsto, no implementado)
 Más adelante: mostrar más de un título, bio más extensa, más historias por personaje. Límites actuales (free) en `web/lib/entitlements.ts`.
+## 7d. Housing / vecindario (previsto, no implementado)
+Cada cuenta puede tener **hasta dos hogares**: uno en vecindario de la Alianza y otro de la Horda. En ficha pública se quiere mostrar **nombre del vecindario** y **número de parcela**.
+Investigado 2026-09-28 (API EU, client credentials):
+- Catálogo de mapas sí: `GET /data/wow/neighborhood-map/index` (`dynamic-eu`) → Punto de la Fundadora (1) y Costas del Ventajo (2). Es el tipo de zona, no el vecindario del jugador.
+- Decor coleccionada sí: `.../collections/decor`. No incluye parcela.
+- Casa del personaje no: `GET /profile/wow/character/{reino}/{nombre}/house/{houseId}` (p. ej. `house-1`) responde **404**. El resumen del personaje no trae `house` / `neighborhood` / `plot`. Blizzard lo apagó por privacidad (Wowhead) a inicios de 2026; en septiembre 2026 sigue caído.
+Cuando la House API vuelva (o con permisos in-game), sincronizar a la ficha. Hasta entonces no hay campo manual ni UI.
 ## 8. Puntos de temporada y puntos totales
 Cada temporada dura unos 3 meses aproximadamente. Al comenzar la temporada los puntos de season_points deberían reiniciarse, pero total_points no.
 ## 9. ¿Cuál es la fuente de verdad?
@@ -119,7 +126,7 @@ Ramas, archivos y commits en inglés: [conventions.md](conventions.md).
 |---|---|
 | `users` | Jugadores: Discord OAuth, Blizzard OAuth, rol, path, puntos, birthday |
 | `characters` | Personajes: Retail/Forever, ficha, cuestionario, avatares, render Blizzard |
-| `titles` | Catálogo de títulos de hermandad (source: achievement/points/rank/custom) |
+| `titles` | Catálogo de títulos y antetítulos (`slot`: `title` debajo del nombre, `prefix` delante) |
 | `character_titles` | Junction: qué personaje tiene qué título |
 | `character_relations` | Relaciones narrativas (ally, rival, family, …) |
 | `relation_claims` | Menciones en historias pendientes de confirmar |
@@ -170,7 +177,7 @@ Ramas, archivos y commits en inglés: [conventions.md](conventions.md).
 - CRUD completo de posts protegido (`POST`, `PATCH`, `DELETE /posts/{id}`)
 - Panel `/admin` — hub: Posts, Títulos, Jugadores, Avatares, Bios, Historias, Carrusel
 - Panel `/admin/posts` — formulario de creación, edición inline y borrado
-- Panel `/admin/titles` — crear títulos y otorgar/revocar a personajes
+- Panel `/admin/titles` — crear títulos o antetítulos (`slot`) y otorgar/revocar a personajes
 - Panel `/admin/players` — gestión de jugadores (tabla con roles y datos)
 - Panel `/admin/avatars` — revisión y aprobación de avatares pendientes
 - Navbar con botón Admin visible solo para admin/officer
@@ -198,26 +205,34 @@ Ramas, archivos y commits en inglés: [conventions.md](conventions.md).
 ## Perfil de personaje — pestañas (2026-09-27) ✅
 Orden: **Bio · Datos · Puntos · Logros · Títulos · Historias · Relaciones · Profesiones**
 
-- Cabecera: nombre, antetítulo, render/avatar, raza/clase/facción (género Blizzard en las etiquetas)
-- **Bio:** si el Eremita publicó la ficha → biografía, personalidad, aspecto. Si no → cuestionario (una pregunta cada vez) para enviarle. Pedir actualización cuando ya hay ficha. Los datos editables ya no viven aquí.
-- **Datos:** identidad de juego (solo lectura) + antetítulo, apellido, origen, residencia, edad lore + checkboxes `public_fields` (qué se ve en la wiki). Se guarda sin el Eremita.
+- Cabecera: antetítulo (delante), nombre, título (debajo), render/avatar, raza/clase/facción (género Blizzard en las etiquetas)
+- **Bio:** el jugador escribe biografía (y puede guardar/publicar). **Vista previa** abre la ficha pública (`FichaPreview`). Si el Eremita tiene la ficha en revisión, el texto queda bloqueado. Los datos de identidad viven en Datos.
+- **Datos:** identidad de juego (solo lectura) + apellido, origen, residencia, edad lore + checkboxes `public_fields` (qué se ve en la wiki). Se guarda sin el Eremita.
 - **Puntos:** total de cuenta + historial completo de transacciones (`GET /users/me/transactions?limit=200`)
 - **Logros:** `GET /characters/{name}/{realm}/achievements` — de cuenta (todos los toons) y de este personaje
-- **Títulos:** lista de títulos ganados; **Usar** / **Quitar** el que se muestra (`favorite_title`). De momento solo uno.
+- **Títulos:** antetítulos (`slot=prefix`, delante del nombre) y títulos (`slot=title`, debajo). **Usar** / **Quitar** el favorito de cada tipo. De momento un título visible.
 - **Historias:** escribir y enviar al Eremita + resumen (título, extracto, fecha, estado)
 - **Relaciones:** tipo, grado (Ocasional / Cercana / Estrecha), Recíproca; inbox de menciones
 - **Profesiones:** Profile API de Blizzard (Retail); Forever / sin token / caducado / vacío
 - Premium previsto (no activo): más títulos visibles, bio más larga, más historias — `web/lib/entitlements.ts`
 
 ## Lore público — ficha e historias (2026-09-28) ✅
-- Ficha en `/personajes/[realm]/[name]`: pergamino de misión (`Parchment.tsx` + `web/public/parchment/frame.png`)
-- Desktop: pergamino a la izquierda, render a la derecha (hueco para la marca de agua)
+- Ficha en `/personajes/[realm]/[name]`: pergamino de misión (`Parchment.tsx` + `web/public/parchment/frame.png`); vista extraída en `WikiCharacterView.tsx`
+- Desktop: pergamino a la izquierda, retrato a la derecha (hueco para la marca de agua). Portada **estática** (`object-[50%_5%]`): los retratos son cuadrados y el paneo no aporta
 - Móvil: `WikiMobileStage` — mazo a ~3/4 de alto, swipe para volver al listado; breadcrumb clicable por encima
-- Wiki API: `title` = título favorito; `prefix_title` = antetítulo; visibilidad por `public_fields`
-- Historias `/lore/[id]`: portada a fondo (móvil full; desktop ~58 % derecha); mismo pergamino; título en cabecera; autor a la derecha del pie
-- Me gusta y Compartir dentro del pie (menú WhatsApp / X / Instagram). La raya, el fade y el corte del texto suben juntos; el párrafo no llega a la línea
+- Wiki API: `id` del personaje; `title` = título favorito; `prefix_title` = antetítulo favorito (`slot=prefix`); visibilidad por `public_fields`
+- Historias `/lore/[id]`: `StoryScene` + `PanningCover` — al hacer scroll en el pergamino la portada recorre casi todo el ancho (ease + lerp). Título en Cinzel Decorative; firma = nombre + apellido del personaje
+- Pie del pergamino (historias y ficha): iconos corazón (like + pop), X, WhatsApp, Instagram (copia el enlace). Likes: `post` | `story` | `character`
+- En ficha pública no hay listado Relatos (sigue «Aparecen en sus historias» si hay relacionados)
 - Borrado público quitado; staff en `/admin/stories`
 - Marca de agua de la Guardia visible en `/lore` y `/lore/[id]` (en móvil se oculta en Personajes/ficha)
+
+## Home y tipografía (2026-09-29) ✅
+- Fuentes legales: Cinzel + Cinzel Decorative (`next/font/google` → `--font-quest` / `--font-quest-display`)
+- Hero: cinta infinita (clones en los extremos) en lugar de fundido entre slides
+- Tablón: la primera fila cabe con el hero; el resto y los bloques Personajes/Historias entran con `FadeUp` (IntersectionObserver)
+- Listado `/personajes`: búsqueda por nombre + orden A–Z (`localeCompare` es)
+- Tarjetas (tablón, wiki, historias): firma del personaje en relatos; ajustes de tipografía y recorte
 
 ## Home pública — intro del logo y marca de agua ✅
 - Intro de primera visita (sessionStorage `elune-intro-v3`): pantalla oscura, logo grande centrado con revelado por fases (~17 s)
@@ -258,4 +273,5 @@ Orden: **Bio · Datos · Puntos · Logros · Títulos · Historias · Relaciones
 1. Preview online (arreglar `localhost` en fetches + redirects OAuth), o
 2. Fase 5 Bubu (más comandos / auto-sync M+), o
 3. Premium de verdad (`entitlements.ts`) y catálogo de logros
-No retocar la ficha de escritorio ni el pergamino salvo que lo pida.
+Housing en ficha: aparcado (regla 7d) hasta que Blizzard reactive la House API.
+Tras merge: `python -m alembic upgrade head` (migración `f2a9c4d8e1b7`, columna `titles.slot` + `favorite_prefix_id`).

@@ -5,8 +5,9 @@ import { formatDate, textToParagraphs } from "@/lib/posts";
 import ShareBar from "../../components/ShareBar";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import Parchment from "@/app/components/ui/Parchment";
-import type { StoryPublic } from "@/lib/stories";
+import { characterSignature, type StoryPublic } from "@/lib/stories";
 import { relationLabel } from "@/lib/relations";
+import StoryScene from "../StoryScene";
 
 function highlightNames(text: string, names: string[]) {
   if (!names.length) return text;
@@ -59,7 +60,12 @@ function StoryParchment({
   const hasBio = Boolean(story.biography?.trim());
   const hasPers = Boolean(story.personality?.trim());
   return (
-    <Parchment title={story.title} author={story.author_username} actions={actions}>
+    <Parchment
+      title={story.title}
+      titleFont="display"
+      author={characterSignature(story) || story.author_username}
+      actions={actions}
+    >
       <ScrollSection text={story.biography} names={names} />
       <ScrollSection
         title={hasBio ? "Personalidad" : undefined}
@@ -72,41 +78,6 @@ function StoryParchment({
         names={names}
       />
     </Parchment>
-  );
-}
-
-function StoryCover({ src }: { src: string }) {
-  return (
-    <div
-      className="absolute inset-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[58%] pointer-events-none select-none"
-      aria-hidden
-    >
-      <img
-        src={src}
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover object-[50%_18%]"
-        style={{ opacity: 0.55 }}
-      />
-      <div
-        className="absolute inset-0 sm:hidden"
-        style={{
-          background: [
-            "linear-gradient(to top, #030712 0%, rgba(3,7,18,0.62) 14%, transparent 34%)",
-            "linear-gradient(to bottom, rgba(3,7,18,0.45) 0%, transparent 18%)",
-          ].join(", "),
-        }}
-      />
-      <div
-        className="absolute inset-0 hidden sm:block"
-        style={{
-          background: [
-            "linear-gradient(to right, #030712 0%, rgba(3,7,18,0.92) 18%, rgba(3,7,18,0.72) 32%, rgba(3,7,18,0.40) 48%, rgba(3,7,18,0.10) 65%, transparent 78%)",
-            "linear-gradient(to top, #030712 0%, rgba(3,7,18,0.7) 12%, transparent 30%)",
-            "linear-gradient(to bottom, rgba(3,7,18,0.5) 0%, transparent 20%)",
-          ].join(", "),
-        }}
-      />
-    </div>
   );
 }
 
@@ -153,18 +124,14 @@ export default async function LoreDetailPage({
 
   return (
     <main className="relative text-white">
-      <div className="relative min-h-[calc(100dvh-3rem)] overflow-hidden">
-        {story.cover_url ? <StoryCover src={story.cover_url} /> : (
-          <div className="absolute inset-0 bg-[#030712]" aria-hidden />
-        )}
-
+      <StoryScene coverUrl={story.cover_url}>
         <section className="relative z-10 sm:hidden h-[calc(100dvh-3rem)]">
           <div className="absolute top-0 inset-x-0 z-30 px-4 pt-3">
             <Breadcrumb className="mb-0" items={crumbs} />
           </div>
           <div className="absolute top-14 inset-x-0 bottom-0 flex flex-col">
             <h1 className="px-5 mb-1 text-center text-[#f3eee4]">
-              <span className="block text-[2rem] font-bold leading-tight tracking-wide">
+              <span className="block font-quest-display text-[2rem] font-bold leading-tight tracking-wide">
                 {story.title}
               </span>
             </h1>
@@ -226,7 +193,7 @@ export default async function LoreDetailPage({
             )}
           </div>
         </div>
-      </div>
+      </StoryScene>
 
       {story.relations.length > 0 && (
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">

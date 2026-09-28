@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { formatDate } from "@/lib/posts";
-import { storyExcerpt, type StoryPublic } from "@/lib/stories";
+import { characterSignature, storyExcerpt, type StoryPublic } from "@/lib/stories";
 
 export default function StoryTile({ story }: { story: StoryPublic }) {
   const excerpt = storyExcerpt(story);
+  const signature = characterSignature(story);
 
   return (
     <Link
@@ -25,19 +25,17 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
         </span>
       </div>
       <div className="flex flex-col flex-1 px-4 pt-3 pb-4">
-        <p className="flex items-center gap-1.5 text-[10px] tracking-[0.14em] uppercase text-gray-500">
-          <span className="w-3.5 h-3.5 rounded-[3px] bg-purple-500/90 shrink-0" />
-          <span className="truncate">{story.author_username}</span>
-        </p>
-        <h3 className="mt-1.5 font-bold text-[15px] leading-snug text-white line-clamp-2">
+        <h3 className="font-quest font-bold text-[15px] leading-snug text-white line-clamp-2">
           {story.title}
         </h3>
         {excerpt && (
           <p className="mt-1.5 text-[13px] text-gray-400 leading-snug line-clamp-2">{excerpt}</p>
         )}
-        <p className="mt-auto pt-4 text-sm font-semibold text-white">
-          {story.published_at ? formatDate(story.published_at) : ""}
-        </p>
+        {signature && (
+          <p className="mt-auto pt-4 text-xs font-quest font-semibold text-white text-right truncate">
+            {signature}
+          </p>
+        )}
       </div>
     </Link>
   );

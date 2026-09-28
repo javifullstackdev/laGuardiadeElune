@@ -57,7 +57,7 @@ export default async function PostPage({
           <span className="text-sm text-gray-500">{formatDate(post.published_at)}</span>
         </div>
 
-        <h1 className="text-4xl font-bold leading-tight mb-3">{post.title}</h1>
+        <h1 className="text-4xl font-quest-display font-bold leading-tight mb-3">{post.title}</h1>
         {post.subtitle && (
           <p className="text-lg text-gray-400 mb-6">{post.subtitle}</p>
         )}

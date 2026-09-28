@@ -1,19 +1,51 @@
 "use client";
 
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { ParchmentScrollContext } from "@/app/components/ui/parchment-scroll";
 
 export default function Parchment({
   title,
+  titleFont = "quest",
   author,
   actions,
   children,
 }: {
   title?: string;
+  titleFont?: "quest" | "display";
   author?: string;
   actions?: ReactNode;
   children: ReactNode;
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
+  const onScrollProgress = useContext(ParchmentScrollContext);
+
+  useEffect(() => {
+    const root = bodyRef.current;
+    if (!root || !onScrollProgress) return;
+
+    let raf = 0;
+    const report = () => {
+      if (root.getClientRects().length === 0) return;
+      const max = root.scrollHeight - root.clientHeight;
+      onScrollProgress(max <= 0 ? 0 : Math.min(1, Math.max(0, root.scrollTop / max)));
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        report();
+      });
+    };
+
+    root.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    report();
+    return () => {
+      root.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, [onScrollProgress]);
 
   useLayoutEffect(() => {
     const root = bodyRef.current;
@@ -66,7 +98,9 @@ export default function Parchment({
           draggable={false}
         />
       </div>
-      <header className="quest-parchment-head">
+      <header
+        className={`quest-parchment-head${titleFont === "display" ? " quest-parchment-head-display" : ""}`}
+      >
         {title ? <h2>{title}</h2> : null}
         <div className="quest-parchment-rule" />
       </header>

@@ -77,6 +77,7 @@ def _to_public(db: Session, story: CharacterStory, char: Character, author: User
         appearance=story.appearance,
         published_at=story.published_at,
         character_name=char.name,
+        character_surname=char.surname,
         character_realm=char.realm,
         character_class=_class_value(char),
         cover_url=_cover_url(story, char),
@@ -229,7 +230,12 @@ async def submit_story(
     except Exception:
         raise HTTPException(400, "Las menciones no son válidas")
 
-    display = f"{char.prefix_title + ' ' if char.prefix_title else ''}{char.name}{(' ' + char.surname) if char.surname else ''}".strip()
+    prefix = None
+    if getattr(char, "favorite_prefix", None) and char.favorite_prefix.name:
+        prefix = char.favorite_prefix.name
+    elif char.prefix_title:
+        prefix = char.prefix_title
+    display = f"{(prefix + ' ') if prefix else ''}{char.name}{(' ' + char.surname) if char.surname else ''}".strip()
     story_title = (title or "").strip() or display
 
     now = datetime.now(timezone.utc)

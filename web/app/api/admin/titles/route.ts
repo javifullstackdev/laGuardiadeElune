@@ -8,6 +8,7 @@ export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const name        = formData.get("name") as string;
   const source      = formData.get("source") as string;
+  const slot        = (formData.get("slot") as string) || "title";
   const description = (formData.get("description") as string) || null;
 
   const res = await fetch("http://localhost:8000/titles/", {
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ name, source, description }),
+    body: JSON.stringify({ name, source, slot, description }),
   });
 
   const redirect = new URL("/admin/titles", request.url);

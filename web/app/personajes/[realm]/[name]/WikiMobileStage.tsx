@@ -16,6 +16,7 @@ export default function WikiMobileStage({
   title,
   facts,
   crumbs,
+  onBack,
   children,
 }: {
   coverUrl: string | null;
@@ -24,6 +25,7 @@ export default function WikiMobileStage({
   title?: string | null;
   facts: Fact[];
   crumbs: Crumb[];
+  onBack?: () => void;
   children?: ReactNode;
 }) {
   const deckRef = useRef<HTMLDivElement>(null);
@@ -149,7 +151,7 @@ export default function WikiMobileStage({
       />
 
       <div className="absolute top-0 inset-x-0 z-30 px-4 pt-3">
-        <Breadcrumb className="mb-0" items={crumbs} />
+        <Breadcrumb className="mb-0" items={crumbs} onBack={onBack} />
       </div>
 
       <div className="absolute top-14 inset-x-0 bottom-0 z-20 flex flex-col">
@@ -162,15 +164,15 @@ export default function WikiMobileStage({
               <div className="w-full h-full shrink-0 px-4 pb-7 overflow-y-auto flex flex-col justify-end">
                 <h1 className="mb-4 text-center text-[#f3eee4]">
                   {prefixTitle ? (
-                    <span className="block text-[1.15rem] font-semibold tracking-wide opacity-90">
+                    <span className="block font-quest text-[1.15rem] font-semibold tracking-wide opacity-90">
                       {prefixTitle}
                     </span>
                   ) : null}
-                  <span className="mt-1 block text-[2rem] font-bold leading-tight tracking-wide">
+                  <span className="mt-1 block font-quest-display text-[2rem] font-bold leading-tight tracking-wide">
                     {displayName}
                   </span>
                   {title ? (
-                    <span className="mt-1.5 block text-[1.2rem] font-semibold leading-snug tracking-wide text-[#e4ddd0]">
+                    <span className="mt-1.5 block font-quest text-[1.2rem] font-semibold leading-snug tracking-wide text-[#e4ddd0]">
                       {title}
                     </span>
                   ) : null}

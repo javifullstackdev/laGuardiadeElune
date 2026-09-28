@@ -15,9 +15,9 @@ export default async function PersonajesPage() {
             { label: "Personajes" },
           ]}
         />
-        <h1 className="text-3xl font-bold">Personajes</h1>
+        <h1 className="text-3xl font-quest-display font-bold">Personajes</h1>
         <p className="text-gray-400 mt-2 text-sm max-w-2xl">
-          Directorio A–Z de las fichas públicas. En la portada solo se muestran algunas;
+          Fichas públicas de la hermandad. En la portada solo se muestran algunas;
           aquí están todas, ordenadas por nombre.
         </p>
 

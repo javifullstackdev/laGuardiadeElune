@@ -59,6 +59,7 @@ class StoryPublic(BaseModel):
     appearance: str | None
     published_at: datetime | None
     character_name: str
+    character_surname: str | None = None
     character_realm: str
     character_class: str | None = None
     cover_url: str | None = None

@@ -9,6 +9,7 @@ export type StoryPublic = {
   appearance: string | null;
   published_at: string | null;
   character_name: string;
+  character_surname?: string | null;
   character_realm: string;
   character_class: string | null;
   cover_url: string | null;
@@ -45,6 +46,12 @@ export type StoryPending = {
   awaiting_relations: boolean;
   cover_url: string | null;
 };
+
+export function characterSignature(
+  story: Pick<StoryPublic, "character_name" | "character_surname">,
+): string {
+  return [story.character_name, story.character_surname].filter(Boolean).join(" ");
+}
 
 export function storyExcerpt(story: Pick<StoryPublic, "biography" | "personality" | "appearance">): string {
   const text = story.biography || story.personality || story.appearance || "";
