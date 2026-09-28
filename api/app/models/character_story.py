@@ -35,6 +35,6 @@ class ContentLike(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    target_type = Column(String(20), nullable=False)  # post | story
+    target_type = Column(String(20), nullable=False)  # post | story | character
     target_id = Column(UUID(as_uuid=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

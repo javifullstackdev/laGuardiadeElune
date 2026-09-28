@@ -11,7 +11,7 @@ from app.schemas.story import LikeState, LikeToggle
 
 router = APIRouter(prefix="/likes", tags=["likes"])
 
-ALLOWED = {"post", "story"}
+ALLOWED = {"post", "story", "character"}
 
 
 def _count(db: Session, target_type: str, target_id):

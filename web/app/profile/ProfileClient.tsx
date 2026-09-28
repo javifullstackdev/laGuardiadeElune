@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWatermarkBox } from "../components/HomeLogo";
 import PublishStoryPanel from "./PublishStoryPanel";
-import BioQuestionnaire from "./BioQuestionnaire";
+import FichaPreview from "./FichaPreview";
 import ClaimsInbox from "./ClaimsInbox";
-import { mergePublicFields, PUBLIC_FIELD_LABELS, type PublicFields } from "@/lib/wiki";
-import { answersComplete, mergeAnswers, type BioAnswers, type BioQuestion } from "@/lib/bio";
+import { mergePublicFields, PUBLIC_FIELD_LABELS, type PublicFields, type WikiCharacter } from "@/lib/wiki";
+import { type BioAnswers } from "@/lib/bio";
 import { getEntitlements } from "@/lib/entitlements";
 import { classLabel, raceLabel, factionLabel, factionColor, classColor, realmLabel, genderLabel } from "@/lib/wow";
 
@@ -18,6 +18,7 @@ type TitleData = {
   id: string;
   name: string;
   source: string;
+  slot?: "title" | "prefix";
   description?: string | null;
 };
 
@@ -54,6 +55,7 @@ type Character = {
   is_alt: boolean;
   is_verified: boolean;
   favorite_title: TitleData | null;
+  favorite_prefix: TitleData | null;
   biography: string | null;
   personality: string | null;
   appearance: string | null;
@@ -102,15 +104,15 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 export const RELATION_TYPES: { value: string; label: string }[] = [
-  { value: "ally",       label: "Aliado/a" },
-  { value: "rival",      label: "Rival" },
-  { value: "family",     label: "Familiar" },
-  { value: "mentor",     label: "Mentor" },
+  { value: "ally", label: "Aliado/a" },
+  { value: "rival", label: "Rival" },
+  { value: "family", label: "Familiar" },
+  { value: "mentor", label: "Mentor" },
   { value: "apprentice", label: "Aprendiz" },
-  { value: "friend",     label: "Amigo/a" },
-  { value: "enemy",      label: "Enemigo/a" },
-  { value: "romantic",   label: "Interés romántico" },
-  { value: "companion",  label: "Compañero/a de aventuras" },
+  { value: "friend", label: "Amigo/a" },
+  { value: "enemy", label: "Enemigo/a" },
+  { value: "romantic", label: "Interés romántico" },
+  { value: "companion", label: "Compañero/a de aventuras" },
 ];
 
 function getRelationLabel(type: string) {
@@ -120,7 +122,7 @@ function getRelationLabel(type: string) {
 // ── Tipo de edición parcial de personaje ──────────────────────────────────
 
 type CharPatch = Partial<Pick<Character,
-  "surname" | "prefix_title" | "biography" | "personality" | "appearance" |
+  "surname" | "prefix_title" | "favorite_prefix" | "biography" | "personality" | "appearance" |
   "origin" | "age_lore" | "residence" |
   "avatar_url" | "custom_avatar_url" | "pending_avatar_url" |
   "bio_status" | "published_story_id" | "public_fields" |
@@ -167,7 +169,7 @@ export default function ProfileClient({
     const updated = characters.map((c) => ({
       ...c,
       is_main: c.name === char.name && c.realm === char.realm,
-      is_alt:  !(c.name === char.name && c.realm === char.realm),
+      is_alt: !(c.name === char.name && c.realm === char.realm),
     }));
     updated.sort((a, b) => (b.is_main ? 1 : 0) - (a.is_main ? 1 : 0));
     setCharacters(updated);
@@ -189,6 +191,17 @@ export default function ProfileClient({
     setCharacters((prev) => prev.map(patch));
     setSelected((prev) => prev && prev.name === char.name && prev.realm === char.realm
       ? { ...prev, favorite_title: newTitle } : prev);
+  }
+
+  function handleFavoritePrefixChange(char: Character, newPrefix: TitleData | null) {
+    const patch = (c: Character) =>
+      c.name === char.name && c.realm === char.realm
+        ? { ...c, favorite_prefix: newPrefix, prefix_title: newPrefix?.name ?? null }
+        : c;
+    setCharacters((prev) => prev.map(patch));
+    setSelected((prev) => prev && prev.name === char.name && prev.realm === char.realm
+      ? { ...prev, favorite_prefix: newPrefix, prefix_title: newPrefix?.name ?? null }
+      : prev);
   }
 
   function handleDetailsPatch(char: Character, p: CharPatch) {
@@ -221,9 +234,9 @@ export default function ProfileClient({
             aria-label="Abrir menú"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <line x1="3" y1="12" x2="21" y2="12"/>
-              <line x1="3" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
         </div>
@@ -237,6 +250,7 @@ export default function ProfileClient({
               onSetMain={() => handleSetMain(selected)}
               isPending={isPending}
               onFavoriteTitleChange={(t) => handleFavoriteTitleChange(selected, t)}
+              onFavoritePrefixChange={(t) => handleFavoritePrefixChange(selected, t)}
               onDetailsPatch={(p) => handleDetailsPatch(selected, p)}
             />
           </div>
@@ -344,7 +358,7 @@ export default function ProfileClient({
 type DetailTab = "bio" | "details" | "points" | "achievements" | "titles" | "stories" | "relations" | "professions";
 
 function CharacterDetail({
-  char, transactions, totalPoints, onSetMain, isPending, onFavoriteTitleChange, onDetailsPatch,
+  char, transactions, totalPoints, onSetMain, isPending, onFavoriteTitleChange, onFavoritePrefixChange, onDetailsPatch,
 }: {
   char: Character;
   transactions: Transaction[];
@@ -352,47 +366,32 @@ function CharacterDetail({
   onSetMain: () => void;
   isPending: boolean;
   onFavoriteTitleChange: (t: TitleData | null) => void;
+  onFavoritePrefixChange: (t: TitleData | null) => void;
   onDetailsPatch: (p: CharPatch) => void;
 }) {
   const [tab, setTab] = useState<DetailTab>("bio");
   const color = classColor(char.wow_class);
-  const className = classLabel(char.wow_class, char.gender);
-  const raceName = raceLabel(char.race, char.gender);
-  const factionName = factionLabel(char.faction);
-  const factionTint = factionColor(char.faction);
-  const realmName = char.game !== "forever" ? realmLabel(char.realm) : null;
-
-  const personalData: { label: string; value: string | null; color?: string }[] = [
-    { label: "Raza",       value: raceName },
-    { label: "Clase",      value: className },
-    { label: "Facción",    value: factionName, color: factionTint },
-    { label: "Reino",      value: realmName },
-    { label: "Edad",       value: char.age_lore ? `${char.age_lore} años` : null },
-    { label: "Origen",     value: char.origin },
-    { label: "Residencia", value: char.residence },
-  ].filter((d) => d.value !== null) as { label: string; value: string; color?: string }[];
 
   const tabs: { key: DetailTab; label: string }[] = [
-    { key: "bio",          label: "Bio" },
-    { key: "details",      label: "Datos" },
-    { key: "points",       label: "Puntos" },
+    { key: "bio", label: "Bio" },
+    { key: "details", label: "Datos" },
+    { key: "points", label: "Puntos" },
     { key: "achievements", label: "Logros" },
-    { key: "titles",       label: "Títulos" },
-    { key: "stories",      label: "Historias" },
-    { key: "relations",    label: "Relaciones" },
-    { key: "professions",  label: "Profesiones" },
+    { key: "titles", label: "Títulos" },
+    { key: "stories", label: "Historias" },
+    { key: "relations", label: "Relaciones" },
+    { key: "professions", label: "Profesiones" },
   ];
 
-  const [mobileAvatarOpen, setMobileAvatarOpen] = useState(false);
+  const hasGoodRender = !!(char.avatar_url && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url));
+  const displayName = `${char.name}${char.surname ? ` ${char.surname}` : ""}`;
+  const shownTitle = char.favorite_title?.name ?? null;
+  const shownPrefix = char.favorite_prefix?.name ?? char.prefix_title;
   const logo = useWatermarkBox();
-  const factPad = Math.round(logo.left + logo.size + 64);
-  const nameTop = `calc(5rem + 220px - ${logo.size / 2}px)`;
+  const factPad = logo.mobile ? 16 : Math.round(logo.left + logo.size + 12);
   const factStyle = {
     ["--fact-pad" as string]: `${factPad}px`,
-    ["--name-top" as string]: nameTop,
   };
-
-  const hasGoodRender = !!(char.avatar_url && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url));
 
   return (
     <div className="relative flex flex-col h-full overflow-hidden">
@@ -425,190 +424,35 @@ function CharacterDetail({
         />
       )}
 
-      {/* ══ MOBILE: imagen corta + datos a la derecha ═════════════ */}
-      <div className="sm:hidden shrink-0 relative z-10">
-        {/* Banner — solo imagen. Tocar para cambiar/quitar. */}
-        <button
-          type="button"
-          className="relative h-28 w-full overflow-hidden select-none"
-          onClick={() => setMobileAvatarOpen(v => !v)}
-          aria-label="Gestionar imagen del personaje"
-        >
-          {hasGoodRender ? (
-            <img
-              src={char.avatar_url!}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover object-[50%_10%]"
-            />
-          ) : (
-            <div
-              className="absolute inset-0"
-              style={{ background: `linear-gradient(160deg, ${color}25 0%, #030712 100%)` }}
-            />
-          )}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, transparent 50%, #030712 100%)" }} />
-
-          {char.pending_avatar_url && (
-            <span className="absolute top-2 left-2 text-[10px] text-amber-300 bg-black/70 rounded-full px-2 py-0.5">
-              Pendiente
-            </span>
-          )}
-        </button>
-
-        {mobileAvatarOpen && (
-          <div className="absolute inset-x-0 top-0 h-28 z-20 bg-black/85 flex items-center justify-center">
-            <MobileAvatarPanel
-              char={char}
-              onAvatarPatch={onDetailsPatch}
-              onClose={() => setMobileAvatarOpen(false)}
-            />
-          </div>
-        )}
-
-        {/* Nombre y, debajo, datos del personaje */}
-        <div className="px-3 pt-2 pb-1">
-          <div className="min-w-0">
-            {char.prefix_title && (
-              <p className="text-[10px] text-gray-400 italic truncate">{char.prefix_title}</p>
-            )}
-            <h1 className="text-lg font-bold leading-tight truncate" style={{ color }}>
-              {char.name}{char.surname ? ` ${char.surname}` : ""}
-            </h1>
-            {char.favorite_title && (
-              <p className="text-[11px] truncate" style={{ color: "#DDB96A" }}>
-                {char.favorite_title.name}
-              </p>
-            )}
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              {char.game === "forever" && (
-                <span className="text-[9px] font-semibold" style={{ color: "#f59e0b" }}>Forever</span>
-              )}
-              {char.is_main && (
-                <span className="px-1.5 py-px rounded-full bg-yellow-500/15 text-yellow-400 text-[9px] border border-yellow-500/25">
-                  Main
-                </span>
-              )}
-              {char.is_verified && (
-                <span className="px-1.5 py-px rounded-full bg-blue-500/15 text-blue-400 text-[9px] border border-blue-500/25">
-                  Verificado
-                </span>
-              )}
-              {!char.is_main && (
-                <button
-                  onClick={onSetMain}
-                  disabled={isPending}
-                  className="px-1.5 py-px rounded-full bg-gray-800 text-gray-400 text-[9px] border border-gray-700 disabled:opacity-50"
-                >
-                  {isPending ? "..." : "Hacer main"}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {personalData.length > 0 && (
-            <div className="grid grid-cols-2 gap-1.5 mt-2">
-              {personalData.map((d) => (
-                <div key={d.label} className="min-w-0 bg-gray-900/70 rounded-md px-2 py-1 border border-gray-800/50">
-                  <p className="text-[8px] leading-none text-gray-600 uppercase tracking-wide">{d.label}</p>
-                  <p
-                    className="text-[10px] leading-tight font-medium truncate"
-                    style={{ color: d.color ?? "#d1d5db" }}
-                  >
-                    {d.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* ══ DESKTOP: cabecera + datos personales ══════════════════ */}
-      <div
-        className="hidden sm:block relative z-10 px-8 pt-8 pb-0 shrink-0 lg:pl-[var(--fact-pad)] lg:pt-[var(--name-top)]"
+      <header
+        className="relative z-10 shrink-0 px-4 pt-5 pb-3 sm:pr-8 sm:pl-[var(--fact-pad)] sm:pt-[max(2rem,calc(140px+3.75rem))] lg:pt-[max(2rem,calc(220px+7rem))]"
         style={factStyle}
       >
+        <h1 className="grid grid-rows-[1.4rem_2.35rem_1.85rem] sm:grid-rows-[1.7rem_2.7rem_2.1rem] text-[#f3eee4]">
+          <span className="flex items-end min-w-0 font-quest text-sm sm:text-[1.15rem] font-semibold leading-none tracking-wide opacity-90">
+            {shownPrefix ? (
+              <span className="truncate">{shownPrefix}</span>
+            ) : null}
+          </span>
+          <span className="flex items-end min-w-0 font-quest-display text-[1.65rem] sm:text-[2rem] font-bold leading-none tracking-wide">
+            <span className="truncate">{displayName}</span>
+          </span>
+          <span className="flex items-end min-w-0 font-quest text-base sm:text-[1.2rem] font-semibold leading-none tracking-wide text-[#e4ddd0]">
+            {shownTitle ? <span className="truncate">{shownTitle}</span> : null}
+          </span>
+        </h1>
+      </header>
 
-        {/* Cabecera: texto + controles de imagen */}
-        <div className="flex items-start justify-between mb-5 gap-4">
-          <div className="min-w-0">
-            {char.prefix_title && (
-              <p className="text-sm text-gray-400 mb-1 italic">{char.prefix_title}</p>
-            )}
-            <h1
-              className="text-4xl font-bold tracking-tight leading-10"
-              style={{ color, textShadow: `0 0 24px ${color}35` }}
-            >
-              {char.name}
-              {char.surname && <span className="ml-3 opacity-80">{char.surname}</span>}
-            </h1>
-            {char.favorite_title && (
-              <p className="text-base mt-1.5" style={{ color: "#DDB96A" }}>
-                {char.favorite_title.name}
-              </p>
-            )}
-            {char.game === "forever" ? (
-              <p className="text-xs mt-1.5 font-semibold tracking-wide" style={{ color: "#f59e0b" }}>Warcraft Forever</p>
-            ) : (
-              <p className="text-xs mt-1.5 text-gray-600 tracking-wide">World of Warcraft</p>
-            )}
-            <div className="flex items-center gap-2 mt-3 flex-wrap">
-              {char.is_main && (
-                <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium border border-yellow-500/25">
-                  Personaje principal
-                </span>
-              )}
-              {char.is_verified && (
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium border border-blue-500/25">
-                  Verificado
-                </span>
-              )}
-              {!char.is_main && (
-                <button
-                  onClick={onSetMain}
-                  disabled={isPending}
-                  className="px-2.5 py-0.5 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs border border-gray-700 transition-colors disabled:opacity-50"
-                >
-                  {isPending ? "..." : "Establecer como main"}
-                </button>
-              )}
-            </div>
-          </div>
-          <CharacterAvatar char={char} onAvatarPatch={(p) => onDetailsPatch(p)} />
-        </div>
-
-        {personalData.length > 0 && (
-          <div className="grid grid-cols-2 xl:grid-cols-3 gap-2 mb-4 max-w-xl">
-            {personalData.map((d) => (
-              <div key={d.label} className="bg-gray-900/70 rounded-lg px-3 py-2 border border-gray-800/50">
-                <p className="text-xs text-gray-600 mb-0.5">{d.label}</p>
-                <p className="text-sm font-medium truncate" style={d.color ? { color: d.color } : { color: "#e5e7eb" }}>
-                  {d.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Separador */}
-        <div className="h-px mb-4 opacity-25" style={{ background: `linear-gradient(to right, ${color}, transparent)` }} />
-      </div>
-
-      {/* ══ TABS BAR (compartida mobile + desktop) ════════════════ */}
-      <div
-        className="relative z-10 shrink-0 px-4 sm:px-8 lg:pl-[var(--fact-pad)]"
-        style={factStyle}
-      >
+      <div className="relative z-10 shrink-0 px-4 sm:pr-8 sm:pl-[var(--fact-pad)]" style={factStyle}>
         <div className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
           {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors -mb-px border-b-2 whitespace-nowrap shrink-0 ${
-                tab === t.key
-                  ? "text-white border-current"
-                  : "border-transparent text-gray-500 hover:text-gray-300"
-              }`}
+              className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors -mb-px border-b-2 whitespace-nowrap shrink-0 ${tab === t.key
+                ? "text-white border-current"
+                : "border-transparent text-gray-500 hover:text-gray-300"
+                }`}
               style={tab === t.key ? { color, borderBottomColor: color } : {}}
             >
               {t.label}
@@ -619,7 +463,11 @@ function CharacterDetail({
 
       {/* ══ ZONA SCROLLEABLE ══════════════════════════════════════ */}
       <div
-        className="relative z-10 flex-1 overflow-y-auto scrollbar-none min-h-0 px-4 sm:px-8 py-4 sm:py-6 lg:pl-[var(--fact-pad)]"
+        className={`relative z-10 flex-1 min-h-0 px-4 sm:pr-8 sm:pl-[var(--fact-pad)] ${
+          tab === "bio"
+            ? "overflow-hidden flex flex-col pt-3 pb-10 sm:pt-4 sm:pb-14"
+            : "overflow-y-auto scrollbar-none py-3 sm:py-4"
+        }`}
         style={factStyle}
       >
         {tab === "bio" && (
@@ -632,12 +480,18 @@ function CharacterDetail({
           <DetailsTab
             char={char}
             onDetailsPatch={onDetailsPatch}
+            onSetMain={onSetMain}
+            isPending={isPending}
           />
         )}
         {tab === "points" && <PointsTab transactions={transactions} totalPoints={totalPoints} />}
         {tab === "achievements" && <AchievementsTab char={char} />}
         {tab === "titles" && (
-          <TitlesTab char={char} onFavoriteTitleChange={onFavoriteTitleChange} />
+          <TitlesTab
+            char={char}
+            onFavoriteTitleChange={onFavoriteTitleChange}
+            onFavoritePrefixChange={onFavoritePrefixChange}
+          />
         )}
         {tab === "stories" && <StoriesTab char={char} />}
         {tab === "relations" && <RelationsTab char={char} />}
@@ -765,42 +619,74 @@ function PointsTab({ transactions, totalPoints }: { transactions: Transaction[];
 
 // ── Tab: Bio ──────────────────────────────────────────────────────────────
 
+function buildFichaPreview(char: Character, biography: string): WikiCharacter {
+  const fields = mergePublicFields(char.public_fields);
+  return {
+    id: char.id,
+    name: char.name,
+    realm: char.realm,
+    display_name: `${char.name}${char.surname ? ` ${char.surname}` : ""}`.trim(),
+    title: fields.title ? (char.favorite_title?.name ?? null) : null,
+    prefix_title: fields.prefix ? (char.favorite_prefix?.name ?? char.prefix_title) : null,
+    cover_url: char.avatar_url,
+    biography: biography.trim() || null,
+    personality: fields.personality ? (char.personality ?? null) : null,
+    appearance: fields.appearance ? (char.appearance ?? null) : null,
+    origin: fields.origin ? char.origin : null,
+    age_lore: fields.age ? char.age_lore : null,
+    residence: fields.residence ? char.residence : null,
+    wow_class: fields.class ? char.wow_class : null,
+    race: fields.race ? char.race : null,
+    faction: fields.faction ? char.faction : null,
+    gender: char.gender,
+    author_username: "",
+    related: [],
+    stories: [],
+  };
+}
+
 function BioTab({
   char, onDetailsPatch,
 }: {
   char: Character;
   onDetailsPatch: (p: CharPatch) => void;
 }) {
-  const published = char.bio_status === "published" && !!char.biography;
   const answersLocked = char.bio_answers_pending;
-  const [questions, setQuestions] = useState<BioQuestion[]>([]);
-  const [questionsReady, setQuestionsReady] = useState(false);
-  const [answers, setAnswers] = useState<BioAnswers>(char.bio_answers ?? {});
-  const [saving, setSaving] = useState(false);
+  const [biography, setBiography] = useState(char.biography ?? "");
+  const [savingSheet, setSavingSheet] = useState(false);
   const [sending, setSending] = useState(false);
-  const [updating, setUpdating] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canScrollMore, setCanScrollMore] = useState(false);
+  const scrollerRef = useRef<HTMLTextAreaElement>(null);
+
+  const sheetDirty = biography !== (char.biography ?? "");
+
+  function updateScrollHint() {
+    const el = scrollerRef.current;
+    if (!el) {
+      setCanScrollMore(false);
+      return;
+    }
+    setCanScrollMore(el.scrollHeight - el.scrollTop - el.clientHeight > 16);
+  }
 
   useEffect(() => {
-    setQuestionsReady(false);
-    fetch("/api/bios/questions")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        const list = Array.isArray(data) ? data : [];
-        setQuestions(list);
-        setAnswers(mergeAnswers(list, char.bio_answers));
-      })
-      .catch(() => setQuestions([]))
-      .finally(() => setQuestionsReady(true));
-  }, [char.name, char.realm]);
-
-  useEffect(() => {
-    setUpdating(false);
     setError(null);
-  }, [char.name, char.realm]);
+    setBiography(char.biography ?? "");
+  }, [char.name, char.realm, char.biography]);
 
-  async function handleSaveDraft() {
-    setSaving(true);
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    updateScrollHint();
+    const ro = new ResizeObserver(updateScrollHint);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [biography, answersLocked]);
+
+  async function handleSaveSheet() {
+    setSavingSheet(true);
     setError(null);
     try {
       const res = await fetch("/api/characters/bio", {
@@ -809,46 +695,51 @@ function BioTab({
         body: JSON.stringify({
           name: char.name,
           realm: char.realm,
-          bio_answers: answersLocked ? undefined : answers,
+          biography,
         }),
       });
       if (!res.ok) {
         const d = await res.json();
-        setError(typeof d.detail === "string" ? d.detail : "Error al guardar");
+        setError(typeof d.detail === "string" ? d.detail : "Error al guardar la ficha");
       } else {
         const updated = await res.json();
         onDetailsPatch({
-          bio_answers: updated.bio_answers ?? answers,
-          bio_answers_pending: updated.bio_answers_pending,
+          biography: updated.biography ?? null,
           bio_status: updated.bio_status,
-          bio_rejection_reason: updated.bio_rejection_reason,
         });
       }
     } finally {
-      setSaving(false);
+      setSavingSheet(false);
     }
   }
 
-  async function handleSubmitAnswers() {
+  async function handlePublish() {
+    if (biography.trim().length < 40) {
+      setError("La biografía es demasiado corta para publicarla");
+      return;
+    }
     setSending(true);
     setError(null);
     try {
-      if (!answersLocked) {
-        const save = await fetch("/api/characters/bio", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: char.name,
-            realm: char.realm,
-            bio_answers: answers,
-          }),
-        });
-        if (!save.ok) {
-          const d = await save.json();
-          setError(typeof d.detail === "string" ? d.detail : "Error al guardar el cuestionario");
-          return;
-        }
+      const save = await fetch("/api/characters/bio", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: char.name,
+          realm: char.realm,
+          biography,
+        }),
+      });
+      if (!save.ok) {
+        const d = await save.json();
+        setError(typeof d.detail === "string" ? d.detail : "Error al guardar la ficha");
+        return;
       }
+      const saved = await save.json();
+      onDetailsPatch({
+        biography: saved.biography ?? null,
+        bio_status: saved.bio_status,
+      });
       const res = await fetch("/api/characters/bio/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -856,13 +747,13 @@ function BioTab({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(typeof data.detail === "string" ? data.detail : "No se pudo enviar");
+        setError(typeof data.detail === "string" ? data.detail : "No se pudo publicar");
       } else {
         onDetailsPatch({
-          bio_answers: data.bio_answers ?? answers,
           bio_answers_pending: data.bio_answers_pending,
           bio_status: data.bio_status,
           bio_rejection_reason: data.bio_rejection_reason,
+          biography: data.biography ?? biography,
         });
       }
     } finally {
@@ -870,122 +761,110 @@ function BioTab({
     }
   }
 
-  const showQuiz = !published || updating || answersLocked;
+  const btn =
+    "px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold text-sm disabled:opacity-50";
+  const btnQuiet =
+    "px-4 py-2 rounded-lg border border-gray-700 bg-transparent hover:bg-gray-800/80 text-gray-200 font-semibold text-sm disabled:opacity-50";
 
   return (
-    <div className="space-y-8">
-      {published && (
-        <section className="rounded-xl border border-gray-800 bg-gray-900/40 p-4 space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-xs text-gray-500 uppercase tracking-wider">Ficha pública</h2>
-              <p className="text-sm text-gray-400 mt-1">
-                Lo que aparece en la ficha pública de este personaje.
-              </p>
-            </div>
-            <Link
-              href={`/personajes/${encodeURIComponent(char.realm)}/${encodeURIComponent(char.name)}`}
-              className="text-xs text-yellow-400 hover:underline shrink-0"
-            >
-              Ver ficha pública
-            </Link>
-          </div>
-          <LoreBlock title="Biografía" text={char.biography} />
-          <LoreBlock title="Personalidad" text={char.personality} />
-          <LoreBlock title="Aspecto físico" text={char.appearance} />
-        </section>
-      )}
-
-      {showQuiz && (
-        <section className="space-y-5">
-          <div>
-            <h2 className="text-xs text-gray-500 uppercase tracking-wider">
-              {published ? "Actualizar ficha" : "Cuestionario para el Eremita"}
-            </h2>
-            <p className="text-sm text-gray-400 mt-1">
-              {published
-                ? "Si quieres cambiar la ficha, responde de nuevo y el Eremita la reescribirá."
-                : "Una pregunta cada vez. Con esto el Eremita redactará tu biografía."}
-            </p>
-          </div>
-          {char.bio_rejection_reason && !answersLocked && (
-            <p className="text-sm text-red-300">
-              El Eremita pidió cambios: {char.bio_rejection_reason}
-            </p>
-          )}
-          {answersLocked && (
-            <p className="text-sm text-amber-300">
-              El cuestionario está en revisión. Cuando el Eremita escriba la ficha, aparecerá aquí.
-            </p>
-          )}
-          {!questionsReady && !answersLocked && (
-            <p className="text-gray-600 text-sm">Cargando la primera pregunta...</p>
-          )}
-          {questionsReady && questions.length > 0 && !answersLocked && (
-            <BioQuestionnaire
-              key={`${char.name}-${char.realm}-${updating}`}
-              questions={questions}
-              answers={answers}
-              onChange={setAnswers}
+    <div className="h-full min-h-0 flex flex-col gap-4 max-w-2xl">
+      <p className="shrink-0 text-sm text-gray-400">
+        Escribe aquí la ficha. La vista previa muestra cómo se verá en el pergamino cuando el Eremita la publique.
+      </p>
+      <div className="relative min-h-0 flex-1">
+        <label className="text-xs text-gray-500 block mb-1">Biografía</label>
+        <textarea
+          ref={scrollerRef}
+          value={biography}
+          onChange={(e) => {
+            setBiography(e.target.value);
+            requestAnimationFrame(updateScrollHint);
+          }}
+          onScroll={updateScrollHint}
+          placeholder="Cuenta quién es este personaje: de dónde viene, qué lo mueve, qué ha vivido…"
+          disabled={answersLocked}
+          aria-label="Biografía"
+          className="bio-field h-[calc(100%-1.25rem)] w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 pb-10 text-sm text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-gray-500 resize-none leading-relaxed disabled:opacity-70"
+        />
+        {canScrollMore && (
+          <>
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-14 rounded-b-lg bg-gradient-to-t from-gray-900 to-transparent"
+              aria-hidden
             />
-          )}
-          {published && updating && (
             <button
               type="button"
-              onClick={() => setUpdating(false)}
-              className="text-xs text-gray-500 hover:text-gray-300"
+              aria-label="Bajar para seguir leyendo"
+              onClick={() =>
+                scrollerRef.current?.scrollBy({
+                  top: Math.round((scrollerRef.current.clientHeight || 240) * 0.7),
+                  behavior: "smooth",
+                })
+              }
+              className="bio-scroll-hint absolute bottom-3 left-1/2 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-gray-950/80 text-[#e4ddd0] shadow-lg backdrop-blur-sm hover:bg-gray-900 hover:text-white"
             >
-              Cancelar
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden className="h-4 w-4">
+                <path
+                  d="M5 7.5 10 12.5 15 7.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
-          )}
-        </section>
-      )}
-
-      {published && !updating && !answersLocked && (
-        <button
-          type="button"
-          onClick={() => setUpdating(true)}
-          className="text-xs text-gray-400 hover:text-gray-200 px-3 py-1.5 rounded-lg border border-gray-800"
-        >
-          Pedir actualización de la ficha
-        </button>
-      )}
-
-      {error && <p className="text-red-400 text-sm">{error}</p>}
-      <div className="flex flex-wrap gap-3">
-        {showQuiz && !answersLocked && (
-          <button
-            type="button"
-            onClick={handleSaveDraft}
-            disabled={saving}
-            className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-100 font-semibold text-sm disabled:opacity-50"
-          >
-            {saving ? "Guardando..." : "Guardar progreso"}
-          </button>
-        )}
-        {(!published || updating) && !answersLocked && (
-          <button
-            type="button"
-            onClick={handleSubmitAnswers}
-            disabled={sending || !questionsReady || !answersComplete(questions, answers)}
-            className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm disabled:opacity-40"
-          >
-            {sending ? "Enviando..." : published ? "Enviar actualización" : "Enviar al Eremita"}
-          </button>
+          </>
         )}
       </div>
+      {sheetDirty && !answersLocked && (
+        <p className="shrink-0 text-xs text-gray-500">Hay cambios sin guardar.</p>
+      )}
+      {error && <p className="shrink-0 text-red-400 text-sm">{error}</p>}
+      {answersLocked && (
+        <p className="shrink-0 text-sm text-amber-300">
+          El Eremita está revisando la ficha. Cuando la publique, el texto quedará en el pergamino.
+        </p>
+      )}
+      <div className="shrink-0 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => setPreviewOpen(true)} className={btnQuiet}>
+          Vista previa
+        </button>
+        <button
+          type="button"
+          onClick={handleSaveSheet}
+          disabled={savingSheet || answersLocked || !sheetDirty}
+          className={btn}
+        >
+          {savingSheet ? "Guardando..." : "Guardar cambios"}
+        </button>
+        <button
+          type="button"
+          onClick={handlePublish}
+          disabled={sending || answersLocked || biography.trim().length < 40}
+          className={btn}
+        >
+          {sending ? "Publicando..." : "Publicar ficha"}
+        </button>
+      </div>
+      {previewOpen && (
+        <FichaPreview
+          char={buildFichaPreview(char, biography)}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </div>
   );
 }
 
 function DetailsTab({
-  char, onDetailsPatch,
+  char, onDetailsPatch, onSetMain, isPending,
 }: {
   char: Character;
   onDetailsPatch: (p: CharPatch) => void;
+  onSetMain: () => void;
+  isPending: boolean;
 }) {
   const [surname, setSurname] = useState(char.surname ?? "");
-  const [prefixTitle, setPrefix] = useState(char.prefix_title ?? "");
   const [origin, setOrigin] = useState(char.origin ?? "");
   const [ageLore, setAge] = useState(char.age_lore ? String(char.age_lore) : "");
   const [residence, setResidence] = useState(char.residence ?? "");
@@ -995,7 +874,6 @@ function DetailsTab({
 
   useEffect(() => {
     setSurname(char.surname ?? "");
-    setPrefix(char.prefix_title ?? "");
     setOrigin(char.origin ?? "");
     setAge(char.age_lore ? String(char.age_lore) : "");
     setResidence(char.residence ?? "");
@@ -1014,7 +892,6 @@ function DetailsTab({
           name: char.name,
           realm: char.realm,
           surname: surname || null,
-          prefix_title: prefixTitle || null,
           origin: origin || null,
           age_lore: ageLore ? parseInt(ageLore) : null,
           residence: residence || null,
@@ -1027,7 +904,6 @@ function DetailsTab({
       } else {
         onDetailsPatch({
           surname: surname || null,
-          prefix_title: prefixTitle || null,
           origin: origin || null,
           age_lore: ageLore ? parseInt(ageLore) : null,
           residence: residence || null,
@@ -1049,6 +925,31 @@ function DetailsTab({
 
   return (
     <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {char.is_main && (
+            <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium border border-yellow-500/25">
+              Personaje principal
+            </span>
+          )}
+          {char.is_verified && (
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium border border-blue-500/25">
+              Verificado
+            </span>
+          )}
+          {!char.is_main && (
+            <button
+              type="button"
+              onClick={onSetMain}
+              disabled={isPending}
+              className="px-2.5 py-0.5 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs border border-gray-700 transition-colors disabled:opacity-50"
+            >
+              {isPending ? "..." : "Establecer como main"}
+            </button>
+          )}
+        </div>
+        <CharacterAvatar char={char} onAvatarPatch={(p) => onDetailsPatch(p)} />
+      </div>
       {identity.length > 0 && (
         <div>
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Identidad de juego</p>
@@ -1068,7 +969,6 @@ function DetailsTab({
         Datos de la ficha. Se actualizan sin pasar por el Eremita.
       </p>
       <div className="grid grid-cols-2 gap-3">
-        <LoreInput label="Antetítulo" placeholder="El gran, Archimago..." value={prefixTitle} onChange={setPrefix} />
         <LoreInput label="Apellido" placeholder="(opcional en retail)" value={surname} onChange={setSurname} />
         <LoreInput label="Origen" placeholder="Ciudad, región..." value={origin} onChange={setOrigin} />
         <LoreInput label="Residencia" placeholder="Lugar actual..." value={residence} onChange={setResidence} />
@@ -1105,21 +1005,48 @@ function DetailsTab({
 }
 
 function TitlesTab({
-  char, onFavoriteTitleChange,
+  char, onFavoriteTitleChange, onFavoritePrefixChange,
 }: {
   char: Character;
   onFavoriteTitleChange: (t: TitleData | null) => void;
+  onFavoritePrefixChange: (t: TitleData | null) => void;
 }) {
   const { maxDisplayedTitles } = getEntitlements();
   return (
-    <div className="space-y-6">
-      <p className="text-sm text-gray-400">
-        Títulos que ha ganado este personaje. Elige cuál se muestra en el perfil y en la ficha.
-        {maxDisplayedTitles === 1
-          ? " De momento solo uno."
-          : ` Puedes mostrar hasta ${maxDisplayedTitles}.`}
-      </p>
-      <CharacterTitlesSection char={char} onFavoriteTitleChange={onFavoriteTitleChange} />
+    <div className="space-y-8">
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-xs text-gray-500 uppercase tracking-wider">Antetítulos</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Van delante del nombre. Se desbloquean con logros, igual que los títulos.
+          </p>
+        </div>
+        <CharacterTitlesSection
+          char={char}
+          slot="prefix"
+          favorite={char.favorite_prefix ?? null}
+          emptyLabel="Este personaje aún no tiene antetítulos."
+          onFavoriteChange={onFavoritePrefixChange}
+        />
+      </section>
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-xs text-gray-500 uppercase tracking-wider">Títulos</h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Van debajo del nombre en el perfil y en la ficha.
+            {maxDisplayedTitles === 1
+              ? " De momento solo uno."
+              : ` Puedes mostrar hasta ${maxDisplayedTitles}.`}
+          </p>
+        </div>
+        <CharacterTitlesSection
+          char={char}
+          slot="title"
+          favorite={char.favorite_title}
+          emptyLabel="Este personaje aún no tiene títulos."
+          onFavoriteChange={onFavoriteTitleChange}
+        />
+      </section>
     </div>
   );
 }
@@ -1180,7 +1107,7 @@ function ProfessionCard({ prof, color, compact = false }: { prof: ProfData; colo
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
           <p className={`font-semibold truncate ${compact ? "text-sm" : "text-base"}`}
-             style={{ color }}>
+            style={{ color }}>
             {prof.name}
           </p>
           {prof.current_tier_name && (
@@ -1189,7 +1116,7 @@ function ProfessionCard({ prof, color, compact = false }: { prof: ProfData; colo
         </div>
         <div className="text-right shrink-0">
           <p className={`font-mono font-semibold ${compact ? "text-xs" : "text-sm"}`}
-             style={{ color: maxed ? "#22c55e" : "#e5e7eb" }}>
+            style={{ color: maxed ? "#22c55e" : "#e5e7eb" }}>
             {prof.current_skill}<span className="text-gray-600">/{prof.current_max}</span>
           </p>
           {maxed && (
@@ -1247,7 +1174,7 @@ function ProfessionCard({ prof, color, compact = false }: { prof: ProfData; colo
 }
 
 function ProfessionsTab({ char, color }: { char: Character; color: string }) {
-  const [data, setData]       = useState<ProfessionsResponse | null>(null);
+  const [data, setData] = useState<ProfessionsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -1322,7 +1249,7 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
     );
   }
 
-  const hasPrimaries   = data.primaries.length > 0;
+  const hasPrimaries = data.primaries.length > 0;
   const hasSecondaries = data.secondaries.length > 0;
 
   // ── Sin profesiones ──
@@ -1371,46 +1298,56 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
 // ── Sección títulos ───────────────────────────────────────────────────────
 
 function CharacterTitlesSection({
-  char, onFavoriteTitleChange,
+  char, slot, favorite, emptyLabel, onFavoriteChange,
 }: {
   char: Character;
-  onFavoriteTitleChange: (t: TitleData | null) => void;
+  slot: "title" | "prefix";
+  favorite: TitleData | null;
+  emptyLabel: string;
+  onFavoriteChange: (t: TitleData | null) => void;
 }) {
   const [titles, setTitles] = useState<TitleData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving,  setSaving]  = useState(false);
+  const [saving, setSaving] = useState(false);
+  const endpoint = slot === "prefix"
+    ? "/api/characters/set-favorite-prefix"
+    : "/api/characters/set-favorite-title";
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     fetch(`/api/characters/titles?name=${encodeURIComponent(char.name)}&realm=${encodeURIComponent(char.realm)}`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((d) => { if (!cancelled) setTitles(d); })
+      .then((d) => {
+        if (cancelled) return;
+        const list = Array.isArray(d) ? d as TitleData[] : [];
+        setTitles(list.filter((t) => (t.slot ?? "title") === slot));
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [char.name, char.realm]);
+  }, [char.name, char.realm, slot]);
 
   async function handleSetFavorite(title: TitleData | null) {
     setSaving(true);
     try {
-      const res = await fetch("/api/characters/set-favorite-title", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: char.name, realm: char.realm, title_id: title?.id ?? null }),
       });
-      if (res.ok) onFavoriteTitleChange(title);
+      if (res.ok) onFavoriteChange(title);
     } finally { setSaving(false); }
   }
 
   if (loading) return <p className="text-gray-600 text-sm">Cargando...</p>;
   if (titles.length === 0) return (
-    <p className="text-gray-600 text-sm">Este personaje aún no tiene títulos.</p>
+    <p className="text-gray-600 text-sm">{emptyLabel}</p>
   );
 
   return (
     <ul className="space-y-2">
       {titles.map((title) => {
-        const isFav = char.favorite_title?.id === title.id;
+        const isFav = favorite?.id === title.id;
         return (
           <li key={title.id} className={`flex items-center justify-between px-4 py-2.5 rounded-lg border transition-colors ${isFav ? "border-yellow-500/40 bg-yellow-500/5" : "border-gray-800 bg-gray-900/50"}`}>
             <div>
@@ -1420,10 +1357,9 @@ function CharacterTitlesSection({
             <button
               onClick={() => handleSetFavorite(isFav ? null : title)}
               disabled={saving}
-              className={`ml-4 text-xs px-3 py-1 rounded-lg border shrink-0 transition-colors disabled:opacity-50 ${
-                isFav ? "border-yellow-500/40 text-yellow-400 hover:text-red-400 hover:border-red-500/40"
-                       : "border-gray-700 text-gray-400 hover:text-yellow-400 hover:border-yellow-500/40"
-              }`}
+              className={`ml-4 text-xs px-3 py-1 rounded-lg border shrink-0 transition-colors disabled:opacity-50 ${isFav ? "border-yellow-500/40 text-yellow-400 hover:text-red-400 hover:border-red-500/40"
+                : "border-gray-700 text-gray-400 hover:text-yellow-400 hover:border-yellow-500/40"
+                }`}
             >
               {isFav ? "Quitar" : "Usar"}
             </button>
@@ -1438,8 +1374,8 @@ function CharacterTitlesSection({
 
 function RelationsSection({ char }: { char: Character }) {
   const [relations, setRelations] = useState<RelationData[]>([]);
-  const [loading,   setLoading]   = useState(true);
-  const [showForm,  setShowForm]  = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -1524,14 +1460,14 @@ function AddRelationForm({
   onAdded: (rel: RelationData) => void;
   onCancel: () => void;
 }) {
-  const [query,    setQuery]   = useState("");
-  const [results,  setResults] = useState<{ name: string; realm: string; wow_class: string | null; owner_username: string }[]>([]);
-  const [target,   setTarget]  = useState<{ name: string; realm: string; owner_username: string } | null>(null);
-  const [relType,  setRelType] = useState("ally");
-  const [desc,     setDesc]    = useState("");
-  const [searching,setSearch]  = useState(false);
-  const [saving,   setSaving]  = useState(false);
-  const [error,    setError]   = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<{ name: string; realm: string; wow_class: string | null; owner_username: string }[]>([]);
+  const [target, setTarget] = useState<{ name: string; realm: string; owner_username: string } | null>(null);
+  const [relType, setRelType] = useState("ally");
+  const [desc, setDesc] = useState("");
+  const [searching, setSearch] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function handleQuery(v: string) {
@@ -1643,7 +1579,7 @@ function CharacterAvatar({
   onAvatarPatch: (p: CharPatch) => void;
 }) {
   const [uploading, setUploading] = useState(false);
-  const [error, setError]         = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1652,8 +1588,8 @@ function CharacterAvatar({
     setUploading(true);
     setError(null);
     const fd = new FormData();
-    fd.append("file",  file);
-    fd.append("name",  char.name);
+    fd.append("file", file);
+    fd.append("name", char.name);
     fd.append("realm", char.realm);
     const res = await fetch("/api/characters/avatar", { method: "POST", body: fd });
     const data = await res.json();
@@ -1723,83 +1659,15 @@ function CharacterAvatar({
   );
 }
 
-// ── Panel de avatar en overlay mobile ────────────────────────────────────
-
-function MobileAvatarPanel({
-  char, onAvatarPatch, onClose,
-}: {
-  char: Character;
-  onAvatarPatch: (p: CharPatch) => void;
-  onClose: () => void;
-}) {
-  const [uploading, setUploading] = useState(false);
-  const [error, setError]         = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true); setError(null);
-    const fd = new FormData();
-    fd.append("file", file); fd.append("name", char.name); fd.append("realm", char.realm);
-    const res  = await fetch("/api/characters/avatar", { method: "POST", body: fd });
-    const data = await res.json();
-    if (!res.ok) { setError(data.error ?? data.detail ?? "Error al subir"); }
-    else { onAvatarPatch({ pending_avatar_url: "pending" }); onClose(); }
-    setUploading(false);
-    if (inputRef.current) inputRef.current.value = "";
-  }
-
-  async function handleRemove() {
-    const res = await fetch(
-      `/api/characters/avatar?name=${encodeURIComponent(char.name)}&realm=${encodeURIComponent(char.realm)}`,
-      { method: "DELETE" },
-    );
-    if (res.ok || res.status === 204) {
-      onAvatarPatch({ avatar_url: null, custom_avatar_url: null, pending_avatar_url: null });
-      onClose();
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-center gap-2 px-4 w-full">
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFileChange} />
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading || !!char.pending_avatar_url}
-          className="px-3 py-1.5 rounded-lg bg-gray-800 text-xs text-gray-200 border border-gray-700 disabled:opacity-40"
-        >
-          {uploading ? "Subiendo..." : char.pending_avatar_url ? "Pendiente" : "Cambiar imagen"}
-        </button>
-        {(char.custom_avatar_url || char.pending_avatar_url) && (
-          <button
-            onClick={handleRemove}
-            className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-xs border border-red-500/20"
-          >
-            Quitar
-          </button>
-        )}
-        <button onClick={onClose} className="px-3 py-1.5 text-xs text-gray-400">
-          Cerrar
-        </button>
-      </div>
-      {error && <p className="text-[10px] text-red-400">{error}</p>}
-    </div>
-  );
-}
-
-// ── Controles de avatar (desktop) ─────────────────────────────────────────
-
 // ── Lista de personajes agrupada por juego ────────────────────────────────
 
 const GAME_LABEL: Record<string, string> = {
-  retail:  "World of Warcraft",
+  retail: "World of Warcraft",
   forever: "Warcraft Forever",
 };
 
 const GAME_ACCENT: Record<string, string> = {
-  retail:  "#3b82f6",   // blue-500
+  retail: "#3b82f6",   // blue-500
   forever: "#f59e0b",   // amber-500
 };
 
@@ -1827,15 +1695,14 @@ function CharacterList({
             </p>
             <ul className="space-y-0.5">
               {group.map((char) => {
-                const color   = classColor(char.wow_class);
+                const color = classColor(char.wow_class);
                 const isActive = selected?.name === char.name && selected?.realm === char.realm && (selected?.game ?? "retail") === game;
                 return (
                   <li key={`${char.name}-${char.realm}-${game}`}>
                     <button
                       onClick={() => onSelect(char)}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-                        isActive ? "bg-gray-700 ring-1 ring-gray-600" : "hover:bg-gray-800"
-                      }`}
+                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${isActive ? "bg-gray-700 ring-1 ring-gray-600" : "hover:bg-gray-800"
+                        }`}
                     >
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate text-sm" style={{ color }}>
@@ -1864,18 +1731,6 @@ function CharacterList({
 
 // ── Helpers visuales ──────────────────────────────────────────────────────
 
-function LoreBlock({ title, text }: { title: string; text: string | null | undefined }) {
-  if (!text) return null;
-  return (
-    <div>
-      <h3 className="text-xs text-gray-500 mb-1.5">{title}</h3>
-      <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap bg-gray-900/50 rounded-lg px-4 py-3 border border-gray-800/50">
-        {text}
-      </p>
-    </div>
-  );
-}
-
 function LoreInput({
   label, placeholder, value, onChange, type = "text",
 }: { label: string; placeholder: string; value: string; onChange: (v: string) => void; type?: string }) {
@@ -1886,21 +1741,6 @@ function LoreInput({
         type={type} value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-gray-500"
-      />
-    </div>
-  );
-}
-
-function LoreTextarea({
-  label, placeholder, value, onChange, rows,
-}: { label: string; placeholder: string; value: string; onChange: (v: string) => void; rows: number }) {
-  return (
-    <div>
-      <label className="text-xs text-gray-500 block mb-1">{label}</label>
-      <textarea
-        value={value} onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder} rows={rows}
-        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-gray-500 resize-y leading-relaxed"
       />
     </div>
   );
@@ -1924,11 +1764,11 @@ function EmptyState({ hasBnet }: { hasBnet: boolean }) {
 // ── Sección cumpleaños ────────────────────────────────────────────────────
 
 function BirthdaySection({ birthday, isAdmin }: { birthday: string | null; isAdmin: boolean }) {
-  const [editing, setEditing]  = useState(false);
-  const [value,   setValue]    = useState("");
-  const [saving,  setSaving]   = useState(false);
-  const [error,   setError]    = useState<string | null>(null);
-  const [current, setCurrent]  = useState<string | null>(birthday);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [current, setCurrent] = useState<string | null>(birthday);
   const router = useRouter();
 
   function fmt(iso: string) {

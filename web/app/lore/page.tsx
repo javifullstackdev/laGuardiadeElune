@@ -9,7 +9,7 @@ export default async function LorePage() {
   return (
     <main className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-10 sm:py-14">
-        <h1 className="text-3xl font-bold">Historias</h1>
+        <h1 className="text-3xl font-quest-display font-bold">Historias</h1>
         <p className="text-gray-400 mt-2 text-sm">
           Relatos escritos por los jugadores y revisados por el Eremita. Las fichas están en{" "}
           <Link href="/personajes" className="text-yellow-400 hover:underline">Personajes</Link>.

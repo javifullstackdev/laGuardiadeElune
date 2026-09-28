@@ -33,8 +33,6 @@ export const PUBLIC_FIELD_LABELS: { key: keyof PublicFields; label: string }[] =
   { key: "race", label: "Raza" },
   { key: "class", label: "Clase" },
   { key: "faction", label: "Facción" },
-  { key: "personality", label: "Personalidad" },
-  { key: "appearance", label: "Aspecto físico" },
 ];
 
 export function mergePublicFields(raw: Partial<PublicFields> | null | undefined): PublicFields {
@@ -69,6 +67,7 @@ export type WikiStory = {
 };
 
 export type WikiCharacter = {
+  id: string;
   name: string;
   realm: string;
   display_name: string;

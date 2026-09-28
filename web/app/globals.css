@@ -10,6 +10,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-quest: var(--font-cinzel), "Palatino Linotype", Palatino, Georgia, serif;
+  --font-quest-display: var(--font-cinzel-decorative), var(--font-cinzel), Georgia, serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -53,6 +55,27 @@ html[data-elune-intro="playing"] nav {
   }
 }
 
+.home-fade-up {
+  opacity: 0;
+  transform: translateY(1.4rem);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-fade-up.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-fade-up {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
 /* Scroll usable, barra invisible (Firefox, Chromium, Safari, Edge) */
 .scrollbar-none {
   scrollbar-width: none;
@@ -63,6 +86,40 @@ html[data-elune-intro="playing"] nav {
   display: none;
   width: 0;
   height: 0;
+}
+
+.bio-field {
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.bio-field::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+@keyframes bio-scroll-nudge {
+  0%,
+  100% {
+    transform: translate(-50%, 0);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translate(-50%, 5px);
+    opacity: 1;
+  }
+}
+
+.bio-scroll-hint {
+  animation: bio-scroll-nudge 1.7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bio-scroll-hint {
+    animation: none;
+  }
 }
 
 .quest-sheet {
@@ -76,15 +133,17 @@ html[data-elune-intro="playing"] nav {
 .quest-parchment {
   --chrome-side: 7.4rem;
   --head-top: 8.1rem;
-  --head-h: 3.15rem;
+  --head-h: 2.75rem;
   --foot-bot: 7.8rem;
   --foot-h: 0.08rem;
-  --line-gap: 1.35rem;
-  --fade-band: 1.7rem;
-  --fade-top-start: calc(var(--head-top) + var(--head-h) + var(--line-gap));
-  --fade-top: calc(var(--fade-top-start) + var(--fade-band));
-  --fade-bot-end: calc(var(--foot-bot) + var(--foot-h) + var(--line-gap));
-  --fade-bot: calc(var(--fade-bot-end) + var(--fade-band));
+  --line-gap-top: 0.7rem;
+  --line-gap-bot: 0.7rem;
+  --fade-band-top: 1.15rem;
+  --fade-band-bot: 1.15rem;
+  --fade-top-start: calc(var(--head-top) + var(--head-h) + var(--line-gap-top));
+  --fade-top: calc(var(--fade-top-start) + var(--fade-band-top));
+  --fade-bot-end: calc(var(--foot-bot) + var(--foot-h) + var(--line-gap-bot));
+  --fade-bot: calc(var(--fade-bot-end) + var(--fade-band-bot));
   --frame-w: 561;
   --frame-h: 653;
   --sheet-chrome: 15.25rem;
@@ -131,12 +190,65 @@ html[data-elune-intro="playing"] nav {
 }
 
 .quest-parchment-head h2 {
-  margin: 0 0 1.05rem;
+  margin: 0 0 0.7rem;
+  font-family: var(--font-quest);
   font-size: 1.45rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-align: left;
   color: #2a1c10;
+}
+
+.quest-parchment-head-display h2 {
+  font-family: var(--font-quest-display);
+  font-size: 1.58rem;
+  letter-spacing: 0.03em;
+}
+
+.parchment-share-btn {
+  color: #2a1c10;
+  opacity: 0.78;
+  transition:
+    opacity 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.parchment-share-btn:hover {
+  opacity: 1;
+}
+
+.parchment-share-btn.is-liked {
+  color: #b4232c;
+  opacity: 1;
+}
+
+@keyframes parchment-heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  22% {
+    transform: scale(1.38);
+  }
+  48% {
+    transform: scale(0.88);
+  }
+  72% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.parchment-heart-pop {
+  animation: parchment-heart-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .parchment-heart-pop {
+    animation: none;
+  }
 }
 
 .quest-parchment-foot {
@@ -145,8 +257,8 @@ html[data-elune-intro="playing"] nav {
 
 .quest-parchment-actions-foot {
   --foot-bot: 9.35rem;
-  --line-gap: 2.55rem;
-  --fade-band: 2.15rem;
+  --line-gap-bot: 2.55rem;
+  --fade-band-bot: 2.15rem;
 }
 
 .quest-parchment-foot-row {
@@ -196,12 +308,17 @@ html[data-elune-intro="playing"] nav {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: calc(var(--fade-top) + 0.15rem) var(--chrome-side)
+  padding: var(--fade-top) var(--chrome-side)
     calc(var(--fade-bot) + 0.55rem);
   color: #2a1c10;
   font-family: Georgia, "Palatino Linotype", Palatino, "Times New Roman", serif;
   text-align: justify;
-  hyphens: auto;
+  text-justify: inter-word;
+  hyphens: none;
+  -webkit-hyphens: none;
+  -ms-hyphens: none;
+  overflow-wrap: normal;
+  word-break: normal;
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
@@ -224,9 +341,10 @@ html[data-elune-intro="playing"] nav {
 
 .quest-parchment-body h2 {
   margin: 0 0 0.75rem;
+  font-family: var(--font-quest);
   font-size: 1.15rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
   text-transform: none;
   text-align: left;
   color: #2a1c10;
@@ -238,6 +356,19 @@ html[data-elune-intro="playing"] nav {
   font-size: 1.2rem;
   letter-spacing: 0.03em;
   color: #2a1c10;
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: none;
+  -webkit-hyphens: none;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.quest-parchment-body * {
+  hyphens: none;
+  -webkit-hyphens: none;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .quest-parchment-body.is-ready h2,
@@ -288,17 +419,19 @@ html[data-elune-intro="playing"] nav {
     width: 100%;
     max-height: none;
     --head-top: 4.8rem;
-    --head-h: 3.2rem;
+    --head-h: 2.7rem;
     --foot-bot: 4.6rem;
     --foot-h: 0.08rem;
-    --line-gap: 0.85rem;
-    --fade-band: 1.6rem;
+    --line-gap-top: 0.5rem;
+    --line-gap-bot: 0.5rem;
+    --fade-band-top: 1.05rem;
+    --fade-band-bot: 1.05rem;
   }
 
   .quest-parchment-actions-foot {
     --foot-bot: 6.25rem;
-    --line-gap: 1.85rem;
-    --fade-band: 1.9rem;
+    --line-gap-bot: 1.85rem;
+    --fade-band-bot: 1.9rem;
   }
 
   .quest-parchment-head h2 {

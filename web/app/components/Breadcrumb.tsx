@@ -24,12 +24,17 @@ function ArrowLeft() {
   );
 }
 
+const backClass =
+  "inline-flex items-center justify-center w-8 h-8 rounded-md border border-gray-700 bg-gray-900/80 text-gray-300 hover:text-white hover:border-gray-500 hover:bg-gray-800 transition-colors";
+
 export default function Breadcrumb({
   items,
   className,
+  onBack,
 }: {
   items: Crumb[];
   className?: string;
+  onBack?: () => void;
 }) {
   const backHref = [...items].reverse().find((item) => item.href)?.href ?? "/";
 
@@ -37,13 +42,15 @@ export default function Breadcrumb({
     <nav aria-label="Ruta de navegación" className={className ?? "mb-8"}>
       <ol className="flex items-center gap-1.5 text-sm flex-wrap">
         <li>
-          <Link
-            href={backHref}
-            className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-gray-700 bg-gray-900/80 text-gray-300 hover:text-white hover:border-gray-500 hover:bg-gray-800 transition-colors"
-            aria-label="Volver"
-          >
-            <ArrowLeft />
-          </Link>
+          {onBack ? (
+            <button type="button" onClick={onBack} className={backClass} aria-label="Volver">
+              <ArrowLeft />
+            </button>
+          ) : (
+            <Link href={backHref} className={backClass} aria-label="Volver">
+              <ArrowLeft />
+            </Link>
+          )}
         </li>
         {items.map((item, i) => {
           const last = i === items.length - 1;

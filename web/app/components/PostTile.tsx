@@ -28,11 +28,7 @@ export default function PostTile({ post }: { post: Post }) {
         </div>
 
         <div className="flex flex-col flex-1 px-4 pt-3 pb-4">
-          <p className="flex items-center gap-1.5 text-[10px] tracking-[0.14em] uppercase text-gray-500">
-            <span className="w-3.5 h-3.5 rounded-[3px] bg-yellow-500/90 shrink-0" />
-            <span className="truncate">La Guardia de Elune</span>
-          </p>
-          <h3 className="mt-1.5 font-bold text-[15px] leading-snug text-white line-clamp-2">
+          <h3 className="font-bold text-[15px] leading-snug text-white line-clamp-2">
             {post.title}
           </h3>
           {subtitle && (
@@ -40,7 +36,7 @@ export default function PostTile({ post }: { post: Post }) {
               {subtitle}
             </p>
           )}
-          <p className="mt-auto pt-4 text-sm font-semibold text-white">
+          <p className="mt-auto pt-4 text-xs font-semibold text-white text-right">
             {formatDate(post.published_at)}
           </p>
         </div>
