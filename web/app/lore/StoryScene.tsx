@@ -12,7 +12,7 @@ export default function StoryScene({
 }) {
   return (
     <ParchmentPanRoot>
-      <div className="relative min-h-[calc(100dvh-3rem)] overflow-hidden">
+      <div className="relative min-h-[calc(100dvh-3rem)] overflow-hidden sm:h-[calc(100dvh-3rem)]">
         {coverUrl ? (
           <PanningCover
             src={coverUrl}

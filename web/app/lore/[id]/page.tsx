@@ -142,7 +142,7 @@ export default async function LoreDetailPage({
               </p>
             )}
             {hasLore && (
-              <div className="wiki-mobile-lore min-h-0 flex-1 px-2 flex items-end justify-center">
+              <div className="wiki-mobile-lore min-h-0 flex-1 px-2 flex items-end justify-center animate-parchment-up">
                 <StoryParchment
                   story={story}
                   actions={
@@ -162,9 +162,10 @@ export default async function LoreDetailPage({
           </div>
         </section>
 
-        <div className="relative z-10 hidden sm:block">
-          <div className="max-w-7xl mx-auto px-4 pt-7 pb-6">
-            <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="relative z-10 hidden sm:block h-full">
+          {/* 1. Mismo padding izquierdo que en personajes */}
+          <div className="h-full flex flex-col px-4 pt-6 lg:pl-[clamp(25rem,28vw,32rem)] lg:pr-20">
+            <div className="flex items-start justify-between gap-4 mb-4 shrink-0">
               <Breadcrumb className="mb-0" items={crumbs} />
               {story.status && story.status !== "approved" && (
                 <span className="text-xs px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/15 text-amber-300 shrink-0">
@@ -174,21 +175,24 @@ export default async function LoreDetailPage({
             </div>
             <h1 className="sr-only">{story.title}</h1>
             {hasLore && (
-              <div className="max-w-full">
-                <StoryParchment
-                  story={story}
-                  actions={
-                    (!story.status || story.status === "approved") ? (
-                      <ShareBar
-                        variant="parchment"
-                        targetType="story"
-                        targetId={story.id}
-                        title={story.title}
-                        loggedIn={!!token}
-                      />
-                    ) : undefined
-                  }
-                />
+              <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:items-stretch gap-5 lg:gap-8">
+                {/* 2. Alineación inferior y animación de entrada */}
+                <div className="min-h-0 shrink-0 lg:self-end animate-parchment-up story-large-parchment">
+                  <StoryParchment
+                    story={story}
+                    actions={
+                      (!story.status || story.status === "approved") ? (
+                        <ShareBar
+                          variant="parchment"
+                          targetType="story"
+                          targetId={story.id}
+                          title={story.title}
+                          loggedIn={!!token}
+                        />
+                      ) : undefined
+                    }
+                  />
+                </div>
               </div>
             )}
           </div>

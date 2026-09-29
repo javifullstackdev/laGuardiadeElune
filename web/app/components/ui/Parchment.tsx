@@ -61,8 +61,8 @@ export default function Parchment({
     }
 
     const pad = getComputedStyle(root);
-    const topInset = Math.max(0, parseFloat(pad.paddingTop) - 8);
-    const botInset = Math.max(0, parseFloat(pad.paddingBottom) - 8);
+    const topInset = Math.max(0, (Number.parseFloat(pad.paddingTop) || 0) - 8);
+    const botInset = Math.max(0, (Number.parseFloat(pad.paddingBottom) || 0) - 8);
 
     let armed = false;
     const io = new IntersectionObserver(
@@ -92,7 +92,7 @@ export default function Parchment({
     <div className={`quest-parchment${actions ? " quest-parchment-actions-foot" : ""}`}>
       <div className="quest-parchment-art" aria-hidden>
         <img
-          src="/parchment/frame.png"
+          src="/parchment/parchmentMidResize.png"
           alt=""
           className="quest-parchment-frame"
           draggable={false}

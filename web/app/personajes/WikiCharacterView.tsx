@@ -35,15 +35,15 @@ function CharacterHeading({
   return (
     <h1 className={className ?? "text-[#f3eee4]"}>
       {prefixTitle ? (
-        <span className="block font-quest text-[1.15rem] font-semibold tracking-wide opacity-90">
+        <span className="block font-quest text-[2rem] font-semibold tracking-wide opacity-90">
           {prefixTitle}
         </span>
       ) : null}
-      <span className="mt-1 block font-quest-display text-[2rem] font-bold leading-tight tracking-wide">
+      <span className="mt-1 block font-quest-display text-[4rem] font-bold leading-tight tracking-wide">
         {displayName}
       </span>
       {title ? (
-        <span className="mt-1.5 block font-quest text-[1.2rem] font-semibold leading-snug tracking-wide text-[#e4ddd0]">
+        <span className="mt-1.5 block font-quest text-[2rem] font-semibold leading-snug tracking-wide text-[#e4ddd0]">
           {title}
         </span>
       ) : null}
@@ -121,15 +121,15 @@ export default function WikiCharacterView({
   const hasLore = Boolean(char.biography || char.personality || char.appearance);
   const crumbs = preview
     ? [
-        { label: "Inicio" },
-        { label: "Personajes" },
-        { label: char.display_name },
-      ]
+      { label: "Inicio" },
+      { label: "Personajes" },
+      { label: char.display_name },
+    ]
     : [
-        { href: "/", label: "Inicio" },
-        { href: "/personajes", label: "Personajes" },
-        { label: char.display_name },
-      ];
+      { href: "/", label: "Inicio" },
+      { href: "/personajes", label: "Personajes" },
+      { label: char.display_name },
+    ];
 
   const shareActions = <CharacterShareBar char={char} loggedIn={loggedIn} />;
   const lore = hasLore ? <LoreParchment char={char} actions={shareActions} /> : null;
@@ -138,7 +138,7 @@ export default function WikiCharacterView({
     <div className="relative text-white">
       {char.cover_url && (
         <div
-          className="fixed inset-y-0 right-0 w-[58%] pointer-events-none select-none hidden sm:block"
+          className="fixed inset-y-0 -right-48 w-[58%] pointer-events-none select-none hidden sm:block"
           style={{ zIndex: 0 }}
           aria-hidden
         >
@@ -173,18 +173,18 @@ export default function WikiCharacterView({
         {lore}
       </WikiMobileStage>
 
-      <div className="relative z-10 hidden sm:block">
-        <div className="max-w-7xl mx-auto px-4 pt-7 pb-6">
-          <Breadcrumb className="mb-4" items={crumbs} onBack={onDismiss} />
+      <div className="relative z-10 hidden sm:block h-[calc(100dvh-3rem)] overflow-hidden">
+        <div className="h-full flex flex-col px-4 pt-6 lg:pl-[clamp(25rem,28vw,32rem)] lg:pr-20">
+          <Breadcrumb className="mb-4 shrink-0" items={crumbs} onBack={onDismiss} />
 
-          <div className="flex flex-col lg:flex-row lg:items-end gap-5 lg:gap-8">
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:items-stretch gap-5 lg:gap-2]">
             {hasLore && (
-              <div className="shrink-0 max-w-full">
+              <div className="min-h-0 shrink-0 lg:self-end animate-parchment-up story-large-parchment">
                 <LoreParchment char={char} actions={shareActions} />
               </div>
             )}
 
-            <aside className="w-full flex-1 min-w-0 lg:self-end lg:mb-16">
+            <aside className="w-full flex-1 min-w-0 lg:self-end lg:mb-24 lg:-ml-20 lg:mr-20">
               <CharacterHeading
                 className="mb-6 text-center text-[#f3eee4]"
                 prefixTitle={char.prefix_title}
@@ -198,7 +198,7 @@ export default function WikiCharacterView({
                       key={f.label}
                       className="rounded-lg px-3 py-2.5 border border-white/20 bg-white/15 backdrop-blur-[2px]"
                     >
-                      <p className="text-xs text-white/55 mb-0.5">{f.label}</p>
+                      <p className="text-xs text-white/55 mb-0.5 ">{f.label}</p>
                       <p
                         className="text-sm font-medium truncate text-white"
                         style={f.color ? { color: f.color } : undefined}
