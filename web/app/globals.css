@@ -40,6 +40,7 @@ html[data-elune-intro="playing"] nav {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -101,11 +102,13 @@ html[data-elune-intro="playing"] nav {
 }
 
 @keyframes bio-scroll-nudge {
+
   0%,
   100% {
     transform: translate(-50%, 0);
     opacity: 0.72;
   }
+
   50% {
     transform: translate(-50%, 5px);
     opacity: 1;
@@ -131,34 +134,35 @@ html[data-elune-intro="playing"] nav {
 }
 
 .quest-parchment {
-  --chrome-side: 7.4rem;
-  --head-top: 8.1rem;
+  --chrome-side: 23.2cqi;
+  --head-top: 31.2cqh;
   --head-h: 2.75rem;
-  --foot-bot: 7.8rem;
+  --foot-bot: 2.6rem;
   --foot-h: 0.08rem;
-  --line-gap-top: 0.7rem;
-  --line-gap-bot: 0.7rem;
+  --line-gap-top: 1.3rem;
+  --line-gap-bot: 0.55rem;
   --fade-band-top: 1.15rem;
-  --fade-band-bot: 1.15rem;
+  --fade-band-bot: 1.05rem;
   --fade-top-start: calc(var(--head-top) + var(--head-h) + var(--line-gap-top));
   --fade-top: calc(var(--fade-top-start) + var(--fade-band-top));
   --fade-bot-end: calc(var(--foot-bot) + var(--foot-h) + var(--line-gap-bot));
   --fade-bot: calc(var(--fade-bot-end) + var(--fade-band-bot));
-  --frame-w: 561;
-  --frame-h: 653;
-  --sheet-chrome: 15.25rem;
-  container-type: inline-size;
+  --frame-w: 707;
+  --frame-h: 608;
+  --sheet-chrome: 18rem;
+  container-type: size;
   position: relative;
-  width: min(56rem, calc((100dvh - var(--sheet-chrome)) * var(--frame-w) / var(--frame-h)));
-  max-width: 100%;
-  max-height: calc(100dvh - var(--sheet-chrome));
-  aspect-ratio: var(--frame-w) / var(--frame-h);
-  height: auto;
+  overflow: hidden;
+  height: calc(100dvh - var(--sheet-chrome));
+  width: calc((100dvh - var(--sheet-chrome)) * var(--frame-w) / var(--frame-h));
+  max-width: none;
+  max-height: none;
 }
 
 .quest-parchment-art {
   position: absolute;
   inset: 0;
+  overflow: hidden;
   pointer-events: none;
   z-index: 0;
 }
@@ -167,8 +171,8 @@ html[data-elune-intro="playing"] nav {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: center;
+  object-fit: fill;
+  object-position: bottom center;
   pointer-events: none;
   user-select: none;
   filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.55));
@@ -190,18 +194,18 @@ html[data-elune-intro="playing"] nav {
 }
 
 .quest-parchment-head h2 {
-  margin: 0 0 0.7rem;
+  margin: 0 0 0.2rem;
   font-family: var(--font-quest);
-  font-size: 1.45rem;
+  font-size: 2.5rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-align: left;
+  text-align: center;
   color: #2a1c10;
 }
 
 .quest-parchment-head-display h2 {
   font-family: var(--font-quest-display);
-  font-size: 1.58rem;
+  font-size: 2rem;
   letter-spacing: 0.03em;
 }
 
@@ -227,17 +231,52 @@ html[data-elune-intro="playing"] nav {
   0% {
     transform: scale(1);
   }
+
   22% {
     transform: scale(1.38);
   }
+
   48% {
     transform: scale(0.88);
   }
+
   72% {
     transform: scale(1.12);
   }
+
   100% {
     transform: scale(1);
+  }
+}
+
+@keyframes parchment-slide-up {
+  0% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+
+  15% {
+    /* Se vuelve totalmente visible rápidamente al empezar a asomar */
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-parchment-up {
+  /* Parámetros: Animación | Duración (1.4s) | Curva suavizada | Retraso (0.15s) | Forwards */
+  animation: parchment-slide-up 3s cubic-bezier(0.16, 1, 0.3, 1) 0.45s forwards;
+
+  /* Esto asegura que el pergamino sea invisible durante los 0.15s de retraso inicial */
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-parchment-up {
+    animation: none;
   }
 }
 
@@ -256,7 +295,7 @@ html[data-elune-intro="playing"] nav {
 }
 
 .quest-parchment-actions-foot {
-  --foot-bot: 9.35rem;
+  --foot-bot: 4.1rem;
   --line-gap-bot: 2.55rem;
   --fade-band-bot: 2.15rem;
 }
@@ -308,8 +347,7 @@ html[data-elune-intro="playing"] nav {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: var(--fade-top) var(--chrome-side)
-    calc(var(--fade-bot) + 0.55rem);
+  padding: var(--fade-top) var(--chrome-side) calc(var(--fade-bot) + 0.55rem);
   color: #2a1c10;
   font-family: Georgia, "Palatino Linotype", Palatino, "Times New Roman", serif;
   text-align: justify;
@@ -319,24 +357,20 @@ html[data-elune-intro="playing"] nav {
   -ms-hyphens: none;
   overflow-wrap: normal;
   word-break: normal;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent var(--fade-top-start),
-    #000 var(--fade-top),
-    #000 calc(100% - var(--fade-bot)),
-    transparent calc(100% - var(--fade-bot-end)),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent var(--fade-top-start),
-    #000 var(--fade-top),
-    #000 calc(100% - var(--fade-bot)),
-    transparent calc(100% - var(--fade-bot-end)),
-    transparent 100%
-  );
+  -webkit-mask-image: linear-gradient(to bottom,
+      transparent 0,
+      transparent var(--fade-top-start),
+      #000 var(--fade-top),
+      #000 calc(100% - var(--fade-bot)),
+      transparent calc(100% - var(--fade-bot-end)),
+      transparent 100%);
+  mask-image: linear-gradient(to bottom,
+      transparent 0,
+      transparent var(--fade-top-start),
+      #000 var(--fade-top),
+      #000 calc(100% - var(--fade-bot)),
+      transparent calc(100% - var(--fade-bot-end)),
+      transparent 100%);
 }
 
 .quest-parchment-body h2 {
@@ -393,6 +427,7 @@ html[data-elune-intro="playing"] nav {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .quest-parchment-body.is-ready h2,
   .quest-parchment-body.is-ready p {
     opacity: 1;
@@ -405,33 +440,32 @@ html[data-elune-intro="playing"] nav {
   margin-bottom: 0;
 }
 
-.quest-parchment-body section + section {
+.quest-parchment-body section+section {
   margin-top: 2.1rem;
 }
 
 @media (max-width: 640px) {
+
   .quest-sheet,
   .quest-parchment {
-    --chrome-side: 3.4rem;
+    --chrome-side: 28cqi;
+    /* <-- Aumentado de 20cqi a 28cqi para empujar el texto hacia adentro */
   }
 
   .quest-parchment {
+    --head-top: 30cqh;
+    --head-h: 2.4rem;
+    --foot-bot: 2.4rem;
     width: 100%;
+    height: auto;
     max-height: none;
-    --head-top: 4.8rem;
-    --head-h: 2.7rem;
-    --foot-bot: 4.6rem;
-    --foot-h: 0.08rem;
-    --line-gap-top: 0.5rem;
-    --line-gap-bot: 0.5rem;
-    --fade-band-top: 1.05rem;
-    --fade-band-bot: 1.05rem;
+    aspect-ratio: var(--frame-w) / var(--frame-h);
   }
 
   .quest-parchment-actions-foot {
-    --foot-bot: 6.25rem;
-    --line-gap-bot: 1.85rem;
-    --fade-band-bot: 1.9rem;
+    --foot-bot: 3.6rem;
+    --line-gap-bot: 1.4rem;
+    --fade-band-bot: 1.5rem;
   }
 
   .quest-parchment-head h2 {
@@ -445,14 +479,27 @@ html[data-elune-intro="playing"] nav {
   }
 
   .wiki-mobile-lore .quest-parchment {
-    width: 100%;
-    height: 75%;
-    max-width: 100%;
-    max-height: 75%;
+    width: 180vw !important;
+    max-width: none !important;
+    flex-shrink: 0 !important;
+
+    /* Nuevo método de centrado absoluto: */
+    margin-left: 0vw !important;
+
+    height: 82% !important;
     aspect-ratio: auto;
+    overflow: hidden;
   }
 
   .wiki-mobile-lore .quest-parchment-frame {
-    object-fit: fill;
+    object-fit: fill !important;
+    object-position: bottom center;
+    width: 100%;
+    height: 100%;
   }
+}
+
+/* Fuerza un tamaño mayor para el pergamino en la vista de historias */
+.story-large-parchment .quest-parchment {
+  --sheet-chrome: 8rem !important;
 }

@@ -463,11 +463,10 @@ function CharacterDetail({
 
       {/* ══ ZONA SCROLLEABLE ══════════════════════════════════════ */}
       <div
-        className={`relative z-10 flex-1 min-h-0 px-4 sm:pr-8 sm:pl-[var(--fact-pad)] ${
-          tab === "bio"
+        className={`relative z-10 flex-1 min-h-0 px-4 sm:pr-8 sm:pl-[var(--fact-pad)] ${tab === "bio"
             ? "overflow-hidden flex flex-col pt-3 pb-10 sm:pt-4 sm:pb-14"
             : "overflow-y-auto scrollbar-none py-3 sm:py-4"
-        }`}
+          }`}
         style={factStyle}
       >
         {tab === "bio" && (

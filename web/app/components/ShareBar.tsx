@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode, type SVGProps } from "react";
+import PulseHeart from './ui/PulseHeart';
 
 type LikeState = {
   count: number;
@@ -12,19 +13,6 @@ function Icon({ children, ...props }: SVGProps<SVGSVGElement> & { children: Reac
     <svg viewBox="0 0 24 24" width="1em" height="1em" aria-hidden {...props}>
       {children}
     </svg>
-  );
-}
-
-function HeartIcon({ filled }: { filled: boolean }) {
-  return (
-    <Icon
-      fill={filled ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth={filled ? 0 : 1.85}
-      strokeLinejoin="round"
-    >
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    </Icon>
   );
 }
 
@@ -79,7 +67,6 @@ export default function ShareBar({
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [url, setUrl] = useState("");
-  const [pop, setPop] = useState(false);
 
   useEffect(() => {
     if (shareUrl) {
@@ -101,14 +88,13 @@ export default function ShareBar({
   async function toggleLike() {
     if (!loggedIn || busy) return;
     const nextLiked = !likes.liked;
+
+    // Actualización inmediata para que sea fluido
     setLikes({
       count: Math.max(0, likes.count + (nextLiked ? 1 : -1)),
       liked: nextLiked,
     });
-    if (nextLiked) {
-      setPop(true);
-      window.setTimeout(() => setPop(false), 450);
-    }
+
     setBusy(true);
     const res = await fetch("/api/likes", {
       method: "POST",
@@ -121,7 +107,7 @@ export default function ShareBar({
   }
 
   const text = `${title} — La Guardia de Elune`;
-  const wa = url ? `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}` : "#";
+  const wa = url ? `https://wa.me/?text=${encodeURIComponent(`${text}${url}`)}` : "#";
   const x = url
     ? `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
     : "#";
@@ -141,37 +127,36 @@ export default function ShareBar({
 
   if (variant === "parchment") {
     const iconBtn =
-      "parchment-share-btn inline-flex items-center justify-center w-8 h-8 rounded-sm text-[1.28rem] leading-none";
-    const likeBtn = `${iconBtn} min-w-8 w-auto gap-1 px-1`;
-    const likeControl = (
-      <>
-        <HeartIcon filled={likes.liked} />
-        {likes.count > 0 ? (
-          <span className="text-[10px] font-semibold tabular-nums tracking-wide opacity-80">
-            {likes.count}
-          </span>
-        ) : null}
-      </>
-    );
+      "parchment-share-btn inline-flex items-center justify-center w-8 h-8 rounded-sm text-[1.28rem] leading-none text-[#2a1c10] hover:bg-black/5 transition-colors";
 
     return (
       <div className="flex items-center gap-1">
-        {loggedIn ? (
-          <button
-            type="button"
-            onClick={toggleLike}
+
+        {/* Envolvemos el corazón en un div para manejar el click si no está logueado */}
+        <div onClick={!loggedIn ? () => { window.location.href = loginHref } : undefined}>
+          <PulseHeart
+            count={likes.count}
+            liked={likes.liked}
+            onChange={loggedIn ? toggleLike : undefined}
+            showCount
+            icon="heart"
+            idleOutline
+            size={26}
+            corner={32}
+            likedColor="#b4232c"
+            idleColor="#2a1c10"
+            pillColor="transparent"
+            textColor="#2a1c10"
+            duration={560}
+            dotSize={0.3}
+            overshoot={1.7}
+            beat={3}
+            rollDuration={350}
             disabled={busy}
-            className={`${likeBtn}${likes.liked ? " is-liked" : ""}${pop ? " parchment-heart-pop" : ""}`}
-            aria-label={likes.liked ? "Quitar me gusta" : "Me gusta"}
-            aria-pressed={likes.liked}
-          >
-            {likeControl}
-          </button>
-        ) : (
-          <a href={loginHref} className={likeBtn} aria-label={`Me gusta · ${likes.count}`}>
-            {likeControl}
-          </a>
-        )}
+            className={!loggedIn ? "pointer-events-none" : ""}
+          />
+        </div>
+
         <a
           href={x}
           target="_blank"
@@ -210,11 +195,10 @@ export default function ShareBar({
           type="button"
           onClick={toggleLike}
           disabled={busy}
-          className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-            likes.liked
-              ? "bg-yellow-500/15 text-yellow-300 border-yellow-500/30"
-              : "bg-gray-900 text-gray-300 border-gray-800 hover:border-gray-600"
-          }`}
+          className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${likes.liked
+            ? "bg-yellow-500/15 text-yellow-300 border-yellow-500/30"
+            : "bg-gray-900 text-gray-300 border-gray-800 hover:border-gray-600"
+            }`}
         >
           {likes.liked ? "Te gusta" : "Me gusta"} · {likes.count}
         </button>
