@@ -32,75 +32,19 @@ Internet
 
 ---
 
-## 2. Git: ramas y commits (tú los haces)
+## 2. Git: ramas y commits
 
-Hoy el trabajo de deploy está **sin commit** (~96 paths) encima de `feature/parchment-improvements`.  
-Un flujo profesional de portfolio:
+**Estado actual:** la rama `feat/hetzner-deploy` ya tiene los 4 commits de deploy y está en `origin`.  
+Pendiente: **abrir PR → `main`**, mergear, y luego el VPS clona `main`.
 
-### Opción A — limpia (recomendada)
+### Abrir el PR (sin `gh` en Windows)
 
-| # | Rama | Qué metes | Commit message (EN) |
-|---|------|-----------|---------------------|
-| 1 | `feature/parchment-improvements` | Solo lo de pergamino que quede (si aún hay) | ya está en `9519c70` si no hay más |
-| 2 | PR → `main` | merge del pergamino | vía GitHub PR |
-| 3 | `feat/hetzner-deploy` (desde `main`) | Docker, Caddy, `apiUrl`, cookies, docs | ver commits abajo |
-| 4 | PR → `main` | review + merge | |
-| 5 | VPS clona `main` | | |
+1. Abre: https://github.com/javifullstackdev/laGuardiadeElune/compare/main...feat/hetzner-deploy?expand=1  
+2. **Create pull request**
+3. Título: `feat: Hetzner production deploy stack`
+4. Body:
 
-### Opción B — finde (más rápida, recomendada ahora)
-
-Partes de `feature/parchment-improvements` (o de `main` si ya mergeaste el pergamino).  
-Copia y pega **bloque a bloque**. Tras cada commit, `git status` debe ir quedando más limpio.
-
-```powershell
-cd C:\Users\elchi\OneDrive\Escritorio\DAM\laGuardiadeElune
-git checkout -b feat/hetzner-deploy
-```
-
-#### Commit 1 — Web: API URLs, cookies, build prod
-```powershell
-git add web/lib/api.ts web/lib/auth-cookie.ts `
-  web/app/components/EluneLogoReveal.d.ts `
-  web/next.config.ts web/package.json web/package-lock.json web/tsconfig.json `
-  web/app
-git commit -m "feat(web): use env-based API URLs and secure session cookies"
-```
-
-#### Commit 2 — API: static URLs, CORS, health, imagen Docker
-```powershell
-git add api/app/urls.py api/app/main.py api/app/database.py `
-  api/app/routers api/app/schemas/character.py api/requirements.txt `
-  api/Dockerfile api/.dockerignore api/scripts
-git commit -m "feat(api): add public static URLs, CORS, health, and Docker image"
-```
-
-#### Commit 3 — Compose, Caddy, scripts de ops
-```powershell
-git add docker-compose.prod.yml deploy `
-  .env.prod.example .env.example .gitignore `
-  bubu/Dockerfile bubu/.dockerignore `
-  web/Dockerfile web/.dockerignore
-git commit -m "feat(deploy): add Hetzner Compose stack, Caddy, and ops scripts"
-```
-
-#### Commit 4 — Docs (+ script one-shot de migración)
-```powershell
-git add docs/deploy-hetzner.md docs/deploy-cheatsheet.md `
-  docs/vision.md docs/conventions.md `
-  scripts/migrate_api_url.py
-git commit -m "docs: add Hetzner deploy guide and update Fase 7"
-```
-
-#### Comprobar que no queda nada raro
-```powershell
-git status
-# Debe estar limpio (o solo archivos que NO deban subirse: .env, uploads, etc.)
-```
-
-#### Push + PR a main
-```powershell
-git push -u origin HEAD
-gh pr create --base main --title "feat: Hetzner production deploy stack" --body @"
+```markdown
 ## Summary
 - Env-based API URLs and Secure cookies on the web
 - API PUBLIC_BASE_URL, CORS, /health, production Docker image
@@ -108,11 +52,21 @@ gh pr create --base main --title "feat: Hetzner production deploy stack" --body 
 - Learning guide in docs/deploy-hetzner.md
 
 ## Test plan
-- [ ] ``npm run build`` in web/
-- [ ] Review ``.env.prod.example`` (no real secrets)
-- [ ] After merge: VPS ``compose up`` + ``deploy/smoke-test.sh``
-"@
+- [x] npm run build in web/ (verified locally)
+- [ ] Review .env.prod.example (no real secrets)
+- [ ] After merge: VPS compose up + deploy/smoke-test.sh
 ```
+
+5. Merge a `main` cuando quieras arrancar el VPS con ese código.
+
+### Commits ya hechos (referencia)
+
+| Commit | Message |
+|--------|---------|
+| `f5a45dd` | feat(web): use env-based API URLs and secure session cookies |
+| `451b523` | feat(api): add public static URLs, CORS, health, and Docker image |
+| `a046243` | feat(deploy): add Hetzner Compose stack, Caddy, and ops scripts |
+| `29d026b` | docs: add Hetzner deploy guide and update Phase 7 |
 
 **Nunca** hagas `git add .env` ni `.env.prod` (secretos). Están en `.gitignore`.
 

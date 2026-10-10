@@ -4,54 +4,70 @@ Detalle y porqués → [`deploy-hetzner.md`](./deploy-hetzner.md)
 
 ## A. En tu PC (ahora)
 
-Rama (si aún no estás en ella):
-```powershell
-cd C:\Users\elchi\OneDrive\Escritorio\DAM\laGuardiadeElune
-git checkout feat/hetzner-deploy
-```
+Rama ya pusheada: `feat/hetzner-deploy` (4 commits de deploy en origin).
 
-**Atajo (tú ejecutas el script; crea los 4 commits):**
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\commit-hetzner-deploy.ps1
-git push -u origin HEAD
-```
+**1. Abrir PR y mergear a `main`:**  
+https://github.com/javifullstackdev/laGuardiadeElune/compare/main...feat/hetzner-deploy?expand=1
 
-O commits manuales: sección 2 de `deploy-hetzner.md`.  
-Merge a `main` antes de clonar en el VPS.
+**2. Clave SSH (si no tienes `.pub`):**
+```powershell
+ssh-keygen -t ed25519 -C "laguardia-hetzner"
+Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub
+```
+Copia la línea `ssh-ed25519 ...` para Hetzner.
 
 ## B. Hetzner (panel)
 
-1. Server: Ubuntu 24.04 · EU · **≥4 GB** · SSH key  
+1. Server: Ubuntu 24.04 · EU · **≥4 GB** · pega la SSH key  
 2. Firewall: TCP **22, 80, 443**  
 3. Anota la **IPv4**
 
-## C. DNS (registrador)
+## C. DNS (Porkbun)
 
-- `A` `@` → IP  
-- `A` `www` → IP  
-- TTL 300
+Ahora el dominio apunta al parking de Porkbun (`uixie.porkbun.com`).  
+Panel: https://porkbun.com/account/domains → `laguardiadeelune.com` → **DNS**
 
-## D. En el VPS (SSH)
+1. Borra o desactiva registros A/CNAME de parking que apunten a Porkbun.
+2. Crea:
+
+| Tipo | Host | Answer / IP | TTL |
+|------|------|-------------|-----|
+| A | (en blanco / `@`) | IPv4 del VPS | 300 |
+| A | `www` | misma IPv4 | 300 |
+
+```powershell
+nslookup www.laguardiadeelune.com
+nslookup laguardiadeelune.com
+# Ambos deben devolver la IP del VPS (puede tardar minutos)
+```
+
+## D. OAuth (portales Discord / Blizzard)
+
+Añade (no borres localhost aún):
+
+- `https://www.laguardiadeelune.com/api/auth/discord/callback`
+- `https://www.laguardiadeelune.com/api/auth/blizzard/callback`
+
+## E. En el VPS (SSH) — tras merge a `main`
 
 ```bash
+apt-get update && apt-get install -y git
 git clone https://github.com/javifullstackdev/laGuardiadeElune.git /opt/laguardia
 cd /opt/laguardia && git checkout main
 sudo bash deploy/bootstrap-vps.sh
 
 cp .env.prod.example .env.prod && chmod 600 .env.prod
-nano .env.prod          # secrets + redirects HTTPS
+openssl rand -hex 32   # → JWT_SECRET
+openssl rand -hex 24   # → DB_PASSWORD (solo hex = URL-safe)
+nano .env.prod         # secrets + redirects HTTPS + ACME_EMAIL
+chmod +x deploy/*.sh
 ./deploy/check-env.sh
 
 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 ./deploy/smoke-test.sh
 ```
 
-OAuth redirects (portales Discord / Blizzard):
-
-- `https://www.laguardiadeelune.com/api/auth/discord/callback`
-- `https://www.laguardiadeelune.com/api/auth/blizzard/callback`
-
-## E. Después
+## F. Después
 
 ```bash
 # backup diario
