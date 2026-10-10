@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-
 import { apiUrl } from "@/lib/api";
+import { absoluteUrl } from "@/lib/site-url";
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const token = request.cookies.get("token")?.value;
-  if (!token) return NextResponse.redirect(new URL("/", request.url));
+  if (!token) return NextResponse.redirect(absoluteUrl("/", request));
 
   const { id } = await params;
   const formData = await request.formData();
@@ -33,5 +34,5 @@ export async function POST(
     body: JSON.stringify(body),
   });
 
-  return NextResponse.redirect(new URL("/admin/posts", request.url));
+  return NextResponse.redirect(absoluteUrl("/admin/posts", request));
 }

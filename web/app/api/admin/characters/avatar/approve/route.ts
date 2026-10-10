@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { apiUrl } from "@/lib/api";
-/** POST /api/admin/characters/avatar/approve — aprueba avatar pendiente */
+import { absoluteUrl } from "@/lib/site-url";
+/** POST /api/admin/characters/avatar/approve â€” aprueba avatar pendiente */
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
-  if (!token) return NextResponse.redirect(new URL("/", request.url));
+  if (!token) return NextResponse.redirect(absoluteUrl("/", request));
 
   const { name, realm } = await request.json();
 

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { apiUrl } from "@/lib/api";
-/** POST /api/admin/titles/revoke — revoca un título de un personaje */
+import { absoluteUrl } from "@/lib/site-url";
+/** POST /api/admin/titles/revoke â€” revoca un tÃ­tulo de un personaje */
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
-  if (!token) return NextResponse.redirect(new URL("/", request.url));
+  if (!token) return NextResponse.redirect(absoluteUrl("/", request));
 
   const formData        = await request.formData();
   const title_id        = formData.get("title_id") as string;
@@ -20,10 +21,10 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({ character_name, character_realm }),
   });
 
-  const redirect = new URL("/admin/titles", request.url);
+  const redirect = absoluteUrl("/admin/titles", request);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    redirect.searchParams.set("error", err.detail ?? "Error al revocar el título");
+    redirect.searchParams.set("error", err.detail ?? "Error al revocar el tÃ­tulo");
   }
 
   return NextResponse.redirect(redirect);

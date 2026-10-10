@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import { apiUrl } from "@/lib/api";
+import { absoluteUrl } from "@/lib/site-url";
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
 
   if (!token) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(absoluteUrl("/", request));
   }
 
   // Leer los datos del formulario HTML
@@ -39,9 +40,9 @@ export async function POST(request: NextRequest) {
   if (!res.ok) {
     const error = await res.json();
     return NextResponse.redirect(
-      new URL(`/characters?error=${encodeURIComponent(error.detail)}`, request.url)
+      absoluteUrl(`/characters?error=${encodeURIComponent(error.detail)}`, request)
     );
   }
 
-  return NextResponse.redirect(new URL("/characters", request.url));
+  return NextResponse.redirect(absoluteUrl("/characters", request));
 }

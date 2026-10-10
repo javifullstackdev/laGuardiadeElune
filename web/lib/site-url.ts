@@ -14,7 +14,12 @@ export function siteOrigin(request?: NextRequest): string {
       request.headers.get("x-forwarded-host") ||
       request.headers.get("host") ||
       "";
-    if (host && !host.startsWith("0.0.0.0") && !host.startsWith("127.0.0.1")) {
+    const internal =
+      host.startsWith("0.0.0.0") ||
+      host.startsWith("127.0.0.1") ||
+      host.startsWith("localhost") ||
+      /^[\d.]+:3000$/.test(host);
+    if (host && !internal) {
       const proto =
         request.headers.get("x-forwarded-proto") ||
         (host.includes("localhost") ? "http" : "https");

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { apiUrl } from "@/lib/api";
+import { absoluteUrl } from "@/lib/site-url";
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
-  if (!token) return NextResponse.redirect(new URL("/", request.url));
+  if (!token) return NextResponse.redirect(absoluteUrl("/", request));
 
   const formData = await request.formData();
   const title = formData.get("title") as string;
@@ -21,5 +22,5 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({ title, content, category, subtitle, cover_url }),
   });
 
-  return NextResponse.redirect(new URL("/admin/posts", request.url));
+  return NextResponse.redirect(absoluteUrl("/admin/posts", request));
 }

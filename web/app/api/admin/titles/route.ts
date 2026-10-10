@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { apiUrl } from "@/lib/api";
-/** POST /api/admin/titles — crea un nuevo título */
+import { absoluteUrl } from "@/lib/site-url";
+/** POST /api/admin/titles â€” crea un nuevo tÃ­tulo */
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
-  if (!token) return NextResponse.redirect(new URL("/", request.url));
+  if (!token) return NextResponse.redirect(absoluteUrl("/", request));
 
   const formData = await request.formData();
   const name        = formData.get("name") as string;
@@ -21,10 +22,10 @@ export async function POST(request: NextRequest) {
     body: JSON.stringify({ name, source, slot, description }),
   });
 
-  const redirect = new URL("/admin/titles", request.url);
+  const redirect = absoluteUrl("/admin/titles", request);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    redirect.searchParams.set("error", err.detail ?? "Error al crear el título");
+    redirect.searchParams.set("error", err.detail ?? "Error al crear el tÃ­tulo");
   }
 
   return NextResponse.redirect(redirect);

@@ -55,6 +55,7 @@ services:
       NODE_ENV: production
       API_URL: http://api:8000
       COOKIE_SECURE: "true"
+      SITE_URL: ${SITE_URL:-https://www.laguardiadeelune.com}
       NEXT_PUBLIC_API_URL: ""
       NEXT_PUBLIC_SITE_URL: ${SITE_URL:-https://www.laguardiadeelune.com}
     depends_on:
