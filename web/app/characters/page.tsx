@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import AddCharacterRow from "./AddCharacterRow";
 import { realmLabel } from "@/lib/wow";
 
+import { apiUrl, publicApiUrl } from "@/lib/api";
 type MyCharacter = {
   name: string;
   realm: string;
@@ -38,7 +39,7 @@ export default async function PersonajesPage({
 
   const headers = { Authorization: `Bearer ${token}`, "Cache-Control": "no-store" };
 
-  const myRes = await fetch("http://localhost:8000/characters/my", { headers, cache: "no-store" });
+  const myRes = await fetch(apiUrl("/characters/my"), { headers, cache: "no-store" });
   if (!myRes.ok && myRes.status === 401) redirect("/");
   const myCharacters: MyCharacter[] = myRes.ok ? await myRes.json() : [];
 
@@ -48,12 +49,12 @@ export default async function PersonajesPage({
     (c) => c.game !== "forever" && !c.blizzard_character_id
   );
   if (needsSync) {
-    fetch("http://localhost:8000/characters/sync-blizzard-ids", {
+    fetch(apiUrl("/characters/sync-blizzard-ids"), {
       method: "POST", headers, cache: "no-store",
     }).catch(() => {/* silencioso */});
   }
 
-  const bnetRes = await fetch("http://localhost:8000/characters/blizzard", { headers, cache: "no-store" });
+  const bnetRes = await fetch(apiUrl("/characters/blizzard"), { headers, cache: "no-store" });
   const bnetCharacters: BlizzardCharacter[] = bnetRes.ok ? await bnetRes.json() : [];
   const bnetError = !bnetRes.ok ? (await bnetRes.json()).detail : null;
 
@@ -122,7 +123,7 @@ export default async function PersonajesPage({
           <div className="border rounded-lg p-4">
             <p className="text-gray-500 text-sm mb-3">{bnetError}</p>
             <a
-              href="http://localhost:8000/auth/blizzard/login"
+              href={publicApiUrl("/auth/blizzard/login")}
               className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm"
             >
               Conectar Battle.net

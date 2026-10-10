@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
+import { apiUrl } from "@/lib/api";
 const SECTIONS = [
   {
     href:        "/admin/players",
@@ -59,7 +60,7 @@ export default async function AdminPage() {
   const token = cookieStore.get("token")?.value;
   if (!token) redirect("/");
 
-  const res = await fetch("http://localhost:8000/users/me", {
+  const res = await fetch(apiUrl("/users/me"), {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });

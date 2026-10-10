@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
+import { apiUrl } from "@/lib/api";
 export async function GET(req: NextRequest) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Missing params" }, { status: 400 });
 
   const res = await fetch(
-    `http://localhost:8000/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/professions`,
+    apiUrl(`/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/professions`),
     { headers: { Cookie: `token=${token}` }, cache: "no-store" },
   );
   const data = await res.json();

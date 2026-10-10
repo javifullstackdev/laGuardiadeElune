@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import AvatarReviewPanel from "./AvatarReviewPanel";
 
+import { apiUrl } from "@/lib/api";
 type PendingAvatar = {
   name: string;
   realm: string;
@@ -16,10 +17,10 @@ export default async function AdminAvatarsPage() {
   if (!token) redirect("/");
 
   const [me, pending] = await Promise.all([
-    fetch("http://localhost:8000/users/me", {
+    fetch(apiUrl("/users/me"), {
       headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
     }).then((r) => (r.ok ? r.json() : null)),
-    fetch("http://localhost:8000/characters/pending-avatars", {
+    fetch(apiUrl("/characters/pending-avatars"), {
       headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
     }).then((r) => (r.ok ? r.json() : [])),
   ]);

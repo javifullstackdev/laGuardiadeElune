@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode, type SVGProps } from "react";
 import PulseHeart from './ui/PulseHeart';
 
+import { publicApiUrl } from "@/lib/api";
 type LikeState = {
   count: number;
   liked: boolean;
@@ -123,7 +124,7 @@ export default function ShareBar({
     }
   }
 
-  const loginHref = "http://localhost:8000/auth/discord/login";
+  const loginHref = publicApiUrl("/auth/discord/login");
 
   if (variant === "parchment") {
     const iconBtn =

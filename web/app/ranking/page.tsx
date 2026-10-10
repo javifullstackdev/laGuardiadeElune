@@ -1,5 +1,6 @@
 import { classColor, classLabel, realmLabel } from "@/lib/wow";
 
+import { apiUrl } from "@/lib/api";
 const PODIUM_STYLE = [
   { border: "border-yellow-400", glow: "#FFD70033", label: "1", size: "text-2xl font-bold text-yellow-400" },
   { border: "border-gray-400",   glow: "#C0C0C033", label: "2", size: "text-2xl font-bold text-gray-400"   },
@@ -23,7 +24,7 @@ type RankEntry = {
 };
 
 export default async function RankingPage() {
-  const res = await fetch("http://localhost:8000/users/ranking?limit=20", { cache: "no-store" });
+  const res = await fetch(apiUrl("/users/ranking?limit=20"), { cache: "no-store" });
   const ranking: RankEntry[] = res.ok ? await res.json() : [];
   const top3 = ranking.slice(0, 3);
   const rest = ranking.slice(3);

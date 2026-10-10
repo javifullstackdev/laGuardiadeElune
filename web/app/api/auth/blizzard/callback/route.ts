@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { apiUrl } from "@/lib/api";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   // Enviar el código a FastAPI — que lo intercambia por el token de Blizzard
   // Pasamos el JWT en el header Authorization para que FastAPI sepa quién es el usuario
-  const res = await fetch("http://localhost:8000/auth/blizzard/link", {
+  const res = await fetch(apiUrl("/auth/blizzard/link"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

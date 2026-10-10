@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { apiUrl } from "@/lib/api";
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -9,7 +10,7 @@ export async function POST(
 
   const { id } = await params;
 
-  await fetch(`http://localhost:8000/posts/${id}`, {
+  await fetch(apiUrl(`/posts/${id}`), {
     method: "DELETE",
     headers: { Cookie: `token=${token}` },
   });

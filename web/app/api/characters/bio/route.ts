@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 /** PATCH /api/characters/bio — actualiza identidad y datos de lore de un personaje */
 export async function PATCH(req: Request) {
   const cookieStore = await cookies();
@@ -14,7 +15,7 @@ export async function PATCH(req: Request) {
   }
 
   const res = await fetch(
-    `http://localhost:8000/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/bio`,
+    apiUrl(`/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/bio`),
     {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

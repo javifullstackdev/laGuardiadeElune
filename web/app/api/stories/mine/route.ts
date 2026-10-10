@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 export async function GET(req: Request) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -8,7 +9,7 @@ export async function GET(req: Request) {
   const name = searchParams.get("name") ?? "";
   const realm = searchParams.get("realm") ?? "";
   const res = await fetch(
-    `http://localhost:8000/stories/mine?name=${encodeURIComponent(name)}&realm=${encodeURIComponent(realm)}`,
+    apiUrl(`/stories/mine?name=${encodeURIComponent(name)}&realm=${encodeURIComponent(realm)}`),
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
   );
   if (res.status === 200) {

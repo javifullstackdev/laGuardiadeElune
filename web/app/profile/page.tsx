@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import ProfileClient from "./ProfileClient";
 
+import { apiUrl } from "@/lib/api";
 export default async function ProfilePage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -14,9 +15,9 @@ export default async function ProfilePage() {
 
   // 1. Obtener usuario y personajes en paralelo
   const [userRes, charsRes, txRes] = await Promise.all([
-    fetch("http://localhost:8000/users/me",           { headers, cache: "no-store" }),
-    fetch("http://localhost:8000/characters/my",      { headers, cache: "no-store" }),
-    fetch("http://localhost:8000/users/me/transactions?limit=200", { headers, cache: "no-store" }),
+    fetch(apiUrl("/users/me"),           { headers, cache: "no-store" }),
+    fetch(apiUrl("/characters/my"),      { headers, cache: "no-store" }),
+    fetch(apiUrl("/users/me/transactions?limit=200"), { headers, cache: "no-store" }),
   ]);
 
   if (!userRes.ok) redirect("/");
@@ -48,11 +49,11 @@ export default async function ProfilePage() {
   );
   if (needsSync) {
     try {
-      await fetch("http://localhost:8000/characters/sync-blizzard-ids", {
+      await fetch(apiUrl("/characters/sync-blizzard-ids"), {
         method: "POST", headers, cache: "no-store",
       });
       // Re-fetch personajes para obtener las render_url recién guardadas
-      const updatedCharsRes = await fetch("http://localhost:8000/characters/my", {
+      const updatedCharsRes = await fetch(apiUrl("/characters/my"), {
         headers, cache: "no-store",
       });
       if (updatedCharsRes.ok) {

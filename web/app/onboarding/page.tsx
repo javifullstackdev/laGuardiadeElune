@@ -4,6 +4,7 @@ import Link from "next/link";
 import MainPicker from "./MainPicker";
 import PathPicker from "./PathPicker";
 
+import { apiUrl, publicApiUrl } from "@/lib/api";
 export default async function BienvenidaPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -12,8 +13,8 @@ export default async function BienvenidaPage() {
   const headers = { Authorization: `Bearer ${token}`, "Cache-Control": "no-store" };
 
   const [userRes, charsRes] = await Promise.all([
-    fetch("http://localhost:8000/users/me",      { headers, cache: "no-store" }),
-    fetch("http://localhost:8000/characters/my", { headers, cache: "no-store" }),
+    fetch(apiUrl("/users/me"),      { headers, cache: "no-store" }),
+    fetch(apiUrl("/characters/my"), { headers, cache: "no-store" }),
   ]);
 
   if (!userRes.ok) redirect("/");
@@ -82,7 +83,7 @@ export default async function BienvenidaPage() {
                   de WoW automáticamente.
                 </p>
                 <a
-                  href="http://localhost:8000/auth/blizzard/login"
+                  href={publicApiUrl("/auth/blizzard/login")}
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm font-medium transition-colors"
                 >
                   Conectar Battle.net

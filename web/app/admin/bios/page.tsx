@@ -3,17 +3,18 @@ import { redirect } from "next/navigation";
 import BioReviewPanel from "./BioReviewPanel";
 import type { BioPending } from "@/lib/bio";
 
+import { apiUrl } from "@/lib/api";
 export default async function AdminBiosPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   if (!token) redirect("/");
 
   const [me, pending] = await Promise.all([
-    fetch("http://localhost:8000/users/me", {
+    fetch(apiUrl("/users/me"), {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     }).then((r) => (r.ok ? r.json() : null)),
-    fetch("http://localhost:8000/bios/pending", {
+    fetch(apiUrl("/bios/pending"), {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     }).then((r) => (r.ok ? r.json() : [])),

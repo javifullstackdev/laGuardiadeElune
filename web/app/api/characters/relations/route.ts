@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 /**
  * GET  /api/characters/relations?name=X&realm=Y → lista relaciones
  * POST /api/characters/relations               → añade relación
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
   if (!name || !realm) return Response.json({ error: "Faltan name/realm" }, { status: 400 });
 
   const res = await fetch(
-    `http://localhost:8000/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/relations`,
+    apiUrl(`/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/relations`),
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   );
   const data = await res.json();
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
   if (!name || !realm) return Response.json({ error: "Faltan name/realm" }, { status: 400 });
 
   const res = await fetch(
-    `http://localhost:8000/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/relations`,
+    apiUrl(`/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/relations`),
     {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

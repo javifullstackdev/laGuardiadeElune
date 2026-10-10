@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string; action: string }> },
@@ -11,7 +12,7 @@ export async function POST(
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   if (!token) return Response.json({ detail: "No autenticado" }, { status: 401 });
-  const res = await fetch(`http://localhost:8000/claims/${id}/${action}`, {
+  const res = await fetch(apiUrl(`/claims/${id}/${action}`), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
   });

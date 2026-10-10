@@ -2,8 +2,9 @@ import PersonajesList from "./PersonajesList";
 import type { WikiListItem } from "@/lib/wiki";
 import Breadcrumb from "@/app/components/Breadcrumb";
 
+import { apiUrl } from "@/lib/api";
 export default async function PersonajesPage() {
-  const res = await fetch("http://localhost:8000/wiki/", { cache: "no-store" });
+  const res = await fetch(apiUrl("/wiki/"), { cache: "no-store" });
   const items: WikiListItem[] = res.ok ? await res.json() : [];
 
   return (

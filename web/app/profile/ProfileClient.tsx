@@ -12,6 +12,7 @@ import { type BioAnswers } from "@/lib/bio";
 import { getEntitlements } from "@/lib/entitlements";
 import { classLabel, raceLabel, factionLabel, factionColor, classColor, realmLabel, genderLabel } from "@/lib/wow";
 
+import { publicApiUrl } from "@/lib/api";
 // ── Tipos ──────────────────────────────────────────────────────────────────
 
 type TitleData = {
@@ -35,6 +36,7 @@ type User = {
 };
 
 type Character = {
+  id: string;
   name: string;
   surname: string | null;
   prefix_title: string | null;
@@ -303,7 +305,7 @@ export default function ProfileClient({
               </form>
             </div>
           ) : (
-            <Link href="http://localhost:8000/auth/blizzard/login" className="text-xs text-gray-500 hover:text-blue-400 underline mb-2 block">
+            <Link href={publicApiUrl("/auth/blizzard/login")} className="text-xs text-gray-500 hover:text-blue-400 underline mb-2 block">
               Conectar Battle.net
             </Link>
           )}
@@ -313,7 +315,7 @@ export default function ProfileClient({
             <div className="mt-2 mb-1 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2">
               <p className="text-xs text-amber-400 font-medium mb-1">Token de Battle.net caducado</p>
               <Link
-                href="http://localhost:8000/auth/blizzard/login"
+                href={publicApiUrl("/auth/blizzard/login")}
                 className="text-xs text-amber-300 hover:text-amber-100 underline"
               >
                 Reconectar para actualizar renders
@@ -1215,7 +1217,7 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
       <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
         <p className="text-gray-400 text-sm font-medium">Battle.net no conectado</p>
         <a
-          href="http://localhost:8000/auth/blizzard/login"
+          href={publicApiUrl("/auth/blizzard/login")}
           className="text-xs text-blue-400 hover:text-blue-300 underline"
         >
           Conectar Battle.net para ver las profesiones
@@ -1230,7 +1232,7 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
       <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
         <p className="text-amber-400 text-sm font-medium">Token de Battle.net caducado</p>
         <a
-          href="http://localhost:8000/auth/blizzard/login"
+          href={publicApiUrl("/auth/blizzard/login")}
           className="text-xs text-amber-300 hover:text-amber-100 underline"
         >
           Reconectar Battle.net
@@ -1752,7 +1754,7 @@ function EmptyState({ hasBnet }: { hasBnet: boolean }) {
         {hasBnet ? "Selecciona un personaje del panel derecho" : "Conecta tu cuenta de Battle.net para ver tus personajes"}
       </p>
       {!hasBnet && (
-        <Link href="http://localhost:8000/auth/blizzard/login" className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm font-medium">
+        <Link href={publicApiUrl("/auth/blizzard/login")} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm font-medium">
           Conectar Battle.net
         </Link>
       )}

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const target_type = searchParams.get("target_type") ?? "";
@@ -8,7 +9,7 @@ export async function GET(req: Request) {
   const token = cookieStore.get("token")?.value;
   const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
   const res = await fetch(
-    `http://localhost:8000/likes/?target_type=${encodeURIComponent(target_type)}&target_id=${encodeURIComponent(target_id)}`,
+    apiUrl(`/likes/?target_type=${encodeURIComponent(target_type)}&target_id=${encodeURIComponent(target_id)}`),
     { headers, cache: "no-store" },
   );
   const data = await res.json();
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
   const token = cookieStore.get("token")?.value;
   if (!token) return Response.json({ detail: "No autenticado" }, { status: 401 });
   const body = await req.json();
-  const res = await fetch("http://localhost:8000/likes/", {
+  const res = await fetch(apiUrl("/likes/"), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),

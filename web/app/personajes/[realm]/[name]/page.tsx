@@ -3,6 +3,7 @@ import Breadcrumb from "@/app/components/Breadcrumb";
 import type { WikiCharacter } from "@/lib/wiki";
 import WikiCharacterView from "@/app/personajes/WikiCharacterView";
 
+import { apiUrl } from "@/lib/api";
 export default async function WikiCharacterPage({
   params,
 }: {
@@ -12,7 +13,7 @@ export default async function WikiCharacterPage({
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   const res = await fetch(
-    `http://localhost:8000/wiki/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`,
+    apiUrl(`/wiki/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`),
     { cache: "no-store" },
   );
 

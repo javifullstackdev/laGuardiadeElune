@@ -2,8 +2,9 @@ import Link from "next/link";
 import StoryTile from "../components/StoryTile";
 import type { StoryPublic } from "@/lib/stories";
 
+import { apiUrl } from "@/lib/api";
 export default async function LorePage() {
-  const res = await fetch("http://localhost:8000/stories/", { cache: "no-store" });
+  const res = await fetch(apiUrl("/stories/"), { cache: "no-store" });
   const stories: StoryPublic[] = res.ok ? await res.json() : [];
 
   return (

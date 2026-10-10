@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { apiUrl } from "@/lib/api";
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -23,7 +24,7 @@ export async function POST(
   if (subtitle !== null) body.subtitle = (subtitle as string).trim();
   if (cover_url !== null) body.cover_url = (cover_url as string).trim();
 
-  await fetch(`http://localhost:8000/posts/${id}`, {
+  await fetch(apiUrl(`/posts/${id}`), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

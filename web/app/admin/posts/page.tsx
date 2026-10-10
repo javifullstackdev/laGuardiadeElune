@@ -4,6 +4,7 @@ import Link from "next/link";
 import DeleteButton from "./DeleteButton";
 import { CATEGORIES, getCategoryStyle, formatDate } from "@/lib/posts";
 
+import { apiUrl } from "@/lib/api";
 type Post = {
   id: string;
   title: string;
@@ -23,7 +24,7 @@ export default async function AdminPostsPage({
   const token = cookieStore.get("token")?.value;
   if (!token) redirect("/");
 
-  const userRes = await fetch("http://localhost:8000/users/me", {
+  const userRes = await fetch(apiUrl("/users/me"), {
     headers: { Cookie: `token=${token}` },
     cache: "no-store",
   });
@@ -31,7 +32,7 @@ export default async function AdminPostsPage({
   const user = await userRes.json();
   if (user.role !== "admin" && user.role !== "officer") redirect("/");
 
-  const postsRes = await fetch("http://localhost:8000/posts/", { cache: "no-store" });
+  const postsRes = await fetch(apiUrl("/posts/"), { cache: "no-store" });
   const posts: Post[] = postsRes.ok ? await postsRes.json() : [];
   const { edit: editId } = await searchParams;
 

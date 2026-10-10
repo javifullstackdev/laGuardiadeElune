@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 export async function POST(req: Request) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -7,7 +8,7 @@ export async function POST(req: Request) {
 
   const { birthday } = await req.json();
 
-  const res = await fetch("http://localhost:8000/users/me/birthday", {
+  const res = await fetch(apiUrl("/users/me/birthday"), {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${token}`,

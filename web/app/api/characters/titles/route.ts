@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 /**
  * GET /api/characters/titles?name=Deyk&realm=dun-modr
  * Devuelve los títulos ganados por un personaje del usuario autenticado.
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
   }
 
   const res = await fetch(
-    `http://localhost:8000/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/titles`,
+    apiUrl(`/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/titles`),
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   );
 

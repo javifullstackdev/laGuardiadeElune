@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { apiUrl } from "@/lib/api";
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   if (!token) return NextResponse.redirect(new URL("/", request.url));
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
   const subtitle = (formData.get("subtitle") as string | null)?.trim() || null;
   const cover_url = (formData.get("cover_url") as string | null)?.trim() || null;
 
-  await fetch("http://localhost:8000/posts/", {
+  await fetch(apiUrl("/posts/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

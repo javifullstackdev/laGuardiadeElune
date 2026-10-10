@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { apiUrl } from "@/lib/api";
 /** POST /api/admin/titles/revoke — revoca un título de un personaje */
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest) {
   const character_name  = formData.get("character_name") as string;
   const character_realm = formData.get("character_realm") as string;
 
-  const res = await fetch(`http://localhost:8000/titles/${title_id}/revoke`, {
+  const res = await fetch(apiUrl(`/titles/${title_id}/revoke`), {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",

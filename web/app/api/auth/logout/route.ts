@@ -1,11 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { authCookieOptions } from "@/lib/auth-cookie";
 
-export async function GET() {
-  const response = NextResponse.redirect("http://localhost:3000/");
-  response.cookies.set("token", "", {
-    httpOnly: true,
-    path: "/",
-    maxAge: 0,
-  });
+export async function GET(request: NextRequest) {
+  const response = NextResponse.redirect(new URL("/", request.url));
+  response.cookies.set("token", "", authCookieOptions(0));
   return response;
 }

@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 async function token() {
   return (await cookies()).get("token")?.value;
 }
@@ -9,7 +10,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!auth) return Response.json({ detail: "No autenticado" }, { status: 401 });
   const { id } = await params;
   const body = await req.json();
-  const res = await fetch(`http://localhost:8000/hero/${id}`, {
+  const res = await fetch(apiUrl(`/hero/${id}`), {
     method: "PATCH",
     headers: { Authorization: `Bearer ${auth}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -22,7 +23,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   const auth = await token();
   if (!auth) return Response.json({ detail: "No autenticado" }, { status: 401 });
   const { id } = await params;
-  const res = await fetch(`http://localhost:8000/hero/${id}`, {
+  const res = await fetch(apiUrl(`/hero/${id}`), {
     method: "DELETE",
     headers: { Authorization: `Bearer ${auth}` },
   });

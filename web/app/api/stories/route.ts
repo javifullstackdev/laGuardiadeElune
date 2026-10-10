@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 export async function GET() {
-  const res = await fetch("http://localhost:8000/stories/", { cache: "no-store" });
+  const res = await fetch(apiUrl("/stories/"), { cache: "no-store" });
   const data = await res.json();
   return Response.json(data, { status: res.status });
 }
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const res = await fetch("http://localhost:8000/stories/submit", {
+  const res = await fetch(apiUrl("/stories/submit"), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: upstream,

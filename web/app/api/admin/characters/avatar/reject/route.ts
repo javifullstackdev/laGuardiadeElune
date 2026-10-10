@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { apiUrl } from "@/lib/api";
 /** POST /api/admin/characters/avatar/reject — rechaza avatar pendiente */
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
@@ -8,7 +9,7 @@ export async function POST(request: NextRequest) {
   const { name, realm } = await request.json();
 
   const res = await fetch(
-    `http://localhost:8000/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/avatar/reject`,
+    apiUrl(`/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/avatar/reject`),
     { method: "POST", headers: { Authorization: `Bearer ${token}` } }
   );
 
