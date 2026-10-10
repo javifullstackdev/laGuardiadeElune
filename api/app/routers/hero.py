@@ -11,6 +11,7 @@ from app.models.character_story import CharacterStory
 from app.schemas.hero import HeroSlideCreate, HeroSlideUpdate, HeroReorder, HeroSlidePublic, HeroSlideAdmin
 from app.schemas.character import merge_public_fields
 from app.services.bio_questions import has_public_sheet
+from app.urls import static_url
 
 router = APIRouter(prefix="/hero", tags=["hero"])
 
@@ -25,11 +26,7 @@ def _clamp_focus(value: int | None, default: int) -> int:
 
 
 def _media(path: str | None) -> str | None:
-    if not path:
-        return None
-    if path.startswith("http"):
-        return path
-    return f"http://localhost:8000/static/{path}"
+    return static_url(path)
 
 
 def _portrait(char: Character, story: CharacterStory | None = None) -> str | None:

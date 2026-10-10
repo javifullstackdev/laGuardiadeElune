@@ -20,6 +20,10 @@ JWT_SECRET            = os.getenv("JWT_SECRET", "dev-secret-change-in-production
 JWT_ALGORITHM         = "HS256"
 JWT_EXPIRE_HOURS      = 24
 
+if os.getenv("ENV", "development").lower() == "production":
+    if not JWT_SECRET or JWT_SECRET == "dev-secret-change-in-production":
+        raise RuntimeError("JWT_SECRET must be set to a strong value in production")
+
 BLIZZARD_CLIENT_ID     = os.getenv("BLIZZARD_CLIENT_ID")
 BLIZZARD_CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET")
 BLIZZARD_REDIRECT_URI  = os.getenv("BLIZZARD_REDIRECT_URI")

@@ -17,6 +17,7 @@ from app.schemas.story import (
 from app.services.claims import (
     awaiting_relations, claims_out, replace_claims,
 )
+from app.urls import static_url
 
 router = APIRouter(prefix="/stories", tags=["stories"])
 
@@ -28,11 +29,9 @@ MAX_COVER_SIZE = 5 * 1024 * 1024
 
 def _cover_url(story: CharacterStory, char: Character) -> str | None:
     if story.cover_url:
-        if story.cover_url.startswith("http"):
-            return story.cover_url
-        return f"http://localhost:8000/static/{story.cover_url}"
+        return static_url(story.cover_url)
     if char.custom_avatar_url:
-        return f"http://localhost:8000/static/{char.custom_avatar_url}"
+        return static_url(char.custom_avatar_url)
     return char.render_url
 
 
