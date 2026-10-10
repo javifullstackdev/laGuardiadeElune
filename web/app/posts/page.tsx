@@ -2,13 +2,14 @@ import Link from "next/link";
 import PostTile from "../components/PostTile";
 import { CATEGORIES, getCategoryStyle, type Post } from "@/lib/posts";
 
+import { apiUrl } from "@/lib/api";
 export default async function PostsPage({
   searchParams,
 }: {
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category } = await searchParams;
-  const res = await fetch("http://localhost:8000/posts/", { cache: "no-store" });
+  const res = await fetch(apiUrl("/posts/"), { cache: "no-store" });
   const posts: Post[] = res.ok ? await res.json() : [];
   const filtered = category
     ? posts.filter((p) => p.category?.toLowerCase() === category.toLowerCase())

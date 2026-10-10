@@ -14,13 +14,14 @@ from app.schemas.bio import (
     BioRejectIn,
 )
 from app.services.bio_questions import QUESTIONS, formatted_answers, has_public_sheet
+from app.urls import static_url
 
 router = APIRouter(prefix="/bios", tags=["bios"])
 
 
 def _cover(char: Character) -> str | None:
     if char.custom_avatar_url:
-        return f"http://localhost:8000/static/{char.custom_avatar_url}"
+        return static_url(char.custom_avatar_url)
     return char.render_url
 
 

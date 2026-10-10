@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { apiUrl } from "@/lib/api";
 /** POST /api/admin/titles — crea un nuevo título */
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
   const slot        = (formData.get("slot") as string) || "title";
   const description = (formData.get("description") as string) || null;
 
-  const res = await fetch("http://localhost:8000/titles/", {
+  const res = await fetch(apiUrl("/titles/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

@@ -5,6 +5,7 @@ import CarouselAdmin from "./CarouselAdmin";
 import type { StoryPublic } from "@/lib/stories";
 import type { WikiListItem } from "@/lib/wiki";
 
+import { apiUrl } from "@/lib/api";
 export default async function AdminCarouselPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -12,10 +13,10 @@ export default async function AdminCarouselPage() {
 
   const headers = { Authorization: `Bearer ${token}`, "Cache-Control": "no-store" };
   const [userRes, slidesRes, storiesRes, wikiRes] = await Promise.all([
-    fetch("http://localhost:8000/users/me", { headers, cache: "no-store" }),
-    fetch("http://localhost:8000/hero/admin", { headers, cache: "no-store" }),
-    fetch("http://localhost:8000/stories/", { cache: "no-store" }),
-    fetch("http://localhost:8000/wiki/", { cache: "no-store" }),
+    fetch(apiUrl("/users/me"), { headers, cache: "no-store" }),
+    fetch(apiUrl("/hero/admin"), { headers, cache: "no-store" }),
+    fetch(apiUrl("/stories/"), { cache: "no-store" }),
+    fetch(apiUrl("/wiki/"), { cache: "no-store" }),
   ]);
   if (!userRes.ok) redirect("/");
   const user = await userRes.json();

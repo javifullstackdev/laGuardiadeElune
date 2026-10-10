@@ -1,7 +1,10 @@
 # Entornos virtuales de Python
 venv/
 .env
+.env.prod
 *.env
+!.env.example
+!.env.prod.example
 
 # Python compilado
 __pycache__/

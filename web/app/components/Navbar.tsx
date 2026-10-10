@@ -2,14 +2,15 @@ import { cookies } from "next/headers";
 import NavbarMobile from "./NavbarMobile";
 import NavbarLinks from "./NavbarLinks";
 
+import { apiUrl, publicApiUrl } from "@/lib/api";
 export default async function Navbar() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
 
   let user = null;
   if (token) {
-    const res = await fetch("http://localhost:8000/users/me", {
-      headers: { Cookie: `token=${token}` },
+    const res = await fetch(apiUrl("/users/me"), {
+      headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
     if (res.ok) user = await res.json();
@@ -31,7 +32,7 @@ export default async function Navbar() {
         ]
       : [
           {
-            href: "http://localhost:8000/auth/discord/login",
+            href: publicApiUrl("/auth/discord/login"),
             label: "Entrar",
             external: true,
           },

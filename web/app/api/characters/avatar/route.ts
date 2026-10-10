@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 /** POST /api/characters/avatar — sube una imagen para el avatar de un personaje */
 export async function POST(req: Request) {
   const cookieStore = await cookies();
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
   upstream.append("file", file);
 
   const res = await fetch(
-    `http://localhost:8000/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/avatar`,
+    apiUrl(`/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/avatar`),
     {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
@@ -44,7 +45,7 @@ export async function DELETE(req: Request) {
   if (!name || !realm) return Response.json({ error: "Faltan name/realm" }, { status: 400 });
 
   const res = await fetch(
-    `http://localhost:8000/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/avatar`,
+    apiUrl(`/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/avatar`),
     { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
   );
 

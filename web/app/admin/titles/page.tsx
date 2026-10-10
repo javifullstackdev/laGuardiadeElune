@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { classLabel, realmLabel } from "@/lib/wow";
 
+import { apiUrl } from "@/lib/api";
 const SOURCE_OPTIONS = [
   { value: "rank",        label: "Rango" },
   { value: "achievement", label: "Logro" },
@@ -42,7 +43,7 @@ export default async function AdminTitlesPage({
   if (!token) redirect("/");
 
   // Verificar que es admin/officer
-  const userRes = await fetch("http://localhost:8000/users/me", {
+  const userRes = await fetch(apiUrl("/users/me"), {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
@@ -51,7 +52,7 @@ export default async function AdminTitlesPage({
   if (user.role !== "admin" && user.role !== "officer") redirect("/");
 
   // Cargar títulos con sus poseedores
-  const titlesRes = await fetch("http://localhost:8000/titles/admin", {
+  const titlesRes = await fetch(apiUrl("/titles/admin"), {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });

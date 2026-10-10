@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 /**
  * DELETE /api/characters/relations/[id]?name=X&realm=Y  → elimina relación
  */
@@ -15,7 +16,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!name || !realm) return Response.json({ error: "Faltan name/realm" }, { status: 400 });
 
   const res = await fetch(
-    `http://localhost:8000/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/relations/${id}`,
+    apiUrl(`/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/relations/${id}`),
     { method: "DELETE", headers: { Authorization: `Bearer ${token}` } }
   );
 

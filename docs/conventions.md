@@ -32,3 +32,8 @@ Keep the public sheet in Bio and move editable identity fields to their own tab.
 Cuando pida **subir, hacer commit, crear rama o abrir un PR**, dale los comandos de PowerShell para copiarlos y ejecutarlos. No los lances tú salvo que lo pida de forma explícita.
 
 Así aprende Git. Recuérdalo en cada sesión.
+
+## Deploy / producción
+
+Guía operativa y de aprendizaje (VPS Hetzner, ramas, commits, OAuth, smoke):  
+`docs/deploy-hetzner.md`.

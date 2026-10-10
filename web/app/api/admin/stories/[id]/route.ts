@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -10,7 +11,7 @@ export async function POST(
   if (!token) return Response.json({ detail: "No autenticado" }, { status: 401 });
   const body = await req.json();
   const action = body.action === "reject" ? "reject" : "approve";
-  const res = await fetch(`http://localhost:8000/stories/${id}/${action}`, {
+  const res = await fetch(apiUrl(`/stories/${id}/${action}`), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ reason: body.reason ?? null, override: !!body.override }),
@@ -27,7 +28,7 @@ export async function DELETE(
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   if (!token) return Response.json({ detail: "No autenticado" }, { status: 401 });
-  const res = await fetch(`http://localhost:8000/stories/${id}`, {
+  const res = await fetch(apiUrl(`/stories/${id}`), {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });

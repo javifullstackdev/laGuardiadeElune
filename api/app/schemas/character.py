@@ -3,6 +3,8 @@ from pydantic import BaseModel, field_validator, model_validator
 from typing import Optional
 from uuid import UUID
 
+from app.urls import static_url
+
 BLIZZARD_REGION = "eu"  # ajusta si el servidor usa otra región
 
 DEFAULT_PUBLIC_FIELDS = {
@@ -93,7 +95,7 @@ class CharacterResponse(BaseModel):
     def compute_avatar_url(self) -> "CharacterResponse":
         """Prioridad: imagen custom aprobada > render Blizzard (Character Media API) > null."""
         if self.custom_avatar_url:
-            self.avatar_url = f"http://localhost:8000/static/{self.custom_avatar_url}"
+            self.avatar_url = static_url(self.custom_avatar_url)
         elif self.render_url:
             self.avatar_url = self.render_url
         self.public_fields = merge_public_fields(self.public_fields)

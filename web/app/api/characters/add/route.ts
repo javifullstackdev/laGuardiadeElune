@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
   const surname = (formData.get("surname") as string) || undefined;
   const is_main = formData.get("is_main") === "true";
 
-  const res = await fetch("http://localhost:8000/characters/add", {
+  const res = await fetch(apiUrl("/characters/add"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

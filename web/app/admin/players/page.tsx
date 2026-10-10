@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import PlayersTable from "./PlayersTable";
 
+import { apiUrl } from "@/lib/api";
 export default async function AdminPlayersPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -11,8 +12,8 @@ export default async function AdminPlayersPage() {
   const headers = { Authorization: `Bearer ${token}`, "Cache-Control": "no-store" };
 
   const [userRes, playersRes] = await Promise.all([
-    fetch("http://localhost:8000/users/me",             { headers, cache: "no-store" }),
-    fetch("http://localhost:8000/users/admin/players",  { headers, cache: "no-store" }),
+    fetch(apiUrl("/users/me"),             { headers, cache: "no-store" }),
+    fetch(apiUrl("/users/admin/players"),  { headers, cache: "no-store" }),
   ]);
 
   if (!userRes.ok) redirect("/");

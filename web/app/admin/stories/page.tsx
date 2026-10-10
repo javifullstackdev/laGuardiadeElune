@@ -6,21 +6,22 @@ import StoryDeleteButton from "./StoryDeleteButton";
 import type { StoryPending, StoryPublic } from "@/lib/stories";
 import { formatDate } from "@/lib/posts";
 
+import { apiUrl } from "@/lib/api";
 export default async function AdminStoriesPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   if (!token) redirect("/");
 
   const [me, pending, published] = await Promise.all([
-    fetch("http://localhost:8000/users/me", {
+    fetch(apiUrl("/users/me"), {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     }).then((r) => (r.ok ? r.json() : null)),
-    fetch("http://localhost:8000/stories/pending", {
+    fetch(apiUrl("/stories/pending"), {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     }).then((r) => (r.ok ? r.json() : [])),
-    fetch("http://localhost:8000/stories/", { cache: "no-store" }).then((r) =>
+    fetch(apiUrl("/stories/"), { cache: "no-store" }).then((r) =>
       r.ok ? r.json() : [],
     ),
   ]);

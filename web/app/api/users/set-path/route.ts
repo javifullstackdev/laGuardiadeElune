@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 export async function POST(request: NextRequest) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -8,7 +9,7 @@ export async function POST(request: NextRequest) {
 
   const { path } = await request.json();
 
-  const res = await fetch("http://localhost:8000/users/me/path", {
+  const res = await fetch(apiUrl("/users/me/path"), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

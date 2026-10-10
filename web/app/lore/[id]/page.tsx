@@ -9,6 +9,7 @@ import { characterSignature, type StoryPublic } from "@/lib/stories";
 import { relationLabel } from "@/lib/relations";
 import StoryScene from "../StoryScene";
 
+import { apiUrl } from "@/lib/api";
 function highlightNames(text: string, names: string[]) {
   if (!names.length) return text;
   const escaped = names
@@ -89,7 +90,7 @@ export default async function LoreDetailPage({
   const { id } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
-  const res = await fetch(`http://localhost:8000/stories/${id}`, {
+  const res = await fetch(apiUrl(`/stories/${id}`), {
     cache: "no-store",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });

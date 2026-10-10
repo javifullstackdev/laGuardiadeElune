@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 export async function GET(req: Request) {
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
@@ -13,7 +14,7 @@ export async function GET(req: Request) {
   }
 
   const res = await fetch(
-    `http://localhost:8000/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/achievements`,
+    apiUrl(`/characters/${encodeURIComponent(name)}/${encodeURIComponent(realm)}/achievements`),
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
   );
   const data = await res.json();

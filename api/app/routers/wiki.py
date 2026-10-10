@@ -12,6 +12,7 @@ from app.schemas.character import (
     WikiCharacterOut, WikiListItem, WikiRelatedOut, WikiStoryOut, merge_public_fields,
 )
 from app.services.bio_questions import has_public_sheet
+from app.urls import static_url
 
 router = APIRouter(prefix="/wiki", tags=["wiki"])
 
@@ -24,11 +25,9 @@ def _enum_val(value) -> str | None:
 
 def _portrait(char: Character, story: CharacterStory | None = None) -> str | None:
     if story and story.cover_url:
-        if story.cover_url.startswith("http"):
-            return story.cover_url
-        return f"http://localhost:8000/static/{story.cover_url}"
+        return static_url(story.cover_url)
     if char.custom_avatar_url:
-        return f"http://localhost:8000/static/{char.custom_avatar_url}"
+        return static_url(char.custom_avatar_url)
     return char.render_url
 
 

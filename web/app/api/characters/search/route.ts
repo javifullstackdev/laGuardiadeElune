@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 
+import { apiUrl } from "@/lib/api";
 /** GET /api/characters/search?q=... — busca personajes del gremio */
 export async function GET(req: Request) {
   const cookieStore = await cookies();
@@ -11,7 +12,7 @@ export async function GET(req: Request) {
   if (!q) return Response.json([]);
 
   const res = await fetch(
-    `http://localhost:8000/characters/search?q=${encodeURIComponent(q)}`,
+    apiUrl(`/characters/search?q=${encodeURIComponent(q)}`),
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
   );
   const data = await res.json();

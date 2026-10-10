@@ -260,18 +260,20 @@ Orden: **Bio · Datos · Puntos · Logros · Títulos · Historias · Relaciones
 - Datos personales desktop: grid de 2 columnas limitado a `max-w-[48%]` para no tapar el render
 - Mobile: banner de imagen corto; tocar la imagen abre cambiar/quitar; datos compactos a la derecha debajo del banner; el tab ocupa la mayor parte de la pantalla
 
-## Fase 7 — Deploy 🚧 Pendiente
-- Decisión actual: **preview gratis primero**, dominio después (no comprar aún)
-- La web aún pega a `localhost:8000` en varios `fetch`; hay que pasar a URL de API por entorno
-- Redirects Discord/Blizzard en `.env` hay que ampliarlos al host público
-- Uploads (avatares, portadas) viven en disco de la API; en deploy hace falta storage persistente
-- Docker Compose completo
-- Candidatos: Vercel (web) + Railway o Render (API)
-- README portfolio
+## Fase 7 — Deploy 🚧 En curso (Hetzner)
+- Dominio: `www.laguardiadeelune.com` (comprado)
+- Decisión: **VPS Hetzner** (web + API + Postgres + Bubu). AWS descartado por coste/complejidad para este tamaño
+- Guía de aprendizaje (tú operas el VPS): `docs/deploy-hetzner.md`
+- Hecho en código (working tree, pendiente de tus commits):
+  - Web: `apiUrl` / `publicApiUrl`, cookies Secure, Next `standalone`
+  - API: `PUBLIC_BASE_URL` para `/static`, CORS, `/health`, docs off en prod, Dockerfile + entrypoint Alembic
+  - Ops: `docker-compose.prod.yml`, Caddyfile, `deploy/bootstrap|backup|up|smoke|check-env`
+- Flujo Git recomendado: rama `feat/hetzner-deploy` → 4 commits pequeños → PR a `main` → VPS clona `main`
+- Pendiente **humano**: commits/PR, crear VPS ≥4 GB EU, DNS A/@+www, OAuth redirects HTTPS, `.env.prod`, `compose up`, cron backup
+- Uploads: volumen Docker `api_uploads` (no disco efímero del contenedor)
 
 ## Próxima sesión — por dónde seguir
-1. Preview online (arreglar `localhost` en fetches + redirects OAuth), o
-2. Fase 5 Bubu (más comandos / auto-sync M+), o
-3. Premium de verdad (`entitlements.ts`) y catálogo de logros
+1. **Tú:** commits de la sección 2 de `docs/deploy-hetzner.md` + PR a `main`
+2. **Tú:** pasos 1–10 del VPS en esa misma guía (panel Hetzner → smoke)
+3. Después: Bubu `--profile bot` en la misma Postgres, o Fase 5 auto-sync M+
 Housing en ficha: aparcado (regla 7d) hasta que Blizzard reactive la House API.
-Tras merge: `python -m alembic upgrade head` (migración `f2a9c4d8e1b7`, columna `titles.slot` + `favorite_prefix_id`).

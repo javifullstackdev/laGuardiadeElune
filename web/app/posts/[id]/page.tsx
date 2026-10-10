@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getCategoryStyle, formatDate, textToParagraphs } from "@/lib/posts";
 import ShareBar from "../../components/ShareBar";
 
+import { apiUrl } from "@/lib/api";
 type Post = {
   id: string;
   title: string;
@@ -21,7 +22,7 @@ export default async function PostPage({
   const { id } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
-  const res = await fetch(`http://localhost:8000/posts/${id}`, { cache: "no-store" });
+  const res = await fetch(apiUrl(`/posts/${id}`), { cache: "no-store" });
 
   if (!res.ok) {
     return (

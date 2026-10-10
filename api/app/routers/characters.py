@@ -31,6 +31,7 @@ from app.schemas.character import (
     AchievementOut, merge_public_fields,
 )
 from app.services.bio_questions import answers_complete, normalize_answers
+from app.urls import static_url
 
 BLIZZARD_REGION = os.getenv("BLIZZARD_REGION", "eu")
 BLIZZARD_CLIENT_ID = os.getenv("BLIZZARD_CLIENT_ID")
@@ -831,7 +832,7 @@ def list_pending_avatars(
             "realm":             c.realm,
             "game":              c.game,
             "owner_username":    username,
-            "pending_avatar_url": f"http://localhost:8000/static/{c.pending_avatar_url}",
+            "pending_avatar_url": static_url(c.pending_avatar_url),
         }
         for c, username in results
     ]
