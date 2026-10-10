@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiUrl } from "@/lib/api";
 import { authCookieOptions } from "@/lib/auth-cookie";
+import { absoluteUrl } from "@/lib/site-url";
 
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
 
   if (!code) {
-    return NextResponse.redirect(new URL("/?error=no-code", request.url));
+    return NextResponse.redirect(absoluteUrl("/?error=no-code", request));
   }
 
   const fastapiRes = await fetch(
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
   );
 
   if (!fastapiRes.ok) {
-    return NextResponse.redirect(new URL("/?error=failed-to-fetch", request.url));
+    return NextResponse.redirect(absoluteUrl("/?error=failed-to-fetch", request));
   }
 
   const data = await fastapiRes.json();
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
   const user = userRes.ok ? await userRes.json() : null;
   const redirectTo = user?.has_blizzard ? "/profile" : "/onboarding";
 
-  const response = NextResponse.redirect(new URL(redirectTo, request.url));
+  const response = NextResponse.redirect(absoluteUrl(redirectTo, request));
   response.cookies.set("token", jwt, authCookieOptions(60 * 60 * 24));
 
   return response;
