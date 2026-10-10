@@ -1,0 +1,36 @@
+{
+	email {$ACME_EMAIL}
+}
+
+www.laguardiadeelune.com, laguardiadeelune.com {
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# OAuth starts on FastAPI (/auth/discord/login, /auth/blizzard/login)
+	handle /auth/* {
+		reverse_proxy api:8000
+	}
+
+	# Uploads (avatars, story covers)
+	handle /static/* {
+		header Cache-Control "public, max-age=86400, stale-while-revalidate=604800"
+		reverse_proxy api:8000
+	}
+
+	handle /health {
+		reverse_proxy api:8000
+	}
+
+	# Next.js app + /api/* BFF (OAuth callbacks live here)
+	handle {
+		reverse_proxy web:3000
+	}
+}

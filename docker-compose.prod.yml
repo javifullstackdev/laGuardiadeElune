@@ -1,0 +1,99 @@
+# Production stack for Hetzner (or any VPS).
+# Usage:
+#   cp .env.prod.example .env.prod   # fill secrets
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+# Optional Bubu:
+#   docker compose --env-file .env.prod -f docker-compose.prod.yml --profile bot up -d --build
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    # No host ports — only reachable from other containers / localhost via Docker network
+
+  api:
+    build:
+      context: ./api
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      ENV: production
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-https://www.laguardiadeelune.com}
+      DATABASE_URL: postgresql+pg8000://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    volumes:
+      - api_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    mem_limit: 512m
+
+  web:
+    build:
+      context: ./web
+      args:
+        # Empty = same-origin /auth via Caddy (see deploy/Caddyfile)
+        NEXT_PUBLIC_API_URL: ""
+        NEXT_PUBLIC_SITE_URL: ${SITE_URL:-https://www.laguardiadeelune.com}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_URL: http://api:8000
+      COOKIE_SECURE: "true"
+      NEXT_PUBLIC_API_URL: ""
+      NEXT_PUBLIC_SITE_URL: ${SITE_URL:-https://www.laguardiadeelune.com}
+    depends_on:
+      api:
+        condition: service_healthy
+    mem_limit: 512m
+
+  bubu:
+    build:
+      context: ./bubu
+    restart: unless-stopped
+    env_file: .env.prod
+    environment:
+      DATABASE_URL: postgresql+pg8000://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    mem_limit: 256m
+    profiles:
+      - bot
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+      - api
+
+volumes:
+  postgres_data:
+  api_uploads:
+  caddy_data:
+  caddy_config:
