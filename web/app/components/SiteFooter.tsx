@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { SITE_NAME } from "@/lib/site";
 
 const LEGAL = [
@@ -8,7 +11,24 @@ const LEGAL = [
   { href: "/terminos", label: "Términos" },
 ] as const;
 
+function isStoryOrCharacterView(pathname: string | null): boolean {
+  if (!pathname) return false;
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length < 2) return false;
+  return (
+    segments[0] === "personajes" ||
+    segments[0] === "lore" ||
+    segments[0] === "characters"
+  );
+}
+
 export default function SiteFooter() {
+  const pathname = usePathname();
+
+  if (isStoryOrCharacterView(pathname)) {
+    return null;
+  }
+
   return (
     <footer className="relative z-10 border-t border-gray-900 bg-[#080808] text-gray-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
