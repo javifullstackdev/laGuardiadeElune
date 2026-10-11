@@ -382,6 +382,11 @@ function CharacterDetail({
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const color = classColor(char.wow_class);
+  const logo = useWatermarkBox();
+  const factPad = logo.mobile ? 16 : Math.round(logo.left + logo.size + 12);
+  const factStyle = {
+    ["--fact-pad" as string]: `${factPad}px`,
+  };
 
   const tabs: { key: DetailTab; label: string }[] = [
     { key: "bio", label: "Bio" },
@@ -475,6 +480,15 @@ function CharacterDetail({
       root.removeEventListener("touchcancel", end);
     };
   }, [tabs.length]);
+
+  const hasGoodRender = !!(
+    char.avatar_url
+    && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url)
+  );
+  const displayName = `${char.name}${char.surname ? ` ${char.surname}` : ""}`;
+  const shownTitle = char.favorite_title?.name ?? null;
+  const shownPrefix = char.favorite_prefix?.name ?? char.prefix_title;
+  const faceSrc = char.face_display_url || char.face_url || null;
 
   return (
     <div className="relative flex flex-col h-full overflow-hidden">
