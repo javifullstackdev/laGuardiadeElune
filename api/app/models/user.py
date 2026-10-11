@@ -18,7 +18,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    username = Column(String(255), nullable=False)
+    username = Column(String(255), nullable=False)  # sync Discord (login /me)
+    # Apodo visible en ranking (editable por admin; no lo pisa Discord)
+    display_name = Column(String(255), nullable=True)
     discord_id = Column(String(255), nullable=False, unique=True)
     guild_title = Column(String(255), nullable=False)
     total_points = Column(Integer, nullable=False, default=0)
