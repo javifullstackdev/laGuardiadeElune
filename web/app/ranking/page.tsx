@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Breadcrumb from "@/app/components/Breadcrumb";
 import { apiUrl } from "@/lib/api";
 import RankingBoard, { type RankEntry, type RankGroup } from "./RankingBoard";
 
@@ -63,6 +64,12 @@ export default async function RankingPage() {
   return (
     <main className="min-h-screen">
       <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <Breadcrumb
+          items={[
+            { href: "/", label: "Inicio" },
+            { label: "Ranking" },
+          ]}
+        />
         <header className="mb-10 sm:mb-12">
           <h1 className="text-3xl sm:text-4xl font-quest-display font-bold">Ranking</h1>
           <p className="text-gray-400 mt-2 text-sm sm:text-base">

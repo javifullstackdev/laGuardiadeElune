@@ -205,7 +205,7 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
               <img
                 key={`${slide.id ?? slide.src}-strip-${i}`}
                 src={slide.src}
-                alt=""
+                alt={slide.title || "Carrusel de inicio"}
                 draggable={false}
                 style={{ objectPosition: heroObjectPosition(slide) }}
                 className="h-full w-full min-w-full shrink-0 object-cover pointer-events-none select-none"
@@ -324,7 +324,7 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                     <div className="relative aspect-[16/10] overflow-hidden">
                       <img
                         src={slide.src}
-                        alt=""
+                        alt={slide.title || "Miniatura del carrusel"}
                         style={{ objectPosition: heroObjectPosition(slide) }}
                         className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
                       />

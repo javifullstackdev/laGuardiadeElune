@@ -39,11 +39,13 @@ export function ParchmentPanRoot({ children }: { children: ReactNode }) {
 
 export function PanningCover({
   src,
+  alt = "",
   className,
   opacity,
   focusY = 0.18,
 }: {
   src: string;
+  alt?: string;
   className?: string;
   opacity: number;
   focusY?: number;
@@ -128,7 +130,7 @@ export function PanningCover({
       <img
         ref={imgRef}
         src={src}
-        alt=""
+        alt={alt}
         className="absolute top-0 left-0 max-w-none"
         style={{
           width: shift.w ? `${shift.w}px` : "100%",

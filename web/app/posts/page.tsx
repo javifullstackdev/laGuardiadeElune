@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Breadcrumb from "@/app/components/Breadcrumb";
 import PostTile from "../components/PostTile";
 import { CATEGORIES, getCategoryStyle, type Post } from "@/lib/posts";
 
@@ -27,6 +28,12 @@ export default async function PostsPage({
   return (
     <main className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-10 sm:py-14">
+        <Breadcrumb
+          items={[
+            { href: "/", label: "Inicio" },
+            { label: active ? active.label : "Tablón" },
+          ]}
+        />
         <h1 className="text-3xl font-quest-display font-bold">
           {active ? active.label : "Tablón"}
         </h1>

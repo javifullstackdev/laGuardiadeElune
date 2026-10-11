@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { getCategoryStyle, formatDate, textToParagraphs } from "@/lib/posts";
+import Breadcrumb from "@/app/components/Breadcrumb";
 import ShareBar from "../../components/ShareBar";
 
 import { apiUrl } from "@/lib/api";
@@ -76,12 +76,13 @@ export default async function PostPage({
     <main className="min-h-screen text-white">
       {/* Mismo ancho que el carrusel: max-w-7xl + paddings de HomeHero/HomeReveal */}
       <article className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-10 sm:py-12">
-        <Link
-          href="/"
-          className="text-sm text-gray-500 hover:text-gray-300 transition-colors mb-8 inline-block"
-        >
-          &larr; Volver a posts
-        </Link>
+        <Breadcrumb
+          items={[
+            { href: "/", label: "Inicio" },
+            { href: "/posts", label: "Tablón" },
+            { label: post.title },
+          ]}
+        />
 
         <div className="flex items-center gap-3 mb-4">
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cat.badge}`}>
