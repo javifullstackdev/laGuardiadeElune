@@ -42,6 +42,12 @@ export default async function Home() {
       ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:overscroll-auto"
       : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3";
   const tablonItemClass = grid.length > 1 ? "w-[80%] shrink-0 snap-start sm:w-full h-full" : "h-full";
+  const wikiListClass =
+    wikiGrid.length > 1
+      ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:overscroll-auto"
+      : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3";
+  const wikiItemClass =
+    wikiGrid.length > 1 ? "w-[80%] shrink-0 snap-start sm:w-full h-full" : "h-full";
 
   return (
     <main className="relative min-h-screen">
@@ -90,10 +96,10 @@ export default async function Home() {
                 </Link>
               </div>
             </FadeUp>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <ul className={wikiListClass}>
               {wikiGrid.map((item, i) => (
-                <li key={`${item.name}-${item.realm}`}>
-                  <FadeUp className="h-full" delayMs={80 + i * 70}>
+                <li key={`${item.name}-${item.realm}`} className={wikiItemClass}>
+                  <FadeUp className="h-full w-full" delayMs={80 + i * 70}>
                     <WikiTile item={item} />
                   </FadeUp>
                 </li>
@@ -158,11 +164,9 @@ function PostTile({ post }: { post: Post }) {
           <h3 className="font-quest font-bold text-[15px] leading-snug text-white line-clamp-2">
             {post.title}
           </h3>
-          {subtitle && (
-            <p className="mt-1.5 text-[13px] text-gray-400 leading-snug line-clamp-2">
-              {subtitle}
-            </p>
-          )}
+          <p className="mt-1.5 text-[13px] text-gray-400 leading-snug line-clamp-2 min-h-[2.75em]">
+            {subtitle || "\u00A0"}
+          </p>
           <p className="mt-auto pt-4 text-xs font-semibold text-white text-right">
             {formatDate(post.published_at)}
           </p>

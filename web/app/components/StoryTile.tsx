@@ -28,9 +28,9 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
         <h3 className="font-quest font-bold text-[15px] leading-snug text-white line-clamp-2">
           {story.title}
         </h3>
-        {excerpt && (
-          <p className="mt-1.5 text-[13px] text-gray-400 leading-snug line-clamp-2">{excerpt}</p>
-        )}
+        <p className="mt-1.5 text-[13px] text-gray-400 leading-snug line-clamp-2 min-h-[2.75em]">
+          {excerpt || "\u00A0"}
+        </p>
         {signature && (
           <p className="mt-auto pt-4 text-xs font-quest font-semibold text-white text-right truncate">
             {signature}
