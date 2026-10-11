@@ -1,5 +1,12 @@
+import type { Metadata } from "next";
 import { apiUrl } from "@/lib/api";
 import RankingBoard, { type RankEntry, type RankGroup } from "./RankingBoard";
+
+export const metadata: Metadata = {
+  title: "Ranking",
+  description:
+    "Clasificación por puntos de los miembros de La Guardia de Elune.",
+};
 
 function groupByRank(ranking: RankEntry[]): RankGroup[] {
   const groups: RankGroup[] = [];

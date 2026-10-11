@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { getCategoryStyle, formatDate, textToParagraphs } from "@/lib/posts";
@@ -14,6 +15,37 @@ type Post = {
   cover_url?: string | null;
 };
 
+async function loadPost(id: string): Promise<Post | null> {
+  const res = await fetch(apiUrl(`/posts/${id}`), { cache: "no-store" });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const post = await loadPost(id);
+  if (!post) return { title: "Post no encontrado" };
+  const description =
+    post.subtitle?.trim() ||
+    post.content.replace(/\s+/g, " ").trim().slice(0, 155) ||
+    post.title;
+  return {
+    title: post.title,
+    description,
+    openGraph: {
+      title: post.title,
+      description,
+      type: "article",
+      publishedTime: post.published_at,
+      images: post.cover_url ? [{ url: post.cover_url, alt: post.title }] : undefined,
+    },
+  };
+}
+
 export default async function PostPage({
   params,
 }: {
@@ -22,9 +54,9 @@ export default async function PostPage({
   const { id } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
-  const res = await fetch(apiUrl(`/posts/${id}`), { cache: "no-store" });
+  const post = await loadPost(id);
 
-  if (!res.ok) {
+  if (!post) {
     return (
       <main className="min-h-screen text-white flex items-center justify-center">
         <div className="text-center">
@@ -37,7 +69,6 @@ export default async function PostPage({
     );
   }
 
-  const post: Post = await res.json();
   const cat = getCategoryStyle(post.category);
   const paragraphs = textToParagraphs(post.content);
 
@@ -70,7 +101,7 @@ export default async function PostPage({
           <div className="mb-8 overflow-hidden rounded-2xl border border-gray-800">
             <img
               src={post.cover_url}
-              alt=""
+              alt={`Portada: ${post.title}`}
               className="w-full max-h-[min(65svh,720px)] object-cover"
             />
           </div>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import type { WikiCharacter, WikiListItem, WikiNeighbor } from "@/lib/wiki";
@@ -32,6 +33,45 @@ function neighbors(
   };
 }
 
+async function loadWikiChar(
+  realm: string,
+  name: string,
+): Promise<WikiCharacter | null> {
+  const res = await fetch(
+    apiUrl(`/wiki/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`),
+    { cache: "no-store" },
+  );
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ realm: string; name: string }>;
+}): Promise<Metadata> {
+  const { realm, name } = await params;
+  const char = await loadWikiChar(realm, name);
+  if (!char) return { title: "Ficha no encontrada" };
+  const description =
+    (char.biography || char.personality || char.appearance || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 155) || `Ficha pública de ${char.display_name} en La Guardia de Elune.`;
+  return {
+    title: char.display_name,
+    description,
+    openGraph: {
+      title: char.display_name,
+      description,
+      type: "profile",
+      images: char.cover_url
+        ? [{ url: char.cover_url, alt: char.display_name }]
+        : undefined,
+    },
+  };
+}
+
 export default async function WikiCharacterPage({
   params,
 }: {
@@ -40,12 +80,9 @@ export default async function WikiCharacterPage({
   const { realm, name } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
-  const res = await fetch(
-    apiUrl(`/wiki/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`),
-    { cache: "no-store" },
-  );
+  const char = await loadWikiChar(realm, name);
 
-  if (!res.ok) {
+  if (!char) {
     return (
       <main className="min-h-screen text-white">
         <div className="max-w-7xl mx-auto px-4 py-10 sm:py-12">
@@ -61,7 +98,6 @@ export default async function WikiCharacterPage({
     );
   }
 
-  const char: WikiCharacter = await res.json();
   const listRes = await fetch(apiUrl("/wiki/"), { cache: "no-store" });
   const items: WikiListItem[] = listRes.ok ? await listRes.json() : [];
   const { prev, next } = neighbors(items, char);

@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import StoryTile from "../components/StoryTile";
 import type { StoryPublic } from "@/lib/stories";
 
 import { apiUrl } from "@/lib/api";
+
+export const metadata: Metadata = {
+  title: "Historias",
+  description:
+    "Relatos de rol escritos por los jugadores de La Guardia de Elune.",
+};
+
 export default async function LorePage() {
   const res = await fetch(apiUrl("/stories/"), { cache: "no-store" });
   const stories: StoryPublic[] = res.ok ? await res.json() : [];

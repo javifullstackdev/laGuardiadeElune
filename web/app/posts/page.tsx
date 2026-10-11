@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import PostTile from "../components/PostTile";
 import { CATEGORIES, getCategoryStyle, type Post } from "@/lib/posts";
 
 import { apiUrl } from "@/lib/api";
+
+export const metadata: Metadata = {
+  title: "Tablón",
+  description:
+    "Novedades, guías y crónicas de la hermandad La Guardia de Elune.",
+};
+
 export default async function PostsPage({
   searchParams,
 }: {

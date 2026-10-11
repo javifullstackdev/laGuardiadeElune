@@ -3,7 +3,10 @@ import { Cinzel, Cinzel_Decorative, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import HomeLogo from "./components/HomeLogo";
+import SiteFooter from "./components/SiteFooter";
+import JsonLd from "./components/JsonLd";
 import { LogoChromeProvider } from "./components/logo-chrome";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,8 +31,38 @@ const cinzelDecorative = Cinzel_Decorative({
 });
 
 export const metadata: Metadata = {
-  title: "La Guardia de Elune",
-  description: "Web oficial de la hermandad La Guardia de Elune",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_NAME,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: "website",
+    locale: "es_ES",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: "/elune/elune.png",
+        width: 512,
+        height: 256,
+        alt: SITE_NAME,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: ["/elune/elune.png"],
+  },
+  alternates: {
+    canonical: "/",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -39,11 +72,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} ${cinzelDecorative.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-gray-950 text-white">
+        <JsonLd />
         <LogoChromeProvider>
           <HomeLogo />
           <Navbar />
-          <div id="site-main" className="relative z-10 flex-1 pt-12">
-            {children}
+          <div id="site-main" className="relative z-10 flex-1 pt-12 flex flex-col">
+            <div className="flex-1">{children}</div>
+            <SiteFooter />
           </div>
         </LogoChromeProvider>
       </body>

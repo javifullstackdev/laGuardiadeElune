@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
@@ -82,6 +83,45 @@ function StoryParchment({
   );
 }
 
+async function loadStory(
+  id: string,
+  token?: string,
+): Promise<StoryPublic | null> {
+  const res = await fetch(apiUrl(`/stories/${id}`), {
+    cache: "no-store",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const story = await loadStory(id);
+  if (!story) return { title: "Historia no encontrada" };
+  const description =
+    (story.biography || story.personality || story.appearance || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 155) || `Historia de ${story.title} en La Guardia de Elune.`;
+  return {
+    title: story.title,
+    description,
+    openGraph: {
+      title: story.title,
+      description,
+      type: "article",
+      images: story.cover_url
+        ? [{ url: story.cover_url, alt: story.title }]
+        : undefined,
+    },
+  };
+}
+
 export default async function LoreDetailPage({
   params,
 }: {
@@ -90,12 +130,9 @@ export default async function LoreDetailPage({
   const { id } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
-  const res = await fetch(apiUrl(`/stories/${id}`), {
-    cache: "no-store",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+  const story = await loadStory(id, token);
 
-  if (!res.ok) {
+  if (!story) {
     return (
       <main className="min-h-screen text-white flex items-center justify-center">
         <div className="text-center">
@@ -107,8 +144,6 @@ export default async function LoreDetailPage({
       </main>
     );
   }
-
-  const story: StoryPublic = await res.json();
   const hasLore = Boolean(story.biography || story.personality || story.appearance);
   const crumbs = [
     { href: "/", label: "Inicio" },
