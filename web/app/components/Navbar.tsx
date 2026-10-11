@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import NavbarMobile from "./NavbarMobile";
 import NavbarLinks from "./NavbarLinks";
+import NavbarBrand from "./NavbarBrand";
 
 import { apiUrl, publicApiUrl } from "@/lib/api";
 export default async function Navbar() {
@@ -47,7 +48,8 @@ export default async function Navbar() {
   }));
 
   return (
-    <nav className="sticky top-0 z-50 h-12 bg-[#0b0b0b] text-white px-4 sm:px-6 flex items-center justify-end gap-6 transition-opacity duration-700 ease-out">
+    <nav className="sticky top-0 z-50 h-12 bg-[#0b0b0b] text-white px-4 sm:px-6 flex items-center justify-end gap-4 sm:gap-6 transition-opacity duration-700 ease-out">
+      <NavbarBrand />
       <NavbarLinks items={items} />
 
       <div className="md:hidden">
