@@ -256,13 +256,8 @@ html[data-elune-intro="playing"] nav {
 
 @keyframes parchment-slide-up {
   0% {
-    transform: translateY(100vh);
-    opacity: 0;
-  }
-
-  15% {
-    /* Se vuelve totalmente visible rápidamente al empezar a asomar */
-    opacity: 1;
+    transform: translateY(108%);
+    opacity: 0.4;
   }
 
   100% {
@@ -272,16 +267,14 @@ html[data-elune-intro="playing"] nav {
 }
 
 .animate-parchment-up {
-  /* Parámetros: Animación | Duración (1.4s) | Curva suavizada | Retraso (0.15s) | Forwards */
-  animation: parchment-slide-up 3s cubic-bezier(0.16, 1, 0.3, 1) 0.45s forwards;
-
-  /* Esto asegura que el pergamino sea invisible durante los 0.15s de retraso inicial */
-  opacity: 0;
+  /* Subida pausada (sin curva expo que “salta” al inicio) */
+  animation: parchment-slide-up 1.35s cubic-bezier(0.33, 0.2, 0.25, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-parchment-up {
     animation: none;
+    opacity: 1;
   }
 }
 
@@ -516,6 +509,11 @@ html[data-elune-intro="playing"] nav {
     --foot-bot: 11cqh;
     --line-gap-bot: 1.35rem;
     --fade-band-bot: 1.25rem;
+  }
+
+  /* Cabecera tocable en móvil (zona de arrastre para cerrar) */
+  .wiki-mobile-lore .quest-parchment-head {
+    pointer-events: auto;
   }
 
   .wiki-mobile-lore .quest-parchment-frame {

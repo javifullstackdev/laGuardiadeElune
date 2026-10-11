@@ -50,6 +50,14 @@ export type WikiListItem = {
   race: string | null;
 };
 
+/** Neighbour slide for mobile fiche carousel */
+export type WikiNeighbor = {
+  href: string;
+  coverUrl: string | null;
+  displayName: string;
+  title?: string | null;
+};
+
 export type WikiRelated = {
   name: string;
   realm: string;

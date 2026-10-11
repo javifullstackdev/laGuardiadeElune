@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
-import { formatDate, textToParagraphs } from "@/lib/posts";
+import { textToParagraphs } from "@/lib/posts";
 import ShareBar from "../../components/ShareBar";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import Parchment from "@/app/components/ui/Parchment";
@@ -115,52 +115,38 @@ export default async function LoreDetailPage({
     { href: "/lore", label: "Historias" },
     { label: story.title },
   ];
-  const byline = [
-    story.character_name,
-    story.character_realm,
-    story.author_username,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const shareActions =
+    !story.status || story.status === "approved" ? (
+      <ShareBar
+        variant="parchment"
+        targetType="story"
+        targetId={story.id}
+        title={story.title}
+        loggedIn={!!token}
+      />
+    ) : undefined;
 
   return (
     <main className="relative text-white">
       <StoryScene coverUrl={story.cover_url}>
-        <section className="relative z-10 sm:hidden h-[calc(100dvh-3rem)]">
-          <div className="absolute top-0 inset-x-0 z-30 px-4 pt-3">
-            <Breadcrumb className="mb-0" items={crumbs} />
+        {/* Móvil: pergamino a pantalla completa (como ficha de personaje) */}
+        <section className="relative z-10 sm:hidden h-[calc(100dvh-3rem)] overflow-hidden">
+          <div className="absolute top-0 inset-x-0 z-30 px-4 pt-3 pointer-events-none">
+            <div className="pointer-events-auto">
+              <Breadcrumb className="mb-0" items={crumbs} />
+            </div>
           </div>
-          <div className="absolute top-14 inset-x-0 bottom-0 flex flex-col">
-            <h1 className="px-5 mb-1 text-center text-[#f3eee4]">
-              <span className="block font-quest-display text-[2rem] font-bold leading-tight tracking-wide">
-                {story.title}
-              </span>
-            </h1>
-            <p className="px-5 mb-3 text-center text-sm text-white/70">{byline}</p>
-            {story.published_at && (
-              <p className="px-5 -mt-2 mb-2 text-center text-xs text-white/50">
-                {formatDate(story.published_at)}
+          {hasLore ? (
+            <div className="wiki-mobile-lore absolute inset-0 overflow-hidden animate-parchment-up">
+              <StoryParchment story={story} actions={shareActions} />
+            </div>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center px-6">
+              <p className="text-center text-sm text-white/60">
+                Esta historia aún no tiene texto publicado.
               </p>
-            )}
-            {hasLore && (
-              <div className="wiki-mobile-lore min-h-0 flex-1 px-2 flex items-end justify-center animate-parchment-up">
-                <StoryParchment
-                  story={story}
-                  actions={
-                    (!story.status || story.status === "approved") ? (
-                      <ShareBar
-                        variant="parchment"
-                        targetType="story"
-                        targetId={story.id}
-                        title={story.title}
-                        loggedIn={!!token}
-                      />
-                    ) : undefined
-                  }
-                />
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </section>
 
         <div className="relative z-10 hidden sm:block h-full">
@@ -179,20 +165,7 @@ export default async function LoreDetailPage({
               <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:items-stretch gap-5 lg:gap-8">
                 {/* 2. Alineación inferior y animación de entrada */}
                 <div className="min-h-0 shrink-0 lg:self-end animate-parchment-up story-large-parchment">
-                  <StoryParchment
-                    story={story}
-                    actions={
-                      (!story.status || story.status === "approved") ? (
-                        <ShareBar
-                          variant="parchment"
-                          targetType="story"
-                          targetId={story.id}
-                          title={story.title}
-                          loggedIn={!!token}
-                        />
-                      ) : undefined
-                    }
-                  />
+                  <StoryParchment story={story} actions={shareActions} />
                 </div>
               </div>
             )}
