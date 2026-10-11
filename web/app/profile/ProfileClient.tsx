@@ -233,22 +233,6 @@ export default function ProfileClient({
 
       {/* ── Contenido ─────────────────────────────────────────────── */}
       <main className="flex-1 min-w-0 flex flex-col h-[calc(100vh-3rem)] overflow-hidden">
-
-        {/* Barra superior mobile: hamburguesa a la derecha, junto al cajón */}
-        <div className="flex items-center justify-end px-3 py-2 border-b border-gray-800 md:hidden shrink-0">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-gray-400 hover:text-white transition-colors"
-            aria-label="Abrir menú"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-        </div>
-
         {selected ? (
           <div className="flex-1 min-h-0 overflow-hidden">
             <CharacterDetail
@@ -260,10 +244,25 @@ export default function ProfileClient({
               onFavoriteTitleChange={(t) => handleFavoriteTitleChange(selected, t)}
               onFavoritePrefixChange={(t) => handleFavoritePrefixChange(selected, t)}
               onDetailsPatch={(p) => handleDetailsPatch(selected, p)}
+              onOpenCharacters={() => setSidebarOpen(true)}
             />
           </div>
         ) : (
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 relative">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="md:hidden absolute top-4 right-4 z-20 w-11 h-11 rounded-full border-2 border-white/25 bg-gray-800 overflow-hidden shadow-lg"
+              aria-label="Cambiar de personaje"
+            >
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="flex h-full items-center justify-center text-xs font-bold text-gray-400">
+                  {user.username.slice(0, 2).toUpperCase()}
+                </span>
+              )}
+            </button>
             <EmptyState hasBnet={user.has_blizzard} />
           </div>
         )}
@@ -367,6 +366,7 @@ type DetailTab = "bio" | "details" | "points" | "achievements" | "titles" | "sto
 
 function CharacterDetail({
   char, transactions, totalPoints, onSetMain, isPending, onFavoriteTitleChange, onFavoritePrefixChange, onDetailsPatch,
+  onOpenCharacters,
 }: {
   char: Character;
   transactions: Transaction[];
@@ -376,8 +376,11 @@ function CharacterDetail({
   onFavoriteTitleChange: (t: TitleData | null) => void;
   onFavoritePrefixChange: (t: TitleData | null) => void;
   onDetailsPatch: (p: CharPatch) => void;
+  onOpenCharacters?: () => void;
 }) {
   const [tab, setTab] = useState<DetailTab>("bio");
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const color = classColor(char.wow_class);
 
   const tabs: { key: DetailTab; label: string }[] = [
@@ -390,19 +393,88 @@ function CharacterDetail({
     { key: "relations", label: "Relaciones" },
     { key: "professions", label: "Profesiones" },
   ];
+  const tabIndex = tabs.findIndex((t) => t.key === tab);
+  const tabIndexRef = useRef(tabIndex);
+  tabIndexRef.current = tabIndex;
 
-  const hasGoodRender = !!(
-    char.avatar_url
-    && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url)
-  );
-  const displayName = `${char.name}${char.surname ? ` ${char.surname}` : ""}`;
-  const shownTitle = char.favorite_title?.name ?? null;
-  const shownPrefix = char.favorite_prefix?.name ?? char.prefix_title;
-  const logo = useWatermarkBox();
-  const factPad = logo.mobile ? 16 : Math.round(logo.left + logo.size + 12);
-  const factStyle = {
-    ["--fact-pad" as string]: `${factPad}px`,
-  };
+  const tabBarRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const dragXRef = useRef(0);
+
+  // Mantener la pestaña activa visible en el scroll horizontal de la barra
+  useEffect(() => {
+    const root = tabBarRef.current;
+    if (!root) return;
+    const active = root.querySelector<HTMLElement>(`[data-tab="${tab}"]`);
+    active?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [tab]);
+
+  // Swipe horizontal entre secciones (el contenido vertical sigue scrolleando)
+  useEffect(() => {
+    const root = panelRef.current;
+    if (!root) return;
+
+    let x0 = 0;
+    let y0 = 0;
+    let axis: "x" | "y" | null = null;
+    let active = false;
+
+    const start = (x: number, y: number) => {
+      x0 = x;
+      y0 = y;
+      axis = null;
+      active = true;
+      dragXRef.current = 0;
+      setDragging(true);
+      setDragX(0);
+    };
+
+    const move = (x: number, y: number, event: Event) => {
+      if (!active) return;
+      const dx = x - x0;
+      const dy = y - y0;
+      if (!axis && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+        axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      }
+      if (axis !== "x") return;
+      event.preventDefault();
+      const atStart = tabIndexRef.current <= 0 && dx > 0;
+      const atEnd = tabIndexRef.current >= tabs.length - 1 && dx < 0;
+      const next = atStart || atEnd ? dx * 0.25 : dx;
+      dragXRef.current = next;
+      setDragX(next);
+    };
+
+    const end = () => {
+      if (!active) return;
+      active = false;
+      setDragging(false);
+      const width = root.clientWidth || 1;
+      const dx = dragXRef.current;
+      if (axis === "x" && Math.abs(dx) > width * 0.18) {
+        const next = tabIndexRef.current + (dx < 0 ? 1 : -1);
+        if (next >= 0 && next < tabs.length) {
+          setTab(tabs[next].key);
+        }
+      }
+      dragXRef.current = 0;
+      setDragX(0);
+      axis = null;
+    };
+
+    const onTouchStart = (e: TouchEvent) => start(e.touches[0].clientX, e.touches[0].clientY);
+    const onTouchMove = (e: TouchEvent) => move(e.touches[0].clientX, e.touches[0].clientY, e);
+    root.addEventListener("touchstart", onTouchStart, { passive: true });
+    root.addEventListener("touchmove", onTouchMove, { passive: false });
+    root.addEventListener("touchend", end);
+    root.addEventListener("touchcancel", end);
+    return () => {
+      root.removeEventListener("touchstart", onTouchStart);
+      root.removeEventListener("touchmove", onTouchMove);
+      root.removeEventListener("touchend", end);
+      root.removeEventListener("touchcancel", end);
+    };
+  }, [tabs.length]);
 
   return (
     <div className="relative flex flex-col h-full overflow-hidden">
@@ -439,26 +511,54 @@ function CharacterDetail({
         className="relative z-10 shrink-0 px-4 pt-5 pb-3 sm:pr-8 sm:pl-[var(--fact-pad)] sm:pt-[max(2rem,calc(140px+3.75rem))] lg:pt-[max(2rem,calc(220px+7rem))]"
         style={factStyle}
       >
-        <h1 className="grid grid-rows-[1.4rem_2.35rem_1.85rem] sm:grid-rows-[1.7rem_2.7rem_2.1rem] text-[#f3eee4]">
-          <span className="flex items-end min-w-0 font-quest text-sm sm:text-[1.15rem] font-semibold leading-none tracking-wide opacity-90">
-            {shownPrefix ? (
-              <span className="truncate">{shownPrefix}</span>
-            ) : null}
-          </span>
-          <span className="flex items-end min-w-0 font-quest-display text-[1.65rem] sm:text-[2rem] font-bold leading-none tracking-wide">
-            <span className="truncate">{displayName}</span>
-          </span>
-          <span className="flex items-end min-w-0 font-quest text-base sm:text-[1.2rem] font-semibold leading-none tracking-wide text-[#e4ddd0]">
-            {shownTitle ? <span className="truncate">{shownTitle}</span> : null}
-          </span>
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="min-w-0 flex-1 grid grid-rows-[1.4rem_2.35rem_1.85rem] sm:grid-rows-[1.7rem_2.7rem_2.1rem] text-[#f3eee4]">
+            <span className="flex items-end min-w-0 font-quest text-sm sm:text-[1.15rem] font-semibold leading-none tracking-wide opacity-90">
+              {shownPrefix ? (
+                <span className="truncate">{shownPrefix}</span>
+              ) : null}
+            </span>
+            <span className="flex items-end min-w-0 font-quest-display text-[1.65rem] sm:text-[2rem] font-bold leading-none tracking-wide">
+              <span className="truncate">{displayName}</span>
+            </span>
+            <span className="flex items-end min-w-0 font-quest text-base sm:text-[1.2rem] font-semibold leading-none tracking-wide text-[#e4ddd0]">
+              {shownTitle ? <span className="truncate">{shownTitle}</span> : null}
+            </span>
+          </h1>
+
+          {onOpenCharacters ? (
+            <button
+              type="button"
+              onClick={onOpenCharacters}
+              className="md:hidden shrink-0 w-12 h-12 rounded-full border-2 border-white/25 overflow-hidden bg-gray-800 shadow-[0_0_0_1px_rgba(0,0,0,0.35)]"
+              aria-label="Cambiar de personaje"
+            >
+              {faceSrc ? (
+                <img src={faceSrc} alt="" className="w-full h-full object-cover object-top" />
+              ) : (
+                <span className="flex h-full items-center justify-center text-xs font-bold text-gray-400">
+                  {char.name.slice(0, 2).toUpperCase()}
+                </span>
+              )}
+            </button>
+          ) : null}
+        </div>
       </header>
 
-      <div className="relative z-10 shrink-0 px-4 sm:pr-8 sm:pl-[var(--fact-pad)]" style={factStyle}>
-        <div className="flex gap-1 border-b border-gray-800 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
+      {/* Barra de pestañas fija (solo scroll horizontal) */}
+      <div
+        className="relative z-20 shrink-0 bg-[#030712]/90 backdrop-blur-sm px-4 sm:pr-8 sm:pl-[var(--fact-pad)]"
+        style={factStyle}
+      >
+        <div
+          ref={tabBarRef}
+          className="flex gap-1 border-b border-gray-800 overflow-x-auto overscroll-x-contain scrollbar-none touch-pan-x -mx-4 px-4 sm:mx-0 sm:px-0"
+        >
           {tabs.map((t) => (
             <button
               key={t.key}
+              type="button"
+              data-tab={t.key}
               onClick={() => setTab(t.key)}
               className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors -mb-px border-b-2 whitespace-nowrap shrink-0 ${tab === t.key
                 ? "text-white border-current"
@@ -472,42 +572,68 @@ function CharacterDetail({
         </div>
       </div>
 
-      {/* ══ ZONA SCROLLEABLE ══════════════════════════════════════ */}
+      {/* Paneles: swipe lateral entre secciones; scroll vertical dentro de cada una */}
       <div
-        className={`relative z-10 flex-1 min-h-0 px-4 sm:pr-8 sm:pl-[var(--fact-pad)] ${tab === "bio"
-            ? "overflow-hidden flex flex-col pt-3 pb-10 sm:pt-4 sm:pb-14"
-            : "overflow-y-auto scrollbar-none py-3 sm:py-4"
-          }`}
+        ref={panelRef}
+        className="relative z-10 flex-1 min-h-0 overflow-hidden"
         style={factStyle}
       >
-        {tab === "bio" && (
-          <BioTab
-            char={char}
-            onDetailsPatch={onDetailsPatch}
-          />
-        )}
-        {tab === "details" && (
-          <DetailsTab
-            char={char}
-            onDetailsPatch={onDetailsPatch}
-            onSetMain={onSetMain}
-            isPending={isPending}
-          />
-        )}
-        {tab === "points" && <PointsTab transactions={transactions} totalPoints={totalPoints} />}
-        {tab === "achievements" && <AchievementsTab char={char} />}
-        {tab === "titles" && (
-          <TitlesTab
-            char={char}
-            onFavoriteTitleChange={onFavoriteTitleChange}
-            onFavoritePrefixChange={onFavoritePrefixChange}
-          />
-        )}
-        {tab === "stories" && <StoriesTab char={char} />}
-        {tab === "relations" && <RelationsTab char={char} />}
-        {tab === "professions" && (
-          <ProfessionsTab char={char} color={color} />
-        )}
+        <div
+          className={`flex h-full w-full will-change-transform ${
+            dragging ? "" : "transition-transform duration-300 ease-out"
+          }`}
+          style={{
+            transform: `translateX(calc(${-tabIndex * 100}% + ${dragX}px))`,
+          }}
+        >
+          {tabs.map((t) => {
+            const active = t.key === tab;
+            const panelPad = "px-4 sm:pr-8 sm:pl-[var(--fact-pad)]";
+            return (
+              <div
+                key={t.key}
+                className={`w-full h-full shrink-0 ${panelPad} ${
+                  t.key === "bio"
+                    ? "overflow-hidden flex flex-col pt-3 pb-10 sm:pt-4 sm:pb-14"
+                    : "overflow-y-auto overscroll-y-contain scrollbar-none py-3 sm:py-4"
+                }`}
+                aria-hidden={!active}
+              >
+                {active || Math.abs(tabs.findIndex((x) => x.key === t.key) - tabIndex) <= 1 ? (
+                  <>
+                    {t.key === "bio" && (
+                      <BioTab char={char} onDetailsPatch={onDetailsPatch} />
+                    )}
+                    {t.key === "details" && (
+                      <DetailsTab
+                        char={char}
+                        onDetailsPatch={onDetailsPatch}
+                        onSetMain={onSetMain}
+                        isPending={isPending}
+                      />
+                    )}
+                    {t.key === "points" && (
+                      <PointsTab transactions={transactions} totalPoints={totalPoints} />
+                    )}
+                    {t.key === "achievements" && <AchievementsTab char={char} />}
+                    {t.key === "titles" && (
+                      <TitlesTab
+                        char={char}
+                        onFavoriteTitleChange={onFavoriteTitleChange}
+                        onFavoritePrefixChange={onFavoritePrefixChange}
+                      />
+                    )}
+                    {t.key === "stories" && <StoriesTab char={char} />}
+                    {t.key === "relations" && <RelationsTab char={char} />}
+                    {t.key === "professions" && (
+                      <ProfessionsTab char={char} color={color} />
+                    )}
+                  </>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
     </div>
