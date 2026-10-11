@@ -60,6 +60,13 @@ const SECTIONS = [
     color:       "border-cyan-500/40 hover:border-cyan-400",
     badge:       "bg-cyan-500/20 text-cyan-300",
   },
+  {
+    href:        "/admin/likes",
+    title:       "Likes",
+    description: "Ranking de posts, historias y fichas; quién ha dado like y señales anti-trampas.",
+    color:       "border-rose-500/40 hover:border-rose-400",
+    badge:       "bg-rose-500/20 text-rose-300",
+  },
 ];
 
 export default async function AdminPage() {
