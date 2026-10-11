@@ -96,3 +96,20 @@ export type WikiCharacter = {
   related: WikiRelated[];
   stories: WikiStory[];
 };
+
+export async function loadWikiChar(
+  realm: string,
+  name: string,
+): Promise<WikiCharacter | null> {
+  try {
+    const { apiUrl } = await import("@/lib/api");
+    const res = await fetch(
+      apiUrl(`/wiki/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`),
+      { cache: "no-store" },
+    );
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}

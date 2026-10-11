@@ -123,3 +123,37 @@ export function realmLabel(slug: string | null | undefined) {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
+
+export const HORDE_RACES = new Set([
+  "ORC",
+  "UNDEAD",
+  "TAUREN",
+  "TROLL",
+  "BLOOD_ELF",
+  "GOBLIN",
+  "NIGHTBORNE",
+  "HIGHMOUNTAIN_TAUREN",
+  "ZANDALARI",
+  "VULPERA",
+  "MAGHAR_ORC",
+]);
+
+export function isHorde(faction?: string | null, race?: string | null): boolean {
+  if (faction) {
+    const f = wowKey(faction);
+    if (f === "HORDE" || f === "HORDA") return true;
+    if (f === "ALLIANCE" || f === "ALIANZA") return false;
+  }
+  if (race) {
+    const r = wowKey(race);
+    if (HORDE_RACES.has(r)) return true;
+    for (const [key, esName] of Object.entries(RACE_NAME_ES)) {
+      if (HORDE_RACES.has(key)) {
+        if (wowKey(esName) === r) return true;
+        const esFemale = RACE_NAME_ES_F[key];
+        if (esFemale && wowKey(esFemale) === r) return true;
+      }
+    }
+  }
+  return false;
+}

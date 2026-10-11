@@ -58,6 +58,12 @@ def _class_value(char: Character) -> str | None:
     return char.wow_class.value if hasattr(char.wow_class, "value") else str(char.wow_class)
 
 
+def _race_value(char: Character) -> str | None:
+    if char.race is None:
+        return None
+    return char.race.value if hasattr(char.race, "value") else str(char.race)
+
+
 def _like_count(db: Session, story_id) -> int:
     return (
         db.query(sa_func.count(ContentLike.id))
@@ -80,6 +86,8 @@ def _to_public(db: Session, story: CharacterStory, char: Character, author: User
         character_surname=char.surname,
         character_realm=char.realm,
         character_class=_class_value(char),
+        character_faction=char.faction,
+        character_race=_race_value(char),
         cover_url=_cover_url(story, char),
         author_username=author.username,
         like_count=_like_count(db, story.id),
@@ -123,6 +131,8 @@ def list_pending(
             submitted_at=story.submitted_at,
             character_name=char.name,
             character_realm=char.realm,
+            character_faction=char.faction,
+            character_race=_race_value(char),
             author_username=author.username,
             relations=claims_out(db, story.id),
             awaiting_relations=awaiting_relations(db, story.id),

@@ -12,6 +12,8 @@ export type StoryPublic = {
   character_surname?: string | null;
   character_realm: string;
   character_class: string | null;
+  character_faction?: string | null;
+  character_race?: string | null;
   cover_url: string | null;
   author_username: string;
   like_count: number;
@@ -41,6 +43,8 @@ export type StoryPending = {
   submitted_at: string;
   character_name: string;
   character_realm: string;
+  character_faction?: string | null;
+  character_race?: string | null;
   author_username: string;
   relations: StoryRelation[];
   awaiting_relations: boolean;

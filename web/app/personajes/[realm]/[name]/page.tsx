@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import Breadcrumb from "@/app/components/Breadcrumb";
-import type { WikiCharacter, WikiListItem, WikiNeighbor } from "@/lib/wiki";
+import { loadWikiChar, type WikiCharacter, type WikiListItem, type WikiNeighbor } from "@/lib/wiki";
 import WikiCharacterView from "@/app/personajes/WikiCharacterView";
-
 import { apiUrl } from "@/lib/api";
 
 function toNeighbor(item: WikiListItem): WikiNeighbor {
@@ -31,18 +30,6 @@ function neighbors(
     prev: toNeighbor(sorted[(idx - 1 + sorted.length) % sorted.length]),
     next: toNeighbor(sorted[(idx + 1) % sorted.length]),
   };
-}
-
-async function loadWikiChar(
-  realm: string,
-  name: string,
-): Promise<WikiCharacter | null> {
-  const res = await fetch(
-    apiUrl(`/wiki/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`),
-    { cache: "no-store" },
-  );
-  if (!res.ok) return null;
-  return res.json();
 }
 
 export async function generateMetadata({

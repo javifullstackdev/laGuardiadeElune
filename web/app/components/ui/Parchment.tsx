@@ -8,12 +8,16 @@ export default function Parchment({
   titleFont = "quest",
   author,
   actions,
+  isHorde = false,
+  parchmentImage,
   children,
 }: {
   title?: string;
   titleFont?: "quest" | "display";
   author?: string;
   actions?: ReactNode;
+  isHorde?: boolean;
+  parchmentImage?: string;
   children: ReactNode;
 }) {
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -88,11 +92,18 @@ export default function Parchment({
     return () => io.disconnect();
   }, []);
 
+  const frameSrc =
+    parchmentImage ??
+    (isHorde ? "/parchment/parchmentMidHorde.png" : "/parchment/ParchmentMidResize.png");
+
   return (
-    <div className={`quest-parchment${actions ? " quest-parchment-actions-foot" : ""}`}>
+    <div
+      className={`quest-parchment${isHorde ? " quest-parchment-horde" : ""}${actions ? " quest-parchment-actions-foot" : ""}`}
+      data-faction={isHorde ? "horde" : "alliance"}
+    >
       <div className="quest-parchment-art" aria-hidden>
         <img
-          src="/parchment/ParchmentMidResize.png"
+          src={frameSrc}
           alt=""
           className="quest-parchment-frame"
           draggable={false}
