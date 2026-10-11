@@ -18,9 +18,19 @@ Copia la línea `ssh-ed25519 ...` para Hetzner.
 
 ## B. Hetzner (panel)
 
-1. Server: Ubuntu 24.04 · EU · **≥4 GB** · pega la SSH key  
-2. Firewall: TCP **22, 80, 443**  
+1. Server: Ubuntu 24.04 · EU · **≥4 GB** (ej. CPX22) · pega la SSH key  
+2. Firewall inbound (Create Firewall):
+   - TCP **22** (SSH)
+   - TCP **80** (HTTP)
+   - TCP **443** (HTTPS)
+   - Outbound: dejar vacío (allow all)
+   - **Apply to** → tu server → Create Firewall
 3. Anota la **IPv4**
+
+Desde el PC, con la IP:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\vps-after-ip.ps1 -Ip TU_IP
+```
 
 ## C. DNS (Porkbun)
 
