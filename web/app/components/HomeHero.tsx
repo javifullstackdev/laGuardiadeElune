@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type TransitionEvent } from "react";
 import type { HeroSlide } from "@/lib/hero";
 import { heroObjectPosition } from "@/lib/hero";
@@ -53,7 +54,7 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
   const [paused, setPaused] = useState(false);
   const locked = useRef(false);
   const offsetRef = useRef(offset);
-  const goRef = useRef<(dir: 1 | -1) => void>(() => {});
+  const goRef = useRef<(dir: 1 | -1) => void>(() => { });
   offsetRef.current = offset;
 
   const track = looping ? [slides[n - 1], ...slides, slides[0]] : slides;
@@ -184,13 +185,13 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
   const thumbs = slides.slice(0, 4).map((slide, i) => ({ slide, i }));
 
   return (
-    <section className="bg-transparent flex flex-col flex-1 min-h-0 px-3 sm:px-6 lg:px-8 pt-[46vh] sm:pt-5 lg:pt-6 pb-0">
-      <div className="flex flex-col flex-1 min-h-0 w-full">
-        {/* Banner */}
+    <section className="bg-transparent flex flex-col px-3 sm:px-6 lg:px-8 pt-[46vh] sm:pt-5 lg:pt-6 pb-0">
+      <div className="flex flex-col w-full">
+        {/* Banner: ~50% del viewport en desktop para enseñar contenido debajo */}
         <div
           ref={bannerRef}
           id="home-carousel"
-          className="relative rounded-2xl overflow-hidden h-[220px] sm:h-0 sm:flex-1 sm:min-h-0 touch-pan-y"
+          className="relative rounded-2xl overflow-hidden h-[220px] sm:h-[50svh] touch-pan-y"
         >
           <div
             className="flex h-full"
@@ -215,21 +216,24 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
           <div className="absolute inset-0 z-[2] bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
           <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/70 via-black/15 to-transparent sm:from-black/50 sm:via-transparent sm:to-black/10" />
 
-          {/* Copy: abajo en móvil, centrada en desktop */}
-          <div className="absolute z-[3] inset-y-0 left-0 flex flex-col justify-end sm:justify-center max-w-lg px-5 pb-8 sm:px-12 sm:pb-0 lg:px-16">
-            <h1 className="text-2xl sm:text-4xl lg:text-[2.6rem] font-quest-display font-bold leading-tight text-white">
+          {/* Copy: en móvil solo título + CTA (sin descripción, para ver la imagen) */}
+          <Link
+            href={current.href || "#tablon"}
+            className="absolute z-[3] inset-y-0 left-0 flex flex-col justify-end sm:justify-center max-w-lg px-5 pb-8 sm:px-12 sm:pb-0 lg:px-16 group/hero-copy"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <h1 className="text-2xl sm:text-4xl lg:text-[2.6rem] font-quest-display font-bold leading-tight text-white group-hover/hero-copy:text-white/95">
               {current.title}
             </h1>
-            <p className="mt-2 sm:mt-3 text-sm sm:text-base text-gray-200/90 leading-relaxed">
-              {current.subtitle}
-            </p>
-            <a
-              href={current.href || "#tablon"}
-              className="mt-3 sm:mt-5 inline-flex items-center self-start rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2 transition-colors"
-            >
+            {current.subtitle ? (
+              <p className="mt-2 sm:mt-3 text-sm sm:text-base text-gray-200/90 leading-relaxed hidden sm:block">
+                {current.subtitle}
+              </p>
+            ) : null}
+            <span className="mt-3 sm:mt-5 inline-flex items-center self-start rounded-md bg-blue-600 group-hover/hero-copy:bg-blue-500 text-white text-sm font-semibold px-4 py-2 transition-colors">
               {current.cta || "Descubre las novedades"}
-            </a>
-          </div>
+            </span>
+          </Link>
 
           {/* Flechas */}
           {slides.length > 1 && (
@@ -272,9 +276,8 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                   key={slide.id ?? `${slide.src}-${i}`}
                   type="button"
                   aria-label={`Ir a la diapositiva ${i + 1}`}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === index ? "w-5 bg-white" : "w-1.5 bg-white/45"
-                  }`}
+                  className={`h-1.5 rounded-full transition-all ${i === index ? "w-5 bg-white" : "w-1.5 bg-white/45"
+                    }`}
                   onClick={() => goTo(i)}
                 />
               ))}
@@ -282,80 +285,95 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
           )}
         </div>
 
-        <div className="relative z-[5] -mt-10 sm:-mt-12 mb-1 sm:mb-2 px-4 sm:px-16 lg:px-24 hidden sm:block shrink-0">
-          <div
-            className="grid gap-2 sm:gap-3"
-            style={{ gridTemplateColumns: `repeat(${thumbs.length}, minmax(0, 1fr))` }}
-          >
-            {thumbs.map(({ slide, i }) => {
-              const isCharacter = slide.kind === "character";
-              const isStory = slide.kind === "story";
-              const centered = isCharacter || isStory;
-              const storyKicker = slide.kicker || "Historia";
-              const charKicker = slide.kicker && slide.kicker !== "Personaje" ? slide.kicker : null;
-              return (
-              <button
-                key={slide.id ?? `${slide.src}-${i}`}
-                type="button"
-                onClick={() => goTo(i)}
-                aria-label={
-                  isStory
-                    ? `${storyKicker}, ${slide.title}`
-                    : slide.kicker
-                      ? `${slide.title}, ${slide.kicker}`
-                      : slide.title
-                }
-                className={`group rounded-lg overflow-hidden bg-gray-900 border transition-colors shadow-lg ${
-                  centered ? "text-center" : "text-left"
-                } ${
-                  i === index
-                    ? "border-white/45"
-                    : "border-gray-800 hover:border-gray-500"
-                }`}
-              >
-                <div className="relative aspect-[16/10] overflow-hidden">
-                  <img
-                    src={slide.src}
-                    alt=""
-                    style={{ objectPosition: heroObjectPosition(slide) }}
-                    className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/45 to-transparent" />
-                  {centered ? (
-                    <div className="absolute inset-0 flex flex-col">
-                      <div className="flex-1" />
-                      <div className="flex-1 flex flex-col items-center justify-center px-2 sm:px-3">
-                        {isStory && (
-                          <p className="text-[11px] sm:text-xs tracking-[0.16em] uppercase text-gray-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.85)]">
-                            {storyKicker}
+        <div className="relative z-[5] -mt-7 sm:-mt-9 mb-1 sm:mb-2 px-4 sm:px-16 lg:px-24 hidden sm:block shrink-0">
+          {/* ~2/3 del ancho del carrusel (antes 50%; un poco más grandes) */}
+          <div className="w-2/3 max-w-full mx-auto">
+            <div
+              className="grid gap-1.5 sm:gap-2"
+              style={{ gridTemplateColumns: `repeat(${thumbs.length}, minmax(0, 1fr))` }}
+            >
+              {thumbs.map(({ slide, i }) => {
+                const isCharacter = slide.kind === "character";
+                const isStory = slide.kind === "story";
+                const centered = isCharacter || isStory;
+                const storyKicker = slide.kicker || "Historia";
+                const charPrefix = isCharacter ? (slide.kicker || "").trim() : "";
+                const charCaption = (slide.caption || "").trim();
+                const dest = slide.href || "#tablon";
+                const label = isStory
+                  ? `${storyKicker}, ${slide.title}`
+                  : isCharacter
+                    ? [charPrefix, slide.title, charCaption].filter(Boolean).join(", ")
+                    : slide.title;
+                return (
+                  <Link
+                    key={slide.id ?? `${slide.src}-${i}`}
+                    href={dest}
+                    aria-label={label}
+                    onMouseEnter={() => {
+                      if (i !== index) goTo(i);
+                    }}
+                    className={`group rounded-md overflow-hidden bg-gray-900 border transition-colors shadow-md block ${
+                      centered ? "text-center" : "text-left"
+                    } ${
+                      i === index
+                        ? "border-white/45"
+                        : "border-gray-800 hover:border-gray-500"
+                    }`}
+                  >
+                    <div className="relative aspect-[16/10] overflow-hidden">
+                      <img
+                        src={slide.src}
+                        alt=""
+                        style={{ objectPosition: heroObjectPosition(slide) }}
+                        className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/45 to-transparent" />
+                      {centered ? (
+                        <div className="absolute inset-0 flex flex-col">
+                          <div className="flex-1" />
+                          <div className="flex-1 flex flex-col items-center justify-center px-1.5 sm:px-2.5">
+                            {isStory && (
+                              <p className="text-[9px] sm:text-[11px] tracking-[0.14em] uppercase text-gray-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.85)]">
+                                {storyKicker}
+                              </p>
+                            )}
+                            {isCharacter && charPrefix ? (
+                              <p className="text-[9px] sm:text-[11px] tracking-[0.14em] uppercase text-gray-300 drop-shadow-[0_1px_6px_rgba(0,0,0,0.85)] line-clamp-1 max-w-full">
+                                {charPrefix}
+                              </p>
+                            ) : null}
+                            <p
+                              className={`text-xs sm:text-sm lg:text-[15px] font-quest-display font-bold tracking-wide text-white leading-snug line-clamp-2 drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)] ${
+                                isStory || charPrefix ? "mt-0.5" : ""
+                              }`}
+                            >
+                              {slide.title}
+                            </p>
+                            {isCharacter && charCaption ? (
+                              <p className="mt-0.5 text-[9px] sm:text-[11px] tracking-[0.12em] text-gray-300/95 line-clamp-1 max-w-full drop-shadow-[0_1px_6px_rgba(0,0,0,0.85)]">
+                                {charCaption}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2.5">
+                          <p className="text-[11px] sm:text-sm font-quest-display font-bold tracking-wide text-white leading-snug line-clamp-2">
+                            {slide.title}
                           </p>
-                        )}
-                        <p className={`text-sm sm:text-base lg:text-lg font-quest-display font-bold tracking-wide text-white leading-snug line-clamp-2 drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)] ${isStory ? "mt-1" : ""}`}>
-                          {slide.title}
-                        </p>
-                        {isCharacter && charKicker && (
-                          <p className="mt-1 text-[11px] sm:text-xs tracking-[0.16em] uppercase text-gray-300 truncate max-w-full drop-shadow-[0_1px_6px_rgba(0,0,0,0.85)]">
-                            {charKicker}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3">
-                      <p className="text-[11px] sm:text-sm font-quest-display font-bold tracking-wide text-white leading-snug line-clamp-2">
-                        {slide.title}
-                      </p>
-                      {slide.kicker && (
-                        <p className="mt-0.5 text-[9px] sm:text-[10px] tracking-widest uppercase text-gray-400 truncate">
-                          {slide.kicker}
-                        </p>
+                          {slide.kicker && (
+                            <p className="mt-0.5 text-[8px] sm:text-[10px] tracking-widest uppercase text-gray-400 truncate">
+                              {slide.kicker}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              </button>
-              );
-            })}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

@@ -30,6 +30,7 @@ def _media(path: str | None) -> str | None:
 
 
 def _portrait(char: Character, story: CharacterStory | None = None) -> str | None:
+    """Arte de carrusel: portada de historia > imagen completa custom > render (nunca la cara)."""
     if story and story.cover_url:
         return _media(story.cover_url)
     if char.custom_avatar_url:
@@ -52,6 +53,7 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
     kicker = (slide.kicker or "").strip()
     href = (slide.href or "").strip()
     cta = (slide.cta_label or "").strip()
+    caption: str | None = None
 
     if kind == "story":
         row = (
@@ -83,9 +85,17 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
         shown_title = None
         if fields.get("title") and char.favorite_title:
             shown_title = char.favorite_title.name
+        shown_prefix = None
+        if fields.get("prefix"):
+            if char.favorite_prefix and getattr(char.favorite_prefix, "name", None):
+                shown_prefix = char.favorite_prefix.name
+            elif char.prefix_title:
+                shown_prefix = char.prefix_title
         title = title or display
         subtitle = subtitle or _excerpt(char.biography or char.personality or char.appearance)
-        kicker = kicker or shown_title or "Personaje"
+        # Mini-tarjeta: antetítulo (kicker) → nombre (title) → título (caption)
+        kicker = kicker or shown_prefix or ""
+        caption = shown_title
         href = href or f"/personajes/{char.realm}/{char.name}"
         cta = cta or "Ver ficha"
     else:
@@ -105,6 +115,7 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
         subtitle=subtitle,
         href=href,
         cta=cta,
+        caption=caption,
         focus_x=_clamp_focus(slide.focus_x, 50),
         focus_y=_clamp_focus(slide.focus_y, 28),
     )

@@ -40,6 +40,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Battle.net vinculado → ir al onboarding paso 3
-  return NextResponse.redirect(absoluteUrl("/onboarding", request));
+  // Si ya tiene personajes, es una reconexión desde perfil; si no, onboarding.
+  const charsRes = await fetch(apiUrl("/characters/my"), {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  const chars = charsRes.ok ? await charsRes.json() : [];
+  const dest = Array.isArray(chars) && chars.length > 0 ? "/profile" : "/onboarding";
+  return NextResponse.redirect(absoluteUrl(dest, request));
 }
