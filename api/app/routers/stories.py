@@ -28,6 +28,7 @@ MAX_COVER_SIZE = 5 * 1024 * 1024
 
 
 def _cover_url(story: CharacterStory, char: Character) -> str | None:
+    """Portada de historia > imagen completa custom > render (nunca la cara del ranking)."""
     if story.cover_url:
         return static_url(story.cover_url)
     if char.custom_avatar_url:

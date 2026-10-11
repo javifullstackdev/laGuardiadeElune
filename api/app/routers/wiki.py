@@ -24,6 +24,7 @@ def _enum_val(value) -> str | None:
 
 
 def _portrait(char: Character, story: CharacterStory | None = None) -> str | None:
+    """Arte de ficha: portada > imagen completa custom > render (nunca la cara del ranking)."""
     if story and story.cover_url:
         return static_url(story.cover_url)
     if char.custom_avatar_url:

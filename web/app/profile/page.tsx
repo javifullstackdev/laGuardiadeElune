@@ -26,12 +26,12 @@ export default async function ProfilePage() {
   let characters   = charsRes.ok ? await charsRes.json() : [];
   const transactions = txRes.ok  ? await txRes.json()    : [];
 
-  // 2. Si hay personajes Retail sin render_url o con render de baja calidad (avatar),
-  //    ejecutar sync ANTES de renderizar para que la primera visita ya muestre las imágenes.
+  // 2. Si faltan datos de identidad, render o cara Blizzard, sync antes de pintar.
   const needsSync = characters.some(
     (c: {
       game: string;
       render_url: string | null;
+      face_url: string | null;
       race: string | null;
       faction: string | null;
       wow_class: string | null;
@@ -43,7 +43,9 @@ export default async function ProfilePage() {
         || !c.wow_class
         || !c.gender
         || (user.has_blizzard && (
-          !c.render_url || (c.render_url as string).endsWith("-avatar.jpg")
+          !c.render_url
+          || !c.face_url
+          || (c.render_url as string).endsWith("-avatar.jpg")
         ))
       )
   );
@@ -64,13 +66,9 @@ export default async function ProfilePage() {
     }
   }
 
-  // 3. Detectar si el token de Blizzard parece caducado:
-  //    si hay personajes retail sin render de calidad después del sync, probablemente el token expiró.
-  const retailChars = characters.filter((c: { game: string }) => c.game !== "forever");
-  const bnetTokenExpired = user.has_blizzard && retailChars.length > 0 && retailChars.every(
-    (c: { render_url: string | null; custom_avatar_url: string | null }) =>
-      !c.custom_avatar_url && (!c.render_url || (c.render_url as string).endsWith("-avatar.jpg"))
-  );
+  // 3. Aviso de reconexión solo si el token de usuario está realmente caducado
+  //    (no confundir con renders antiguos -avatar.jpg; esos se actualizan en el sync).
+  const bnetTokenExpired = Boolean(user.has_blizzard && user.blizzard_token_expired);
   const sorted = [...characters].sort((a, b) => {
     if (b.is_main !== a.is_main) return b.is_main ? 1 : -1;
     return a.name.localeCompare(b.name);

@@ -49,11 +49,15 @@ class CharacterResponse(BaseModel):
     realm: str
     blizzard_character_id: Optional[int] = None
     # Avatares
-    render_url:        Optional[str] = None   # URL directa del Character Media API
-    custom_avatar_url: Optional[str] = None   # imagen aprobada (ruta /static/...)
-    pending_avatar_url: Optional[str] = None  # pendiente de aprobación
-    # Campo calculado: la imagen a mostrar
-    avatar_url: Optional[str] = None
+    render_url:         Optional[str] = None   # cuerpo entero (Character Media)
+    face_url:           Optional[str] = None   # cara Blizzard (avatar / inset)
+    custom_avatar_url:  Optional[str] = None   # imagen completa aprobada (ficha/carrusel)
+    pending_avatar_url: Optional[str] = None
+    custom_face_url:    Optional[str] = None   # cara propia aprobada (ranking)
+    pending_face_url:   Optional[str] = None
+    # Calculados
+    avatar_url: Optional[str] = None           # ficha/carrusel: custom completa > render
+    face_display_url: Optional[str] = None     # ranking: custom cara > face Blizzard
     wow_class: Optional[str] = None
     race: Optional[str] = None
     faction: Optional[str] = None
@@ -93,11 +97,19 @@ class CharacterResponse(BaseModel):
 
     @model_validator(mode="after")
     def compute_avatar_url(self) -> "CharacterResponse":
-        """Prioridad: imagen custom aprobada > render Blizzard (Character Media API) > null."""
+        """Ficha/carrusel ≠ ranking: cada uno con su imagen custom o Blizzard."""
         if self.custom_avatar_url:
             self.avatar_url = static_url(self.custom_avatar_url)
-        elif self.render_url:
+        else:
             self.avatar_url = self.render_url
+
+        if self.custom_face_url:
+            self.face_display_url = static_url(self.custom_face_url)
+        elif self.face_url:
+            self.face_display_url = self.face_url
+        elif self.render_url and self.render_url.rstrip("/").endswith("-avatar.jpg"):
+            self.face_display_url = self.render_url
+
         self.public_fields = merge_public_fields(self.public_fields)
         self.bio_answers = self.bio_answers or {}
         return self

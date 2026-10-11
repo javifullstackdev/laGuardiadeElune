@@ -44,9 +44,13 @@ type Character = {
   realm: string;
   blizzard_character_id: number | null;
   render_url: string | null;
+  face_url: string | null;
   avatar_url: string | null;
+  face_display_url: string | null;
   custom_avatar_url: string | null;
   pending_avatar_url: string | null;
+  custom_face_url: string | null;
+  pending_face_url: string | null;
   wow_class: string | null;
   race: string | null;
   faction: string | null;
@@ -126,7 +130,8 @@ function getRelationLabel(type: string) {
 type CharPatch = Partial<Pick<Character,
   "surname" | "prefix_title" | "favorite_prefix" | "biography" | "personality" | "appearance" |
   "origin" | "age_lore" | "residence" |
-  "avatar_url" | "custom_avatar_url" | "pending_avatar_url" |
+  "avatar_url" | "face_display_url" | "custom_avatar_url" | "pending_avatar_url" |
+  "custom_face_url" | "pending_face_url" |
   "bio_status" | "published_story_id" | "public_fields" |
   "bio_answers" | "bio_answers_pending" | "bio_rejection_reason"
 >>;
@@ -385,7 +390,10 @@ function CharacterDetail({
     { key: "professions", label: "Profesiones" },
   ];
 
-  const hasGoodRender = !!(char.avatar_url && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url));
+  const hasGoodRender = !!(
+    char.avatar_url
+    && (!char.render_url?.endsWith("-avatar.jpg") || !!char.custom_avatar_url)
+  );
   const displayName = `${char.name}${char.surname ? ` ${char.surname}` : ""}`;
   const shownTitle = char.favorite_title?.name ?? null;
   const shownPrefix = char.favorite_prefix?.name ?? char.prefix_title;
@@ -926,30 +934,40 @@ function DetailsTab({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {char.is_main && (
-            <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium border border-yellow-500/25">
-              Personaje principal
-            </span>
-          )}
-          {char.is_verified && (
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium border border-blue-500/25">
-              Verificado
-            </span>
-          )}
-          {!char.is_main && (
-            <button
-              type="button"
-              onClick={onSetMain}
-              disabled={isPending}
-              className="px-2.5 py-0.5 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs border border-gray-700 transition-colors disabled:opacity-50"
-            >
-              {isPending ? "..." : "Establecer como main"}
-            </button>
-          )}
-        </div>
-        <CharacterAvatar char={char} onAvatarPatch={(p) => onDetailsPatch(p)} />
+      <div className="flex flex-wrap items-center gap-2">
+        {char.is_main && (
+          <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/15 text-yellow-400 text-xs font-medium border border-yellow-500/25">
+            Personaje principal
+          </span>
+        )}
+        {char.is_verified && (
+          <span className="px-2.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-xs font-medium border border-blue-500/25">
+            Verificado
+          </span>
+        )}
+        {!char.is_main && (
+          <button
+            type="button"
+            onClick={onSetMain}
+            disabled={isPending}
+            className="px-2.5 py-0.5 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-400 text-xs border border-gray-700 transition-colors disabled:opacity-50"
+          >
+            {isPending ? "..." : "Establecer como main"}
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        <CharacterImageSlot
+          kind="face"
+          char={char}
+          onPatch={(p) => onDetailsPatch(p)}
+        />
+        <CharacterImageSlot
+          kind="full"
+          char={char}
+          onPatch={(p) => onDetailsPatch(p)}
+        />
       </div>
       {identity.length > 0 && (
         <div>
@@ -1570,18 +1588,28 @@ function AddRelationForm({
   );
 }
 
-// ── Avatar del personaje ──────────────────────────────────────────────────
+// ── Imágenes del personaje (cara / completa) ──────────────────────────────
 
-function CharacterAvatar({
+function CharacterImageSlot({
+  kind,
   char,
-  onAvatarPatch,
+  onPatch,
 }: {
+  kind: "face" | "full";
   char: Character;
-  onAvatarPatch: (p: CharPatch) => void;
+  onPatch: (p: CharPatch) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isFace = kind === "face";
+  const endpoint = isFace ? "/api/characters/face" : "/api/characters/avatar";
+  const pending = isFace ? char.pending_face_url : char.pending_avatar_url;
+  const custom = isFace ? char.custom_face_url : char.custom_avatar_url;
+  const preview = isFace
+    ? (char.face_display_url ?? char.face_url)
+    : (char.avatar_url ?? char.render_url);
+  const initials = char.name.slice(0, 2).toUpperCase();
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1592,12 +1620,14 @@ function CharacterAvatar({
     fd.append("file", file);
     fd.append("name", char.name);
     fd.append("realm", char.realm);
-    const res = await fetch("/api/characters/avatar", { method: "POST", body: fd });
+    const res = await fetch(endpoint, { method: "POST", body: fd });
     const data = await res.json();
     if (!res.ok) {
       setError(data.error ?? data.detail ?? "Error al subir");
+    } else if (isFace) {
+      onPatch({ pending_face_url: "pending" });
     } else {
-      onAvatarPatch({ pending_avatar_url: "pending" });
+      onPatch({ pending_avatar_url: "pending" });
     }
     setUploading(false);
     if (inputRef.current) inputRef.current.value = "";
@@ -1605,16 +1635,31 @@ function CharacterAvatar({
 
   async function handleRemove() {
     const res = await fetch(
-      `/api/characters/avatar?name=${encodeURIComponent(char.name)}&realm=${encodeURIComponent(char.realm)}`,
+      `${endpoint}?name=${encodeURIComponent(char.name)}&realm=${encodeURIComponent(char.realm)}`,
       { method: "DELETE" }
     );
     if (res.ok || res.status === 204) {
-      onAvatarPatch({ avatar_url: null, custom_avatar_url: null, pending_avatar_url: null });
+      if (isFace) {
+        const face =
+          char.face_url
+          ?? (char.render_url?.endsWith("-avatar.jpg") ? char.render_url : null);
+        onPatch({
+          custom_face_url: null,
+          pending_face_url: null,
+          face_display_url: face,
+        });
+      } else {
+        onPatch({
+          custom_avatar_url: null,
+          pending_avatar_url: null,
+          avatar_url: char.render_url,
+        });
+      }
     }
   }
 
   return (
-    <div className="shrink-0 flex flex-col items-end gap-1">
+    <div className="rounded-xl border border-white/10 bg-gray-900/50 px-4 py-3 flex items-center gap-3">
       <input
         ref={inputRef}
         type="file"
@@ -1623,39 +1668,66 @@ function CharacterAvatar({
         onChange={handleFileChange}
       />
 
-      {/* Estado de imagen personalizada */}
-      {char.custom_avatar_url && (
-        <span className="text-xs text-green-500 border border-green-600/30 rounded-full px-2 py-0.5">
-          Imagen propia activa
-        </span>
-      )}
-      {char.pending_avatar_url && (
-        <span className="text-xs text-amber-500 border border-amber-600/30 rounded-full px-2 py-0.5">
-          Imagen pendiente
-        </span>
-      )}
-
-      {/* Botón subir */}
-      <button
-        onClick={() => inputRef.current?.click()}
-        disabled={uploading || !!char.pending_avatar_url}
-        className="text-xs text-gray-600 hover:text-gray-400 transition-colors disabled:opacity-40"
-        title={char.pending_avatar_url ? "Ya tienes una imagen pendiente de aprobación" : "Subir imagen propia"}
-      >
-        {uploading ? "Subiendo..." : char.pending_avatar_url ? "Pendiente..." : "Cambiar imagen"}
-      </button>
-
-      {/* Botón quitar */}
-      {(char.custom_avatar_url || char.pending_avatar_url) && (
-        <button
-          onClick={handleRemove}
-          className="text-xs text-gray-700 hover:text-red-400 transition-colors"
+      {preview ? (
+        <img
+          src={preview}
+          alt=""
+          className={`shrink-0 border border-white/15 object-cover ${
+            isFace
+              ? "w-16 h-16 rounded-full"
+              : "w-14 h-[4.5rem] rounded-lg object-top"
+          }`}
+        />
+      ) : (
+        <div
+          className={`shrink-0 bg-gray-800 border border-white/10 flex items-center justify-center text-sm font-bold text-gray-400 ${
+            isFace ? "w-16 h-16 rounded-full" : "w-14 h-[4.5rem] rounded-lg"
+          }`}
         >
-          Quitar imagen
-        </button>
+          {initials}
+        </div>
       )}
 
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      <div className="flex flex-col items-start gap-1 min-w-0">
+        <p className="text-xs font-medium text-gray-300">
+          {isFace ? "Foto de cara" : "Imagen completa"}
+        </p>
+        <p className="text-[11px] text-gray-500 leading-snug">
+          {isFace
+            ? "Se muestra en el ranking. Battle.net por defecto, o sube una propia."
+            : "Se muestra en la ficha, el perfil y el carrusel."}
+        </p>
+        {custom && (
+          <span className="text-[11px] text-green-500 border border-green-600/30 rounded-full px-2 py-0.5">
+            Imagen propia activa
+          </span>
+        )}
+        {pending && (
+          <span className="text-[11px] text-amber-500 border border-amber-600/30 rounded-full px-2 py-0.5">
+            Pendiente de aprobación
+          </span>
+        )}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading || !!pending}
+            className="text-xs text-gray-300 hover:text-white transition-colors disabled:opacity-40"
+          >
+            {uploading ? "Subiendo..." : pending ? "Pendiente..." : preview ? "Cambiar" : "Subir foto"}
+          </button>
+          {(custom || pending) && (
+            <button
+              type="button"
+              onClick={handleRemove}
+              className="text-xs text-gray-600 hover:text-red-400 transition-colors"
+            >
+              Quitar
+            </button>
+          )}
+        </div>
+        {error && <p className="text-xs text-red-400">{error}</p>}
+      </div>
     </div>
   );
 }
@@ -1705,6 +1777,20 @@ function CharacterList({
                       className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${isActive ? "bg-gray-700 ring-1 ring-gray-600" : "hover:bg-gray-800"
                         }`}
                     >
+                      {(char.face_display_url || char.face_url) ? (
+                        <img
+                          src={(char.face_display_url || char.face_url)!}
+                          alt=""
+                          className="w-8 h-8 rounded-full object-cover border border-white/10 shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold border border-white/10"
+                          style={{ backgroundColor: `${color}22`, color }}
+                        >
+                          {char.name.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate text-sm" style={{ color }}>
                           {char.name}

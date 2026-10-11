@@ -20,6 +20,7 @@ router = APIRouter(prefix="/bios", tags=["bios"])
 
 
 def _cover(char: Character) -> str | None:
+    """Arte de ficha: imagen completa custom > render (nunca la cara del ranking)."""
     if char.custom_avatar_url:
         return static_url(char.custom_avatar_url)
     return char.render_url

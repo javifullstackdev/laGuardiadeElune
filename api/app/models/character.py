@@ -46,9 +46,12 @@ class Character(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     # ── ID Blizzard y avatares ─────────────────────────────────────────────
     blizzard_character_id = Column(BigInteger, nullable=True)  # para render de armería
-    render_url            = Column(String(1000), nullable=True) # URL real del Character Media API
-    custom_avatar_url     = Column(String(500), nullable=True) # imagen aprobada por admin
-    pending_avatar_url    = Column(String(500), nullable=True) # imagen pendiente de aprobación
+    render_url            = Column(String(1000), nullable=True) # cuerpo entero (main / main-raw)
+    face_url              = Column(String(1000), nullable=True) # cara Blizzard (avatar / inset)
+    custom_avatar_url     = Column(String(500), nullable=True) # imagen completa aprobada (ficha/carrusel)
+    pending_avatar_url    = Column(String(500), nullable=True) # imagen completa pendiente
+    custom_face_url       = Column(String(500), nullable=True) # cara propia aprobada (ranking)
+    pending_face_url      = Column(String(500), nullable=True) # cara propia pendiente
     # ── Línea temporal ─────────────────────────────────────────────────────
     # "retail"  → personaje importado y verificado por Blizzard
     # "forever" → personaje de Warcraft Forever, creado manualmente
