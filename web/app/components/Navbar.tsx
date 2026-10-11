@@ -40,12 +40,22 @@ export default async function Navbar() {
         ]),
   ];
 
-  const mobileLinks = items.map((item) => ({
-    href: item.href,
-    label: item.label,
-    style: "default" as const,
-    external: "external" in item ? item.external : item.href.startsWith("/api/") || item.href.startsWith("http"),
-  }));
+  const mobileLinks = items.map((item) => {
+    const href = item.href;
+    const external =
+      "external" in item
+        ? Boolean(item.external)
+        : href.startsWith("/api/") || href.startsWith("http");
+    const style =
+      href === "/admin" || href.startsWith("/admin/")
+        ? ("admin" as const)
+        : href.includes("/auth/logout")
+          ? ("logout" as const)
+          : href.includes("/auth/discord")
+            ? ("login" as const)
+            : ("default" as const);
+    return { href, label: item.label, style, external };
+  });
 
   return (
     <nav className="fixed top-0 inset-x-0 z-50 h-12 bg-[#0b0b0b] text-white px-4 sm:px-6 flex items-center justify-end gap-4 sm:gap-6 transition-opacity duration-700 ease-out">
