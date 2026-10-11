@@ -220,13 +220,101 @@ export default function ProfileClient({
       ? { ...prev, ...p } : prev);
   }
 
+  const asideRef = useRef<HTMLElement>(null);
+  const [asideDragX, setAsideDragX] = useState(0);
+  const [asideDragging, setAsideDragging] = useState(false);
+  const asideDragXRef = useRef(0);
+
+  // Mobile: swipe right on the characters aside to dismiss
+  useEffect(() => {
+    if (!sidebarOpen) {
+      setAsideDragX(0);
+      asideDragXRef.current = 0;
+      return;
+    }
+    const root = asideRef.current;
+    if (!root) return;
+
+    let x0 = 0;
+    let y0 = 0;
+    let axis: "x" | "y" | null = null;
+    let active = false;
+
+    const start = (x: number, y: number) => {
+      x0 = x;
+      y0 = y;
+      axis = null;
+      active = true;
+      asideDragXRef.current = 0;
+      setAsideDragging(true);
+      setAsideDragX(0);
+    };
+
+    const move = (x: number, y: number, event: Event) => {
+      if (!active) return;
+      const dx = x - x0;
+      const dy = y - y0;
+      if (!axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+        axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+        if (axis === "y") {
+          active = false;
+          setAsideDragging(false);
+          setAsideDragX(0);
+          return;
+        }
+      }
+      if (axis !== "x") return;
+      event.preventDefault();
+      // Only drag toward the right (dismiss direction)
+      const next = Math.max(0, dx);
+      asideDragXRef.current = next;
+      setAsideDragX(next);
+    };
+
+    const end = () => {
+      if (!active) return;
+      active = false;
+      setAsideDragging(false);
+      const dx = asideDragXRef.current;
+      const width = root.clientWidth || 288;
+      if (axis === "x" && dx > width * 0.22) {
+        setSidebarOpen(false);
+        setAsideDragX(0);
+        asideDragXRef.current = 0;
+      } else {
+        setAsideDragX(0);
+        asideDragXRef.current = 0;
+      }
+      axis = null;
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      start(e.touches[0].clientX, e.touches[0].clientY);
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      move(e.touches[0].clientX, e.touches[0].clientY, e);
+    };
+
+    root.addEventListener("touchstart", onTouchStart, { passive: true });
+    root.addEventListener("touchmove", onTouchMove, { passive: false });
+    root.addEventListener("touchend", end);
+    root.addEventListener("touchcancel", end);
+
+    return () => {
+      root.removeEventListener("touchstart", onTouchStart);
+      root.removeEventListener("touchmove", onTouchMove);
+      root.removeEventListener("touchend", end);
+      root.removeEventListener("touchcancel", end);
+    };
+  }, [sidebarOpen]);
+
   return (
     <div className="flex text-white relative">
 
-      {/* ── Overlay backdrop (mobile) ──────────────────────────────── */}
+      {/* ── Overlay backdrop (mobile) — under navbar, over content ─ */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/60 md:hidden"
+          className="fixed top-12 inset-x-0 bottom-0 z-30 bg-black/60 md:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -268,15 +356,22 @@ export default function ProfileClient({
         )}
       </main>
 
-      {/* ── Sidebar ────────────────────────────────────────────────── */}
+      {/* ── Sidebar — under navbar (top-12), not behind it ─────────── */}
       <aside
+        ref={asideRef}
         className={`
-          fixed inset-y-0 right-0 z-40 w-72 bg-gray-900 border-l border-gray-800
-          flex flex-col transition-transform duration-300
+          fixed top-12 bottom-0 right-0 z-40 w-72 bg-gray-900 border-l border-gray-800
+          flex flex-col touch-pan-y
           md:sticky md:top-12 md:inset-auto md:translate-x-0
           md:w-72 md:shrink-0 md:h-[calc(100vh-3rem)] md:z-30
+          ${asideDragging ? "" : "transition-transform duration-300 ease-out"}
           ${sidebarOpen ? "translate-x-0" : "translate-x-full md:translate-x-0"}
         `}
+        style={
+          sidebarOpen && asideDragX > 0
+            ? { transform: `translateX(${asideDragX}px)` }
+            : undefined
+        }
       >
         {/* Jugador */}
         <div className="relative p-5 border-b border-gray-800">
