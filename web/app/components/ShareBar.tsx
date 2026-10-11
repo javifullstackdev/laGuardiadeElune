@@ -208,7 +208,7 @@ export default function ShareBar({
           href={loginHref}
           className="px-3 py-1.5 rounded-lg text-sm bg-gray-900 text-gray-300 border border-gray-800 hover:border-gray-600"
         >
-          Entrar para dar like · {likes.count}
+          Entrar con Discord para dar like · {likes.count}
         </a>
       )}
       <a

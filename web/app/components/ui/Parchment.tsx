@@ -92,7 +92,7 @@ export default function Parchment({
     <div className={`quest-parchment${actions ? " quest-parchment-actions-foot" : ""}`}>
       <div className="quest-parchment-art" aria-hidden>
         <img
-          src="/parchment/parchmentMidResize.png"
+          src="/parchment/ParchmentMidResize.png"
           alt=""
           className="quest-parchment-frame"
           draggable={false}

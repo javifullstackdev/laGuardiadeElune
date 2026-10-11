@@ -3,6 +3,7 @@ import { Cinzel, Cinzel_Decorative, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import HomeLogo from "./components/HomeLogo";
+import { LogoChromeProvider } from "./components/logo-chrome";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,9 +39,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} ${cinzelDecorative.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-gray-950 text-white">
-        <HomeLogo />
-        <Navbar />
-        <div className="relative z-10 flex-1">{children}</div>
+        <LogoChromeProvider>
+          <HomeLogo />
+          <Navbar />
+          <div id="site-main" className="relative z-10 flex-1">
+            {children}
+          </div>
+        </LogoChromeProvider>
       </body>
     </html>
   );
