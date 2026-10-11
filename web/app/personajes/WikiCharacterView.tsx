@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { textToParagraphs } from "@/lib/posts";
 import { relationLabel } from "@/lib/relations";
-import { classLabel, raceLabel, factionLabel, factionColor } from "@/lib/wow";
+import { classLabel, raceLabel, factionLabel, factionColor, isHorde } from "@/lib/wow";
 import type { WikiCharacter, WikiNeighbor } from "@/lib/wiki";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import ShareBar from "@/app/components/ShareBar";
@@ -66,7 +66,11 @@ function LoreParchment({
       ? "Personalidad"
       : "Aspecto físico";
   return (
-    <Parchment title={title} actions={actions}>
+    <Parchment
+      title={title}
+      actions={actions}
+      isHorde={isHorde(char.faction, char.race)}
+    >
       <ScrollSection text={char.biography} />
       <ScrollSection
         title={char.biography ? "Personalidad" : undefined}

@@ -8,6 +8,8 @@ import Breadcrumb from "@/app/components/Breadcrumb";
 import Parchment from "@/app/components/ui/Parchment";
 import { characterSignature, type StoryPublic } from "@/lib/stories";
 import { relationLabel } from "@/lib/relations";
+import { loadWikiChar } from "@/lib/wiki";
+import { isHorde } from "@/lib/wow";
 import StoryScene from "../StoryScene";
 
 import { apiUrl } from "@/lib/api";
@@ -54,9 +56,11 @@ function ScrollSection({
 function StoryParchment({
   story,
   actions,
+  isHordeChar = false,
 }: {
   story: StoryPublic;
   actions?: ReactNode;
+  isHordeChar?: boolean;
 }) {
   const names = story.relations.map((r) => r.name);
   const hasBio = Boolean(story.biography?.trim());
@@ -67,6 +71,7 @@ function StoryParchment({
       titleFont="display"
       author={characterSignature(story) || story.author_username}
       actions={actions}
+      isHorde={isHordeChar}
     >
       <ScrollSection text={story.biography} names={names} />
       <ScrollSection
@@ -145,6 +150,14 @@ export default async function LoreDetailPage({
     );
   }
   const hasLore = Boolean(story.biography || story.personality || story.appearance);
+  const wikiChar =
+    story.character_realm && story.character_name
+      ? await loadWikiChar(story.character_realm, story.character_name)
+      : null;
+  const isHordeStory = isHorde(
+    story.character_faction ?? wikiChar?.faction,
+    story.character_race ?? wikiChar?.race,
+  );
   const crumbs = [
     { href: "/", label: "Inicio" },
     { href: "/lore", label: "Historias" },
@@ -173,7 +186,7 @@ export default async function LoreDetailPage({
           </div>
           {hasLore ? (
             <div className="wiki-mobile-lore absolute inset-0 overflow-hidden animate-parchment-up">
-              <StoryParchment story={story} actions={shareActions} />
+              <StoryParchment story={story} actions={shareActions} isHordeChar={isHordeStory} />
             </div>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center px-6">
@@ -200,7 +213,7 @@ export default async function LoreDetailPage({
               <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:items-stretch gap-5 lg:gap-8">
                 {/* 2. Alineación inferior y animación de entrada */}
                 <div className="min-h-0 shrink-0 lg:self-end animate-parchment-up story-large-parchment">
-                  <StoryParchment story={story} actions={shareActions} />
+                  <StoryParchment story={story} actions={shareActions} isHordeChar={isHordeStory} />
                 </div>
               </div>
             )}

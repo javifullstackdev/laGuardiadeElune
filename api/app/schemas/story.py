@@ -62,6 +62,8 @@ class StoryPublic(BaseModel):
     character_surname: str | None = None
     character_realm: str
     character_class: str | None = None
+    character_faction: str | None = None
+    character_race: str | None = None
     cover_url: str | None = None
     author_username: str
     like_count: int = 0
@@ -93,6 +95,8 @@ class StoryPending(BaseModel):
     submitted_at: datetime
     character_name: str
     character_realm: str
+    character_faction: str | None = None
+    character_race: str | None = None
     author_username: str
     relations: list[StoryRelationOut] = []
     awaiting_relations: bool = False
