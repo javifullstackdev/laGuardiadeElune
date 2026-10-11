@@ -8,14 +8,16 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
   return (
     <Link
       href={`/lore/${story.id}`}
-      className="group flex flex-col h-full rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] hover:bg-[#1a2233] transition-colors"
+      draggable={false}
+      className="group flex flex-col h-full rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] hover:bg-[#1a2233] transition-colors select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
     >
       <div className="relative aspect-[16/11] overflow-hidden bg-[#111]">
         {story.cover_url ? (
           <img
             src={story.cover_url}
             alt={`Portada: ${story.title}`}
-            className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-500"
+            draggable={false}
+            className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-500 select-none pointer-events-none [-webkit-user-drag:none]"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-purple-950 to-gray-900" />

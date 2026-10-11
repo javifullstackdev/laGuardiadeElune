@@ -8,14 +8,16 @@ export default function PostTile({ post }: { post: Post }) {
   return (
       <Link
         href={`/posts/${post.id}`}
-        className="group flex flex-col h-full rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] hover:bg-[#1a2233] transition-colors"
+        draggable={false}
+        className="group flex flex-col h-full rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] hover:bg-[#1a2233] transition-colors select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
       >
         <div className="relative aspect-[16/11] overflow-hidden bg-[#111]">
           {post.cover_url ? (
             <img
               src={post.cover_url}
               alt={`Portada: ${post.title}`}
-              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+              draggable={false}
+              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 select-none pointer-events-none [-webkit-user-drag:none]"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />
