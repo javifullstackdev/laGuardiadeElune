@@ -580,13 +580,16 @@ async def add_character(
             Character.user_id == current_user.id
         ).update({"is_main": False, "is_alt": True})
 
-    # Obtener render_url del Character Media API si es Retail y hay token
+    # Obtener render + cara del Character Media API si es Retail y hay token
     render_url = None
+    face_url = None
     if data.game == "retail" and current_user.blizzard_access_token:
         async with httpx.AsyncClient() as client:
-            render_url = await _fetch_character_render_url(
+            media = await _fetch_character_media(
                 client, data.name, data.realm, current_user.blizzard_access_token
             )
+            render_url = media.get("render_url")
+            face_url = media.get("face_url")
 
     char = Character(
         user_id=current_user.id,
@@ -596,6 +599,7 @@ async def add_character(
         surname=data.surname or None,
         blizzard_character_id=data.blizzard_character_id,
         render_url=render_url,
+        face_url=face_url,
         wow_class=wow_class,
         race=race,
         level=data.level,
@@ -666,16 +670,24 @@ def _apply_blizzard_identity(char: Character, info: dict) -> bool:
     return changed
 
 
-async def _fetch_character_render_url(
+def _is_low_quality_render(url: str | None) -> bool:
+    """True si falta render o solo hay la miniatura -avatar.jpg de Blizzard."""
+    if not url:
+        return True
+    return url.rstrip("/").endswith("-avatar.jpg")
+
+
+async def _fetch_character_media(
     client: httpx.AsyncClient,
     name: str,
     realm: str,
     access_token: str,
-) -> str | None:
+) -> dict[str, str | None]:
     """
-    Llama al Character Media API de Blizzard y devuelve la URL del render 'inset'.
-    Devuelve None si el personaje no tiene render disponible.
+    Character Media API: cuerpo entero (render) + cara (face).
+    Render: main / main-raw > inset. Cara: avatar > inset.
     """
+    out: dict[str, str | None] = {"render_url": None, "face_url": None}
     try:
         res = await client.get(
             f"https://{BLIZZARD_REGION}.api.blizzard.com/profile/wow/character/{realm}/{name.lower()}/character-media",
@@ -684,16 +696,34 @@ async def _fetch_character_render_url(
             timeout=8.0,
         )
         if res.status_code != 200:
-            return None
-        assets = res.json().get("assets", [])
-        # Prioridad: main (cuerpo entero, mayor calidad) > inset (busto) > avatar (miniatura, solo como último recurso)
-        for preferred in ("main", "inset", "avatar"):
-            for asset in assets:
-                if asset.get("key") == preferred:
-                    return asset.get("value")
+            return out
+        by_key = {
+            a.get("key"): a.get("value")
+            for a in res.json().get("assets", [])
+            if a.get("key") and a.get("value")
+        }
+        for preferred in ("main", "main-raw", "inset"):
+            if by_key.get(preferred):
+                out["render_url"] = by_key[preferred]
+                break
+        for preferred in ("avatar", "inset"):
+            if by_key.get(preferred):
+                out["face_url"] = by_key[preferred]
+                break
     except Exception:
         pass
-    return None
+    return out
+
+
+async def _fetch_character_render_url(
+    client: httpx.AsyncClient,
+    name: str,
+    realm: str,
+    access_token: str,
+) -> str | None:
+    """Compat: solo la URL de cuerpo entero."""
+    media = await _fetch_character_media(client, name, realm, access_token)
+    return media.get("render_url") or media.get("face_url")
 
 
 async def _fetch_character_identity(
@@ -792,13 +822,34 @@ async def sync_blizzard_ids(
             if info:
                 changed = _apply_blizzard_identity(char, info)
 
-            if user_token and (not char.render_url or char.render_url.endswith("-avatar.jpg")):
-                url = await _fetch_character_render_url(
-                    client, char.name, char.realm, user_token
-                )
-                if url:
-                    char.render_url = url
-                    changed = True
+            needs_media = _is_low_quality_render(char.render_url) or not char.face_url
+            if needs_media:
+                media_token = user_token
+                if not media_token:
+                    if client_token is None:
+                        client_token = await _blizzard_client_token(client)
+                    media_token = client_token
+                if media_token:
+                    media = await _fetch_character_media(
+                        client, char.name, char.realm, media_token
+                    )
+                    render = media.get("render_url")
+                    face = media.get("face_url")
+                    if render and render != char.render_url and (
+                        _is_low_quality_render(char.render_url) or not char.render_url
+                    ):
+                        char.render_url = render
+                        changed = True
+                    if face and face != char.face_url:
+                        char.face_url = face
+                        changed = True
+                    elif (
+                        not char.face_url
+                        and char.render_url
+                        and char.render_url.rstrip("/").endswith("-avatar.jpg")
+                    ):
+                        char.face_url = char.render_url
+                        changed = True
 
             if changed:
                 synced += 1
@@ -815,27 +866,42 @@ def list_pending_avatars(
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """Admin: lista todos los personajes con imagen pendiente de aprobación."""
+    """Admin: imágenes pendientes (completa y/o cara)."""
+    from sqlalchemy import or_
     from app.models.user import User as UserModel
     results = (
         db.query(Character, UserModel.username)
         .join(UserModel, UserModel.id == Character.user_id)
         .filter(
-            Character.pending_avatar_url.isnot(None),
             Character.deleted_at.is_(None),
+            or_(
+                Character.pending_avatar_url.isnot(None),
+                Character.pending_face_url.isnot(None),
+            ),
         )
         .all()
     )
-    return [
-        {
-            "name":              c.name,
-            "realm":             c.realm,
-            "game":              c.game,
-            "owner_username":    username,
-            "pending_avatar_url": static_url(c.pending_avatar_url),
+    out = []
+    for c, username in results:
+        base = {
+            "name": c.name,
+            "realm": c.realm,
+            "game": c.game,
+            "owner_username": username,
         }
-        for c, username in results
-    ]
+        if c.pending_avatar_url:
+            out.append({
+                **base,
+                "kind": "full",
+                "pending_avatar_url": static_url(c.pending_avatar_url),
+            })
+        if c.pending_face_url:
+            out.append({
+                **base,
+                "kind": "face",
+                "pending_avatar_url": static_url(c.pending_face_url),
+            })
+    return out
 
 
 @router.delete("/{name}/{realm}", status_code=204)
@@ -852,16 +918,13 @@ def delete_character(
 
 # ── Avatares ───────────────────────────────────────────────────────────────
 
-@router.post("/{name}/{realm}/avatar", status_code=202)
-async def upload_avatar(
-    name: str, realm: str,
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Sube una imagen personalizada. Queda pendiente hasta que un admin la apruebe."""
-    char = _get_own_character(name, realm, current_user, db)
-
+async def _store_pending_image(
+    char: Character,
+    file: UploadFile,
+    *,
+    pending_attr: str,
+    prefix: str,
+) -> str:
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(400, "Solo se permiten imágenes JPEG, PNG o WebP.")
 
@@ -872,21 +935,35 @@ async def upload_avatar(
     ext = (file.filename or "avatar").rsplit(".", 1)[-1].lower()
     if ext not in ("jpg", "jpeg", "png", "webp"):
         ext = "jpg"
-    filename = f"{char.id}_{_uuid.uuid4().hex}.{ext}"
+    filename = f"{prefix}_{char.id}_{_uuid.uuid4().hex}.{ext}"
     filepath = UPLOAD_DIR / filename
 
     with filepath.open("wb") as f:
         f.write(content)
 
-    # Si había una imagen pendiente anterior, eliminarla del disco
-    if char.pending_avatar_url:
-        old = Path("uploads") / char.pending_avatar_url
+    previous = getattr(char, pending_attr)
+    if previous:
+        old = Path("uploads") / previous
         if old.exists():
             old.unlink(missing_ok=True)
 
-    char.pending_avatar_url = f"avatars/{filename}"
+    relative = f"avatars/{filename}"
+    setattr(char, pending_attr, relative)
+    return relative
+
+
+@router.post("/{name}/{realm}/avatar", status_code=202)
+async def upload_avatar(
+    name: str, realm: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sube imagen completa (ficha/carrusel). Queda pendiente de aprobación."""
+    char = _get_own_character(name, realm, current_user, db)
+    await _store_pending_image(char, file, pending_attr="pending_avatar_url", prefix="full")
     db.commit()
-    return {"message": "Imagen enviada. Un admin la revisará antes de publicarla."}
+    return {"message": "Imagen completa enviada. Un admin la revisará antes de publicarla."}
 
 
 @router.post("/{name}/{realm}/avatar/approve", status_code=200)
@@ -914,7 +991,7 @@ def approve_avatar(
     char.custom_avatar_url = char.pending_avatar_url
     char.pending_avatar_url = None
     db.commit()
-    return {"message": "Imagen aprobada y publicada."}
+    return {"message": "Imagen completa aprobada y publicada."}
 
 
 @router.post("/{name}/{realm}/avatar/reject", status_code=200)
@@ -923,7 +1000,7 @@ def reject_avatar(
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """Admin: rechaza la imagen pendiente de un personaje."""
+    """Admin: rechaza la imagen completa pendiente."""
     char = db.query(Character).filter(
         Character.name == name,
         Character.realm == realm,
@@ -932,13 +1009,13 @@ def reject_avatar(
     if not char:
         raise HTTPException(404, "Personaje no encontrado")
     if not char.pending_avatar_url:
-        raise HTTPException(400, "No hay imagen pendiente para este personaje")
+        raise HTTPException(400, "No hay imagen completa pendiente para este personaje")
 
     old = Path("uploads") / char.pending_avatar_url
     old.unlink(missing_ok=True)
     char.pending_avatar_url = None
     db.commit()
-    return {"message": "Imagen rechazada y eliminada."}
+    return {"message": "Imagen completa rechazada y eliminada."}
 
 
 @router.delete("/{name}/{realm}/avatar", status_code=204)
@@ -947,7 +1024,7 @@ def remove_custom_avatar(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """El jugador puede cancelar su imagen pendiente o eliminar su imagen custom."""
+    """Cancelar pendiente o quitar imagen completa custom."""
     char = _get_own_character(name, realm, current_user, db)
 
     if char.pending_avatar_url:
@@ -956,6 +1033,89 @@ def remove_custom_avatar(
     if char.custom_avatar_url:
         Path("uploads/" + char.custom_avatar_url).unlink(missing_ok=True)
         char.custom_avatar_url = None
+
+    db.commit()
+
+
+# ── Cara (ranking) ─────────────────────────────────────────────────────────
+
+@router.post("/{name}/{realm}/face", status_code=202)
+async def upload_face(
+    name: str, realm: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Sube foto de cara (ranking). Queda pendiente de aprobación."""
+    char = _get_own_character(name, realm, current_user, db)
+    await _store_pending_image(char, file, pending_attr="pending_face_url", prefix="face")
+    db.commit()
+    return {"message": "Foto de cara enviada. Un admin la revisará antes de publicarla."}
+
+
+@router.post("/{name}/{realm}/face/approve", status_code=200)
+def approve_face(
+    name: str, realm: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    char = db.query(Character).filter(
+        Character.name == name,
+        Character.realm == realm,
+        Character.deleted_at.is_(None),
+    ).first()
+    if not char:
+        raise HTTPException(404, "Personaje no encontrado")
+    if not char.pending_face_url:
+        raise HTTPException(400, "No hay foto de cara pendiente para este personaje")
+
+    if char.custom_face_url:
+        old = Path("uploads") / char.custom_face_url
+        old.unlink(missing_ok=True)
+
+    char.custom_face_url = char.pending_face_url
+    char.pending_face_url = None
+    db.commit()
+    return {"message": "Foto de cara aprobada y publicada."}
+
+
+@router.post("/{name}/{realm}/face/reject", status_code=200)
+def reject_face(
+    name: str, realm: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    char = db.query(Character).filter(
+        Character.name == name,
+        Character.realm == realm,
+        Character.deleted_at.is_(None),
+    ).first()
+    if not char:
+        raise HTTPException(404, "Personaje no encontrado")
+    if not char.pending_face_url:
+        raise HTTPException(400, "No hay foto de cara pendiente para este personaje")
+
+    old = Path("uploads") / char.pending_face_url
+    old.unlink(missing_ok=True)
+    char.pending_face_url = None
+    db.commit()
+    return {"message": "Foto de cara rechazada y eliminada."}
+
+
+@router.delete("/{name}/{realm}/face", status_code=204)
+def remove_custom_face(
+    name: str, realm: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    char = _get_own_character(name, realm, current_user, db)
+
+    if char.pending_face_url:
+        Path("uploads/" + char.pending_face_url).unlink(missing_ok=True)
+        char.pending_face_url = None
+    if char.custom_face_url:
+        Path("uploads/" + char.custom_face_url).unlink(missing_ok=True)
+        char.custom_face_url = None
 
     db.commit()
 

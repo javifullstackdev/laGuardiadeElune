@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY alembic.ini .
 COPY alembic ./alembic
 COPY app ./app
-COPY scripts/entrypoint.sh ./scripts/entrypoint.sh
+COPY scripts ./scripts
 RUN chmod +x ./scripts/entrypoint.sh
 
 RUN mkdir -p /app/uploads/avatars /app/uploads/stories

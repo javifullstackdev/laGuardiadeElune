@@ -1,14 +1,16 @@
+from collections import defaultdict
+
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 from pydantic import BaseModel
-from typing import Optional
-from datetime import date
+from datetime import date, datetime, timezone
 from app.dependencies import get_current_user, require_admin
 from app.database import get_db
 from app.models.user import User
+from app.models.character import Character
 from app.models.point_transaction import PointTransaction
 from app.routers.auth import fetch_guild_nick, fetch_guild_nicks
+from app.urls import static_url
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -23,6 +25,13 @@ async def get_me(
         db.commit()
         db.refresh(current_user)
 
+    token_expired = False
+    if current_user.blizzard_access_token and current_user.blizzard_token_expires_at:
+        expires = current_user.blizzard_token_expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        token_expired = expires <= datetime.now(timezone.utc)
+
     return {
         "id": str(current_user.id),
         "username": current_user.username,
@@ -34,6 +43,7 @@ async def get_me(
         "path": current_user.path.value,
         "blizzard_battletag": current_user.blizzard_battletag,
         "has_blizzard": current_user.blizzard_access_token is not None,
+        "blizzard_token_expired": token_expired,
         "birthday": current_user.birthday.isoformat() if current_user.birthday else None,
     }
 
@@ -194,57 +204,97 @@ async def list_players(
     ]
 
 
+def _character_avatar(char: Character) -> str | None:
+    """Solo ranking: cara propia > cara Blizzard. Nunca imagen completa ni render de cuerpo."""
+    if char.custom_face_url:
+        return static_url(char.custom_face_url)
+    if char.face_url:
+        return char.face_url
+    if char.render_url and char.render_url.rstrip("/").endswith("-avatar.jpg"):
+        return char.render_url
+    return None
+
+
 @router.get("/ranking")
-def get_ranking(    limit: int = Query(default=20, le=50),
+def get_ranking(
+    limit: int = Query(default=20, le=50),
     db: Session = Depends(get_db),
 ):
     """
     Ranking público — no requiere autenticación.
-    Devuelve los N usuarios con más puntos incluyendo su personaje main.
-
-    Usamos SQL raw con text() porque el JOIN condicional es más legible
-    que encadenar múltiples .join() de SQLAlchemy en este caso.
+    Posición por puntos con empates (mismo score → misma posición; ranking
+    tipo competición: 1, 2, 2, 4…).
+    Incluye Discord avatar + main y hasta 2 alts (caras).
     """
-    rows = db.execute(
-        text("""
-            SELECT
-                u.username,
-                u.discord_id,
-                u.total_points,
-                u.avatar_url,
-                u.guild_title,
-                c.name        AS char_name,
-                c.realm       AS char_realm,
-                c.wow_class   AS char_class,
-                c.role_function,
-                c.is_verified
-            FROM users u
-            LEFT JOIN characters c
-                ON  c.user_id    = u.id
-                AND c.is_main    = true
-                AND c.deleted_at IS NULL
-            WHERE u.deleted_at IS NULL
-            ORDER BY u.total_points DESC
-            LIMIT :limit
-        """),
-        {"limit": limit},
-    ).fetchall()
+    users = (
+        db.query(User)
+        .filter(User.deleted_at.is_(None))
+        .order_by(User.total_points.desc(), User.username.asc())
+        .limit(limit)
+        .all()
+    )
+    if not users:
+        return []
 
-    return [
-        {
-            "position":     pos,
-            "username":     r.username,
-            "discord_id":   r.discord_id,
-            "total_points": r.total_points,
-            "avatar_url":   r.avatar_url,
-            "guild_title":  r.guild_title,
-            "character": {
-                "name":          r.char_name,
-                "realm":         r.char_realm,
-                "wow_class":     r.char_class,
-                "role_function": r.role_function,
-                "is_verified":   r.is_verified,
-            } if r.char_name else None,
-        }
-        for pos, r in enumerate(rows, start=1)
-    ]
+    chars = (
+        db.query(Character)
+        .filter(
+            Character.user_id.in_([u.id for u in users]),
+            Character.deleted_at.is_(None),
+        )
+        .all()
+    )
+    by_user: dict = defaultdict(list)
+    for char in chars:
+        by_user[char.user_id].append(char)
+
+    result = []
+    last_points: int | None = None
+    position = 0
+    for index, user in enumerate(users):
+        if last_points is None or user.total_points != last_points:
+            position = index + 1
+            last_points = user.total_points
+
+        roster = sorted(
+            by_user.get(user.id, []),
+            key=lambda c: (not c.is_main, -(c.level or 0), c.name.lower()),
+        )[:3]
+        featured = []
+        for char in roster:
+            featured.append(
+                {
+                    "name": char.name,
+                    "realm": char.realm,
+                    "wow_class": char.wow_class.value if char.wow_class else None,
+                    "is_main": char.is_main,
+                    "is_verified": char.is_verified,
+                    "avatar_url": _character_avatar(char),
+                    "level": char.level,
+                }
+            )
+        main = next((c for c in featured if c["is_main"]), featured[0] if featured else None)
+
+        result.append(
+            {
+                "position": position,
+                "username": user.username,
+                "discord_id": user.discord_id,
+                "total_points": user.total_points,
+                "avatar_url": user.avatar_url,
+                "guild_title": user.guild_title,
+                "characters": featured,
+                # Compatibilidad con clientes antiguos
+                "character": {
+                    "name": main["name"],
+                    "realm": main["realm"],
+                    "wow_class": main["wow_class"],
+                    "role_function": None,
+                    "is_verified": main["is_verified"],
+                }
+                if main
+                else None,
+            }
+        )
+
+    return result

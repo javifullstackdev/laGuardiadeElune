@@ -1,11 +1,14 @@
-import { classColor, classLabel, realmLabel } from "@/lib/wow";
-
 import { apiUrl } from "@/lib/api";
-const PODIUM_STYLE = [
-  { border: "border-yellow-400", glow: "#FFD70033", label: "1", size: "text-2xl font-bold text-yellow-400" },
-  { border: "border-gray-400",   glow: "#C0C0C033", label: "2", size: "text-2xl font-bold text-gray-400"   },
-  { border: "border-amber-600",  glow: "#CD7F3233", label: "3", size: "text-2xl font-bold text-amber-600"  },
-];
+
+type RankCharacter = {
+  name: string;
+  realm: string;
+  wow_class: string | null;
+  is_main: boolean;
+  is_verified: boolean;
+  avatar_url: string | null;
+  level: number | null;
+};
 
 type RankEntry = {
   position: number;
@@ -14,6 +17,7 @@ type RankEntry = {
   total_points: number;
   avatar_url: string | null;
   guild_title: string;
+  characters: RankCharacter[];
   character: {
     name: string;
     realm: string;
@@ -23,111 +27,119 @@ type RankEntry = {
   } | null;
 };
 
+type RankGroup = {
+  position: number;
+  total_points: number;
+  entries: RankEntry[];
+};
+
+function groupByRank(ranking: RankEntry[]): RankGroup[] {
+  const groups: RankGroup[] = [];
+  for (const entry of ranking) {
+    const last = groups[groups.length - 1];
+    if (last && last.total_points === entry.total_points) {
+      last.entries.push(entry);
+    } else {
+      groups.push({
+        position: entry.position,
+        total_points: entry.total_points,
+        entries: [entry],
+      });
+    }
+  }
+  return groups;
+}
+
+function initials(name: string) {
+  return name.slice(0, 2).toUpperCase();
+}
+
 export default async function RankingPage() {
-  const res = await fetch(apiUrl("/users/ranking?limit=20"), { cache: "no-store" });
+  const res = await fetch(apiUrl("/users/ranking?limit=50"), { cache: "no-store" });
   const ranking: RankEntry[] = res.ok ? await res.json() : [];
-  const top3 = ranking.slice(0, 3);
-  const rest = ranking.slice(3);
+  const groups = groupByRank(
+    ranking.map((e) => ({
+      ...e,
+      characters: e.characters ?? (e.character
+        ? [{
+            name: e.character.name,
+            realm: e.character.realm,
+            wow_class: e.character.wow_class,
+            is_main: true,
+            is_verified: e.character.is_verified,
+            avatar_url: null,
+            level: null,
+          }]
+        : []),
+    })),
+  );
 
   return (
     <main className="min-h-screen">
-      <div className="text-center py-12 px-4">
-        <h1 className="text-4xl font-quest-display font-bold mb-2">Ranking</h1>
-        <p className="text-gray-400">La Guardia de Elune — Clasificación por puntos</p>
-      </div>
+      <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-10 sm:py-14">
+        <header className="mb-10 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl font-quest-display font-bold">Ranking</h1>
+          <p className="text-gray-400 mt-2 text-sm sm:text-base">
+            La Guardia de Elune — clasificación por puntos. Misma puntuación, misma posición.
+          </p>
+        </header>
 
-      <div className="max-w-3xl mx-auto px-4 pb-16">
+        {groups.length === 0 ? (
+          <p className="text-center text-gray-500 py-16">No hay miembros en el ranking todavía.</p>
+        ) : (
+          <ol className="space-y-3 sm:space-y-4">
+            {groups.map((group) => (
+              <li
+                key={`${group.position}-${group.total_points}`}
+                className="flex items-center gap-2.5 sm:gap-4"
+              >
+                <span className="shrink-0 w-10 sm:w-14 text-right font-quest-display font-bold text-yellow-400/90 leading-none text-2xl sm:text-3xl tabular-nums">
+                  {group.position}º
+                </span>
 
-        {/* Podio top 3 */}
-        {top3.length > 0 && (
-          <div className="flex items-end justify-center gap-4 mb-12">
-            {[top3[1], top3[0], top3[2]].filter(Boolean).map((entry) => {
-              const style = PODIUM_STYLE[entry.position - 1];
-              const charClass = entry.character?.wow_class ?? null;
-              const color = classColor(charClass);
-              const className = classLabel(charClass);
+                <ul className="flex-1 min-w-0 flex gap-2 sm:gap-3">
+                  {group.entries.map((entry) => (
+                    <li key={entry.discord_id} className="flex-1 min-w-0">
+                      <RankCard entry={entry} />
+                    </li>
+                  ))}
+                </ul>
 
-              return (
-                <div
-                  key={entry.discord_id}
-                  className={`flex flex-col items-center rounded-xl border-2 ${style.border} p-4 transition-transform hover:scale-105`}
-                  style={{
-                    background: `radial-gradient(ellipse at top, ${style.glow}, transparent)`,
-                    minWidth: entry.position === 1 ? "180px" : "160px",
-                  }}
-                >
-                  <span className={style.size}>{style.label}</span>
-                  {entry.avatar_url ? (
-                    <img src={entry.avatar_url} alt={entry.username} className="w-14 h-14 rounded-full border-2 border-gray-600 my-2" />
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-gray-700 my-2" />
-                  )}
-                  <p className="font-bold text-center text-sm">{entry.username}</p>
-                  {entry.character && (
-                    <p className="text-xs text-center mt-1" style={{ color }}>
-                      {entry.character.name}
-                      {entry.character.is_verified && (
-                        <span className="ml-1 text-gray-400 text-xs">· verificado</span>
-                      )}
-                    </p>
-                  )}
-                  {className && (
-                    <p className="text-xs text-gray-500 mt-0.5">{className}</p>
-                  )}
-                  <p className="text-yellow-400 font-bold mt-2">
-                    {entry.total_points.toLocaleString()} pts
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Resto del ranking */}
-        {rest.length > 0 && (
-          <ul className="space-y-2">
-            {rest.map((entry) => {
-              const charClass = entry.character?.wow_class ?? null;
-              const color = classColor(charClass);
-              const className = classLabel(charClass);
-
-              return (
-                <li key={entry.discord_id} className="flex items-center gap-4 px-4 py-3 rounded-xl bg-gray-900 hover:bg-gray-800 transition-colors">
-                  <span className="text-gray-500 font-mono w-6 text-right text-sm">
-                    {entry.position}
-                  </span>
-                  {entry.avatar_url ? (
-                    <img src={entry.avatar_url} alt={entry.username} className="w-9 h-9 rounded-full border border-gray-700" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-gray-700" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{entry.username}</p>
-                    {entry.character ? (
-                      <p className="text-xs truncate" style={{ color }}>
-                        {entry.character.name}-{realmLabel(entry.character.realm) ?? entry.character.realm}
-                        {className && ` · ${className}`}
-                        {entry.character.is_verified && (
-                          <span className="ml-1 text-gray-500">· verificado</span>
-                        )}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-gray-600">sin personaje registrado</p>
-                    )}
-                  </div>
-                  <span className="text-yellow-400 font-bold text-sm shrink-0">
-                    {entry.total_points.toLocaleString()} pts
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {ranking.length === 0 && (
-          <p className="text-center text-gray-500 mt-12">No hay miembros en el ranking todavía.</p>
+                <p className="shrink-0 text-yellow-400 font-bold text-sm sm:text-lg tabular-nums w-12 sm:w-16 text-right">
+                  {group.total_points.toLocaleString()}
+                </p>
+              </li>
+            ))}
+          </ol>
         )}
       </div>
     </main>
+  );
+}
+
+function RankCard({ entry }: { entry: RankEntry }) {
+  const main = entry.characters.find((c) => c.is_main) ?? entry.characters[0] ?? null;
+  const mainAvatar = main?.avatar_url ?? null;
+
+  return (
+    <article className="h-full rounded-xl border border-white/10 bg-[#0c1220] hover:border-white/20 transition-colors overflow-hidden">
+      <div className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3.5 min-w-0">
+        {mainAvatar ? (
+          <img
+            src={mainAvatar}
+            alt=""
+            className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-white/15 shrink-0 object-cover"
+          />
+        ) : (
+          <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-gray-800 border border-white/10 shrink-0 flex items-center justify-center text-xs font-bold text-gray-400">
+            {initials(entry.username)}
+          </div>
+        )}
+
+        <p className="min-w-0 flex-1 font-semibold text-white truncate text-sm sm:text-base">
+          {entry.username}
+        </p>
+      </div>
+    </article>
   );
 }
