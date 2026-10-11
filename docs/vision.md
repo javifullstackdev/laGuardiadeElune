@@ -264,16 +264,23 @@ Orden: **Bio · Datos · Puntos · Logros · Títulos · Historias · Relaciones
 - Dominio: `www.laguardiadeelune.com` (comprado)
 - Decisión: **VPS Hetzner** (web + API + Postgres + Bubu). AWS descartado por coste/complejidad para este tamaño
 - Guía de aprendizaje (tú operas el VPS): `docs/deploy-hetzner.md`
-- Hecho en código (working tree, pendiente de tus commits):
+- Hecho en código:
   - Web: `apiUrl` / `publicApiUrl`, cookies Secure, Next `standalone`
   - API: `PUBLIC_BASE_URL` para `/static`, CORS, `/health`, docs off en prod, Dockerfile + entrypoint Alembic
   - Ops: `docker-compose.prod.yml`, Caddyfile, `deploy/bootstrap|backup|up|smoke|check-env`
-- Flujo Git recomendado: rama `feat/hetzner-deploy` → 4 commits pequeños → PR a `main` → VPS clona `main`
-- Pendiente **humano**: commits/PR, crear VPS ≥4 GB EU, DNS A/@+www, OAuth redirects HTTPS, `.env.prod`, `compose up`, cron backup
 - Uploads: volumen Docker `api_uploads` (no disco efímero del contenedor)
 
+## Legal, seguridad y SEO base ✅
+- Páginas: `/aviso-legal`, `/privacidad`, `/cookies`, `/terminos` + footer global
+- Contacto: placeholder `[EMAIL_CONTACTO]` en `web/lib/site.ts` (sustituir por buzón real)
+- Cookies: solo sesión JWT esencial; sin banner (no analytics)
+- `robots.ts` + `noindex` en admin/profile/onboarding/characters
+- CSP en `deploy/Caddyfile` (self + OAuth Discord/Blizzard + imágenes https)
+- SEO: `metadataBase`, title template, Open Graph/Twitter, `sitemap.ts`, `generateMetadata` en posts/lore/personajes, JSON-LD Organization + WebSite
+- Pendiente fino: alts masivos, BreadcrumbList JSON-LD, dictamen jurídico profesional
+
 ## Próxima sesión — por dónde seguir
-1. **Tú:** commits de la sección 2 de `docs/deploy-hetzner.md` + PR a `main`
-2. **Tú:** pasos 1–10 del VPS en esa misma guía (panel Hetzner → smoke)
-3. Después: Bubu `--profile bot` en la misma Postgres, o Fase 5 auto-sync M+
+1. Sustituir `[EMAIL_CONTACTO]` y redesplegar Caddy (CSP) con `./deploy/up.sh`
+2. SEO fino (alts, BreadcrumbList) si se quiere
+3. Bubu `--profile bot` o Fase 5 auto-sync M+
 Housing en ficha: aparcado (regla 7d) hasta que Blizzard reactive la House API.

@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import PersonajesList from "./PersonajesList";
 import type { WikiListItem } from "@/lib/wiki";
 import Breadcrumb from "@/app/components/Breadcrumb";
 
 import { apiUrl } from "@/lib/api";
+
+export const metadata: Metadata = {
+  title: "Personajes",
+  description:
+    "Fichas públicas de los personajes de la hermandad La Guardia de Elune.",
+};
+
 export default async function PersonajesPage() {
   const res = await fetch(apiUrl("/wiki/"), { cache: "no-store" });
   const items: WikiListItem[] = res.ok ? await res.json() : [];
