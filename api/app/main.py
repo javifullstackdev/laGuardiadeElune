@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios
+from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios, image_requests
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -57,3 +57,4 @@ app.include_router(claims.router)
 app.include_router(wiki.router)
 app.include_router(hero.router)
 app.include_router(bios.router)
+app.include_router(image_requests.router)
