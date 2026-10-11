@@ -38,8 +38,7 @@ export default function SiteFooter() {
               {SITE_NAME}
             </p>
             <p className="mt-2 text-xs leading-relaxed max-w-md">
-              Hermandad de World of Warcraft. No afiliada a Blizzard
-              Entertainment ni a Discord.
+              Hermandad de World of Warcraft
             </p>
           </div>
           <nav

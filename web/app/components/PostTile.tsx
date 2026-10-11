@@ -28,14 +28,12 @@ export default function PostTile({ post }: { post: Post }) {
         </div>
 
         <div className="flex flex-col flex-1 px-4 pt-3 pb-4">
-          <h3 className="font-bold text-[15px] leading-snug text-white line-clamp-2">
+          <h3 className="font-quest font-bold text-[15px] leading-snug text-white line-clamp-2">
             {post.title}
           </h3>
-          {subtitle && (
-            <p className="mt-1.5 text-[13px] text-gray-400 leading-snug line-clamp-2">
-              {subtitle}
-            </p>
-          )}
+          <p className="mt-1.5 text-[13px] text-gray-400 leading-snug line-clamp-2 min-h-[2.75em]">
+            {subtitle || "\u00A0"}
+          </p>
           <p className="mt-auto pt-4 text-xs font-semibold text-white text-right">
             {formatDate(post.published_at)}
           </p>

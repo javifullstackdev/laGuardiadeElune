@@ -59,6 +59,6 @@ export function characterSignature(
 
 export function storyExcerpt(story: Pick<StoryPublic, "biography" | "personality" | "appearance">): string {
   const text = story.biography || story.personality || story.appearance || "";
-  const first = text.replace(/\s+/g, " ").trim();
-  return first.length > 110 ? first.slice(0, 110).trimEnd() + "…" : first;
+  const clean = text.replace(/\s+/g, " ").trim();
+  return clean.length > 160 ? clean.slice(0, 160).trimEnd() + "…" : clean;
 }

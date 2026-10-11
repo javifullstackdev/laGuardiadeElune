@@ -75,8 +75,8 @@ export function formatDate(iso: string): string {
 
 export function postSubtitle(post: { subtitle?: string | null; content: string }): string {
   if (post.subtitle?.trim()) return post.subtitle.trim();
-  const first = post.content.split(/\n\s*\n/)[0]?.replace(/\s+/g, " ").trim() ?? "";
-  return first.length > 110 ? first.slice(0, 110).trimEnd() + "…" : first;
+  const clean = post.content.replace(/\s+/g, " ").trim();
+  return clean.length > 160 ? clean.slice(0, 160).trimEnd() + "…" : clean;
 }
 
 export function textToParagraphs(text: string): string[] {
