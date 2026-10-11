@@ -11,7 +11,7 @@ export default function WikiTile({ item }: { item: WikiListItem }) {
         <div className="absolute inset-y-0 right-0 w-[58%] pointer-events-none" aria-hidden>
           <img
             src={item.cover_url}
-            alt=""
+            alt={item.display_name}
             className="absolute inset-0 w-full h-full object-cover object-[50%_8%] opacity-50"
           />
           <div

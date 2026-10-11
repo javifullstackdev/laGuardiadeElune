@@ -163,7 +163,7 @@ export default async function LoreDetailPage({
 
   return (
     <main className="relative text-white">
-      <StoryScene coverUrl={story.cover_url}>
+      <StoryScene coverUrl={story.cover_url} coverAlt={story.title}>
         {/* Móvil: pergamino a pantalla completa (como ficha de personaje) */}
         <section className="relative z-10 sm:hidden h-[calc(100dvh-3rem)] overflow-hidden">
           <div className="absolute top-0 inset-x-0 z-30 px-4 pt-3 pointer-events-none">
@@ -188,7 +188,7 @@ export default async function LoreDetailPage({
           {/* 1. Mismo padding izquierdo que en personajes */}
           <div className="h-full flex flex-col px-4 pt-6 lg:pl-[clamp(25rem,28vw,32rem)] lg:pr-20">
             <div className="flex items-start justify-between gap-4 mb-4 shrink-0">
-              <Breadcrumb className="mb-0" items={crumbs} />
+              <Breadcrumb className="mb-0" items={crumbs} jsonLd={false} />
               {story.status && story.status !== "approved" && (
                 <span className="text-xs px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/15 text-amber-300 shrink-0">
                   {story.status === "pending" ? "Pendiente de revisión" : "Rechazada"}

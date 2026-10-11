@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Breadcrumb from "@/app/components/Breadcrumb";
 import StoryTile from "../components/StoryTile";
 import type { StoryPublic } from "@/lib/stories";
 
@@ -18,6 +19,12 @@ export default async function LorePage() {
   return (
     <main className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-10 sm:py-14">
+        <Breadcrumb
+          items={[
+            { href: "/", label: "Inicio" },
+            { label: "Historias" },
+          ]}
+        />
         <h1 className="text-3xl font-quest-display font-bold">Historias</h1>
         <p className="text-gray-400 mt-2 text-sm">
           Relatos escritos por los jugadores y revisados por el Eremita. Las fichas están en{" "}

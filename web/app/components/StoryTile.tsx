@@ -14,7 +14,7 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
         {story.cover_url ? (
           <img
             src={story.cover_url}
-            alt=""
+            alt={`Portada: ${story.title}`}
             className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-500"
           />
         ) : (

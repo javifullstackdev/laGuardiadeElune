@@ -5,9 +5,11 @@ import { ParchmentPanRoot, PanningCover } from "@/app/components/ui/PanningCover
 
 export default function StoryScene({
   coverUrl,
+  coverAlt = "",
   children,
 }: {
   coverUrl: string | null;
+  coverAlt?: string;
   children: ReactNode;
 }) {
   return (
@@ -16,6 +18,7 @@ export default function StoryScene({
         {coverUrl ? (
           <PanningCover
             src={coverUrl}
+            alt={coverAlt ? `Portada: ${coverAlt}` : ""}
             className="absolute inset-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[58%]"
             opacity={0.55}
             focusY={0.18}

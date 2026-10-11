@@ -1,9 +1,36 @@
 import Link from "next/link";
+import { SITE_URL } from "@/lib/site";
 
 export type Crumb = {
   href?: string;
   label: string;
 };
+
+function absoluteUrl(href: string) {
+  if (href.startsWith("http://") || href.startsWith("https://")) return href;
+  return `${SITE_URL}${href.startsWith("/") ? href : `/${href}`}`;
+}
+
+function breadcrumbJsonLd(items: Crumb[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, i) => {
+      const entry: {
+        "@type": "ListItem";
+        position: number;
+        name: string;
+        item?: string;
+      } = {
+        "@type": "ListItem",
+        position: i + 1,
+        name: item.label,
+      };
+      if (item.href) entry.item = absoluteUrl(item.href);
+      return entry;
+    }),
+  };
+}
 
 function ArrowLeft() {
   return (
@@ -31,15 +58,24 @@ export default function Breadcrumb({
   items,
   className,
   onBack,
+  jsonLd = true,
 }: {
   items: Crumb[];
   className?: string;
   onBack?: () => void;
+  /** Emit schema.org BreadcrumbList once per page (disable on duplicate mobile/desktop crumbs). */
+  jsonLd?: boolean;
 }) {
   const backHref = [...items].reverse().find((item) => item.href)?.href ?? "/";
 
   return (
     <nav aria-label="Ruta de navegación" className={className ?? "mb-8"}>
+      {jsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(items)) }}
+        />
+      ) : null}
       <ol className="flex items-center gap-1.5 text-sm flex-wrap">
         <li>
           {onBack ? (

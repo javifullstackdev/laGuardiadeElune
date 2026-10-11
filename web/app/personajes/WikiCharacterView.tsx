@@ -150,7 +150,7 @@ export default function WikiCharacterView({
         >
           <img
             src={char.cover_url}
-            alt=""
+            alt={char.display_name}
             className="absolute inset-0 w-full h-full object-cover object-[50%_5%]"
             style={{ opacity: 0.34 }}
           />
@@ -234,7 +234,11 @@ export default function WikiCharacterView({
                   <>
                     <div className="aspect-[4/5] overflow-hidden bg-gray-900">
                       {rel.cover_url ? (
-                        <img src={rel.cover_url} alt="" className="w-full h-full object-cover object-top" />
+                        <img
+                          src={rel.cover_url}
+                          alt={rel.name}
+                          className="w-full h-full object-cover object-top"
+                        />
                       ) : (
                         <div className="w-full h-full bg-gray-800" />
                       )}

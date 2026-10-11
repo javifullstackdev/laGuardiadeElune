@@ -272,15 +272,14 @@ Orden: **Bio · Datos · Puntos · Logros · Títulos · Historias · Relaciones
 
 ## Legal, seguridad y SEO base ✅
 - Páginas: `/aviso-legal`, `/privacidad`, `/cookies`, `/terminos` + footer global
-- Contacto: placeholder `[EMAIL_CONTACTO]` en `web/lib/site.ts` (sustituir por buzón real)
+- Contacto: `info@laguardiadeelune.com` en `web/lib/site.ts`
 - Cookies: solo sesión JWT esencial; sin banner (no analytics)
 - `robots.ts` + `noindex` en admin/profile/onboarding/characters
 - CSP en `deploy/Caddyfile` (self + OAuth Discord/Blizzard + imágenes https)
 - SEO: `metadataBase`, title template, Open Graph/Twitter, `sitemap.ts`, `generateMetadata` en posts/lore/personajes, JSON-LD Organization + WebSite
-- Pendiente fino: alts masivos, BreadcrumbList JSON-LD, dictamen jurídico profesional
+- SEO fino: alts en portadas/carrusel/fichas/ranking; `BreadcrumbList` JSON-LD en `Breadcrumb`
+- Pendiente: dictamen jurídico profesional si se quiere formalizar
 
 ## Próxima sesión — por dónde seguir
-1. Sustituir `[EMAIL_CONTACTO]` y redesplegar Caddy (CSP) con `./deploy/up.sh`
-2. SEO fino (alts, BreadcrumbList) si se quiere
-3. Bubu `--profile bot` o Fase 5 auto-sync M+
+1. Bubu `--profile bot` o Fase 5 auto-sync M+
 Housing en ficha: aparcado (regla 7d) hasta que Blizzard reactive la House API.

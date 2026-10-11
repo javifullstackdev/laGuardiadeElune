@@ -38,13 +38,19 @@ function chunkFacts(facts: Fact[], size: number): Fact[][] {
   return pages;
 }
 
-function CoverArt({ url }: { url: string | null | undefined }) {
+function CoverArt({
+  url,
+  label,
+}: {
+  url: string | null | undefined;
+  label: string;
+}) {
   return (
     <>
       {url ? (
         <img
           src={url}
-          alt=""
+          alt={label}
           draggable={false}
           className="absolute inset-0 w-full h-full object-cover object-[50%_18%] pointer-events-none select-none"
           style={{ opacity: 0.68 }}
@@ -599,7 +605,7 @@ export default function WikiMobileStage({
             key={slide.key}
             className="relative h-full w-full min-w-full shrink-0"
           >
-            <CoverArt url={slide.coverUrl} />
+            <CoverArt url={slide.coverUrl} label={slide.displayName} />
 
             <div
               className={`absolute top-14 inset-x-0 bottom-0 z-20 flex flex-col justify-end px-4 pb-7 transition-opacity duration-300 ${
@@ -721,7 +727,7 @@ export default function WikiMobileStage({
       </div>
 
       <div className="absolute top-0 inset-x-0 z-50 px-4 pt-3">
-        <Breadcrumb className="mb-0" items={crumbs} onBack={onBack} />
+        <Breadcrumb className="mb-0" items={crumbs} onBack={onBack} jsonLd={false} />
       </div>
 
       {hasLore && (

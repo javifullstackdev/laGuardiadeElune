@@ -14,7 +14,7 @@ export default function PostTile({ post }: { post: Post }) {
           {post.cover_url ? (
             <img
               src={post.cover_url}
-              alt=""
+              alt={`Portada: ${post.title}`}
               className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
             />
           ) : (

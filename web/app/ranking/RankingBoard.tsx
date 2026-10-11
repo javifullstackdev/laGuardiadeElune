@@ -114,7 +114,7 @@ function RankCard({
         {mainAvatar ? (
           <img
             src={mainAvatar}
-            alt=""
+            alt={`Avatar de ${entry.username}`}
             className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-white/15 shrink-0 object-cover"
           />
         ) : (
