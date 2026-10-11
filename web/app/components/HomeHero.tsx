@@ -185,7 +185,7 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
   const thumbs = slides.slice(0, 4).map((slide, i) => ({ slide, i }));
 
   return (
-    <section className="bg-transparent flex flex-col px-3 sm:px-6 lg:px-8 pt-[46vh] sm:pt-5 lg:pt-6 pb-0">
+    <section className="bg-transparent flex flex-col px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 lg:pt-6 pb-0">
       <div className="flex flex-col w-full">
         {/* Banner: ~50% del viewport en desktop para enseñar contenido debajo */}
         <div

@@ -1,37 +1,5 @@
 import { apiUrl } from "@/lib/api";
-
-type RankCharacter = {
-  name: string;
-  realm: string;
-  wow_class: string | null;
-  is_main: boolean;
-  is_verified: boolean;
-  avatar_url: string | null;
-  level: number | null;
-};
-
-type RankEntry = {
-  position: number;
-  username: string;
-  discord_id: string;
-  total_points: number;
-  avatar_url: string | null;
-  guild_title: string;
-  characters: RankCharacter[];
-  character: {
-    name: string;
-    realm: string;
-    wow_class: string | null;
-    role_function: string | null;
-    is_verified: boolean;
-  } | null;
-};
-
-type RankGroup = {
-  position: number;
-  total_points: number;
-  entries: RankEntry[];
-};
+import RankingBoard, { type RankEntry, type RankGroup } from "./RankingBoard";
 
 function groupByRank(ranking: RankEntry[]): RankGroup[] {
   const groups: RankGroup[] = [];
@@ -50,16 +18,27 @@ function groupByRank(ranking: RankEntry[]): RankGroup[] {
   return groups;
 }
 
-function initials(name: string) {
-  return name.slice(0, 2).toUpperCase();
-}
+type RankingApiRow = RankEntry & {
+  character?: {
+    name: string;
+    realm: string;
+    wow_class: string | null;
+    role_function: string | null;
+    is_verified: boolean;
+  } | null;
+};
 
 export default async function RankingPage() {
   const res = await fetch(apiUrl("/users/ranking?limit=50"), { cache: "no-store" });
-  const ranking: RankEntry[] = res.ok ? await res.json() : [];
+  const ranking: RankingApiRow[] = res.ok ? await res.json() : [];
   const groups = groupByRank(
     ranking.map((e) => ({
-      ...e,
+      position: e.position,
+      username: e.username,
+      discord_id: e.discord_id,
+      total_points: e.total_points,
+      avatar_url: e.avatar_url,
+      guild_title: e.guild_title,
       characters: e.characters ?? (e.character
         ? [{
             name: e.character.name,
@@ -81,65 +60,16 @@ export default async function RankingPage() {
           <h1 className="text-3xl sm:text-4xl font-quest-display font-bold">Ranking</h1>
           <p className="text-gray-400 mt-2 text-sm sm:text-base">
             La Guardia de Elune — clasificación por puntos. Misma puntuación, misma posición.
+            Toca una tarjeta para ver los puntos.
           </p>
         </header>
 
         {groups.length === 0 ? (
           <p className="text-center text-gray-500 py-16">No hay miembros en el ranking todavía.</p>
         ) : (
-          <ol className="space-y-3 sm:space-y-4">
-            {groups.map((group) => (
-              <li
-                key={`${group.position}-${group.total_points}`}
-                className="flex items-center gap-2.5 sm:gap-4"
-              >
-                <span className="shrink-0 w-10 sm:w-14 text-right font-quest-display font-bold text-yellow-400/90 leading-none text-2xl sm:text-3xl tabular-nums">
-                  {group.position}º
-                </span>
-
-                <ul className="flex-1 min-w-0 flex gap-2 sm:gap-3">
-                  {group.entries.map((entry) => (
-                    <li key={entry.discord_id} className="flex-1 min-w-0">
-                      <RankCard entry={entry} />
-                    </li>
-                  ))}
-                </ul>
-
-                <p className="shrink-0 text-yellow-400 font-bold text-sm sm:text-lg tabular-nums w-12 sm:w-16 text-right">
-                  {group.total_points.toLocaleString()}
-                </p>
-              </li>
-            ))}
-          </ol>
+          <RankingBoard groups={groups} />
         )}
       </div>
     </main>
-  );
-}
-
-function RankCard({ entry }: { entry: RankEntry }) {
-  const main = entry.characters.find((c) => c.is_main) ?? entry.characters[0] ?? null;
-  const mainAvatar = main?.avatar_url ?? null;
-
-  return (
-    <article className="h-full rounded-xl border border-white/10 bg-[#0c1220] hover:border-white/20 transition-colors overflow-hidden">
-      <div className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3.5 min-w-0">
-        {mainAvatar ? (
-          <img
-            src={mainAvatar}
-            alt=""
-            className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-white/15 shrink-0 object-cover"
-          />
-        ) : (
-          <div className="w-11 h-11 sm:w-14 sm:h-14 rounded-full bg-gray-800 border border-white/10 shrink-0 flex items-center justify-center text-xs font-bold text-gray-400">
-            {initials(entry.username)}
-          </div>
-        )}
-
-        <p className="min-w-0 flex-1 font-semibold text-white truncate text-sm sm:text-base">
-          {entry.username}
-        </p>
-      </div>
-    </article>
   );
 }
