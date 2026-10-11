@@ -19,6 +19,13 @@ const SECTIONS = [
     badge:       "bg-green-500/20 text-green-300",
   },
   {
+    href:        "/admin/image-requests",
+    title:       "Solicitudes de imagen",
+    description: "Formularios + capturas para generar arte con el prompt de la hermandad.",
+    color:       "border-orange-500/40 hover:border-orange-400",
+    badge:       "bg-orange-500/20 text-orange-300",
+  },
+  {
     href:        "/admin/titles",
     title:       "Títulos",
     description: "Crear títulos y asignarlos a los personajes de los miembros.",

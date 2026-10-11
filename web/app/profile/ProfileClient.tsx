@@ -7,6 +7,7 @@ import { useWatermarkBox } from "../components/HomeLogo";
 import PublishStoryPanel from "./PublishStoryPanel";
 import FichaPreview from "./FichaPreview";
 import ClaimsInbox from "./ClaimsInbox";
+import ImageRequestModal from "./ImageRequestModal";
 import { mergePublicFields, PUBLIC_FIELD_LABELS, type PublicFields, type WikiCharacter } from "@/lib/wiki";
 import { type BioAnswers } from "@/lib/bio";
 import { getEntitlements } from "@/lib/entitlements";
@@ -1601,6 +1602,8 @@ function CharacterImageSlot({
 }) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const isFace = kind === "face";
   const endpoint = isFace ? "/api/characters/face" : "/api/characters/avatar";
@@ -1716,6 +1719,13 @@ function CharacterImageSlot({
           >
             {uploading ? "Subiendo..." : pending ? "Pendiente..." : preview ? "Cambiar" : "Subir foto"}
           </button>
+          <button
+            type="button"
+            onClick={() => setRequestOpen(true)}
+            className="text-xs text-yellow-500/90 hover:text-yellow-400 transition-colors"
+          >
+            Solicitar imagen
+          </button>
           {(custom || pending) && (
             <button
               type="button"
@@ -1726,8 +1736,19 @@ function CharacterImageSlot({
             </button>
           )}
         </div>
+        {requestSent && (
+          <p className="text-[11px] text-green-500/90">Solicitud de imagen enviada.</p>
+        )}
         {error && <p className="text-xs text-red-400">{error}</p>}
       </div>
+
+      <ImageRequestModal
+        open={requestOpen}
+        kind={kind}
+        char={char}
+        onClose={() => setRequestOpen(false)}
+        onSubmitted={() => setRequestSent(true)}
+      />
     </div>
   );
 }
