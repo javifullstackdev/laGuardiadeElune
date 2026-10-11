@@ -21,10 +21,15 @@
   }
 }
 
+html {
+  overscroll-behavior-y: none;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overscroll-behavior-y: none;
 }
 
 html[data-elune-intro="playing"] {
@@ -478,24 +483,73 @@ html[data-elune-intro="playing"] nav {
     line-height: 1.8;
   }
 
+  /* Ficha móvil: pergamino centrado, laterales fuera, tope bajo la navbar */
   .wiki-mobile-lore .quest-parchment {
-    width: 180vw !important;
+    --parch-w: 178vw;
+    /* Texto centrado en el viewport: overhang + margen de lectura */
+    --chrome-side: calc((var(--parch-w) - 100vw) / 2 + 1.55rem);
+    /* Misma zona de título que el arte del pergamino (no en el remate superior) */
+    --head-top: 31.2cqh;
+    --head-h: 2.2rem;
+    --foot-bot: 7.5cqh;
+    --line-gap-top: 1.1rem;
+    --line-gap-bot: 0.55rem;
+    --fade-band-top: 1rem;
+    --fade-band-bot: 1rem;
+    --sheet-chrome: 0rem;
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 50% !important;
+    width: var(--parch-w) !important;
     max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    aspect-ratio: auto !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
     flex-shrink: 0 !important;
-
-    /* Nuevo método de centrado absoluto: */
-    margin-left: 0vw !important;
-
-    height: 82% !important;
-    aspect-ratio: auto;
     overflow: hidden;
+  }
+
+  .wiki-mobile-lore .quest-parchment-actions-foot {
+    --foot-bot: 11cqh;
+    --line-gap-bot: 1.35rem;
+    --fade-band-bot: 1.25rem;
   }
 
   .wiki-mobile-lore .quest-parchment-frame {
     object-fit: fill !important;
-    object-position: bottom center;
+    object-position: center center;
     width: 100%;
     height: 100%;
+  }
+
+  .wiki-mobile-lore .quest-parchment-head h2 {
+    font-size: 1.35rem;
+  }
+
+  .wiki-mobile-lore .quest-parchment-body {
+    text-align: justify;
+    text-justify: inter-word;
+  }
+
+  .wiki-mobile-lore .quest-parchment-body p {
+    font-size: 1.05rem;
+    line-height: 2;
+    letter-spacing: 0.04em;
+    margin-bottom: 2.15rem;
+    text-align: justify;
+    text-justify: inter-word;
+  }
+
+  .wiki-mobile-lore .quest-parchment-body h2 {
+    text-align: center;
+    margin-bottom: 1.1rem;
+  }
+
+  .wiki-mobile-lore .quest-parchment-body section + section {
+    margin-top: 2.6rem;
   }
 }
 

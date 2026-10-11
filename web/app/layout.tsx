@@ -42,7 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <LogoChromeProvider>
           <HomeLogo />
           <Navbar />
-          <div id="site-main" className="relative z-10 flex-1">
+          <div id="site-main" className="relative z-10 flex-1 pt-12">
             {children}
           </div>
         </LogoChromeProvider>

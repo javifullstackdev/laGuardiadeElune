@@ -39,7 +39,7 @@ export default async function Home() {
 
   const tablonListClass =
     grid.length > 1
-      ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none touch-pan-x overscroll-x-contain sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:overscroll-auto"
+      ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:overscroll-auto"
       : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3";
   const tablonItemClass = grid.length > 1 ? "w-[80%] shrink-0 snap-start sm:w-full h-full" : "h-full";
 

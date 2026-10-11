@@ -15,8 +15,9 @@ const DEFAULT_BOX = {
 
 export function getWatermarkBox(innerWidth: number, innerHeight = 800) {
   const mobile = innerWidth < 640;
+  // Móvil: cabe bajo la nav (3rem) con margen y deja hueco al carrusel (~220px).
   const size = mobile
-    ? Math.round(Math.min(innerWidth * 1.06, innerHeight * 0.6))
+    ? Math.round(Math.min(innerWidth * 0.72, innerHeight * 0.32, 280))
     : Math.min(MAX, innerWidth - GUTTER * 2);
   const left = mobile
     ? Math.round((innerWidth - size) / 2)
@@ -28,10 +29,21 @@ export function useWatermarkBox() {
   const [box, setBox] = useState(DEFAULT_BOX);
 
   useEffect(() => {
-    const fit = () => setBox(getWatermarkBox(window.innerWidth, window.innerHeight));
+    const fit = () => {
+      const next = getWatermarkBox(window.innerWidth, window.innerHeight);
+      setBox(next);
+      // HomeHero móvil alinea el padding-top del carrusel con este tamaño
+      document.documentElement.style.setProperty(
+        "--wm-mobile-size",
+        next.mobile ? `${next.size}px` : "0px",
+      );
+    };
     fit();
     window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
+    return () => {
+      window.removeEventListener("resize", fit);
+      document.documentElement.style.removeProperty("--wm-mobile-size");
+    };
   }, []);
 
   return box;
@@ -90,7 +102,6 @@ function contentCollisionTargets(onHome: boolean): HTMLElement[] {
 export default function HomeLogo() {
   const pathname = usePathname();
   const onHome = pathname === "/";
-  const onHistorias = pathname === "/lore" || pathname.startsWith("/lore/");
   // Perfil: el layout ya deja hueco al watermark (--fact-pad); la columna
   // a pantalla completa no debe contarse como solape.
   const onProfile = pathname === "/profile" || pathname.startsWith("/profile/");
@@ -121,13 +132,8 @@ export default function HomeLogo() {
       const logoEl = asideRef.current;
 
       if (mobile) {
-        if (onHistorias) {
-          setCovered(false);
-          return;
-        }
         if (!onHome) {
-          // En el resto de secciones mobile el watermark ya se oculta;
-          // el wordmark de la barra lo sustituye.
+          // Historias, ranking, etc.: sin watermark; wordmark en la navbar.
           setCovered(true);
           return;
         }
@@ -195,7 +201,7 @@ export default function HomeLogo() {
       window.removeEventListener("resize", tick);
       ro?.disconnect();
     };
-  }, [mobile, onHome, onHistorias, onProfile, left, size, ready, mounted, pathname]);
+  }, [mobile, onHome, onProfile, left, size, ready, mounted, pathname]);
 
   useEffect(() => {
     // Wordmark en nav solo cuando el watermark de fondo está listo pero oculto por solape
@@ -208,7 +214,7 @@ export default function HomeLogo() {
     <aside
       ref={asideRef}
       aria-hidden
-      className="pointer-events-none fixed z-0 left-1/2 -translate-x-1/2 top-[calc((3rem+50vh)/2)] -translate-y-1/2 sm:left-[var(--wm-left)] sm:translate-x-0 sm:top-[calc(6rem+140px)] lg:top-[calc(8rem+220px)]"
+      className="pointer-events-none fixed z-0 left-1/2 -translate-x-1/2 top-[calc(3rem+0.5rem)] translate-y-0 sm:left-[var(--wm-left)] sm:translate-x-0 sm:top-[calc(6rem+140px)] sm:-translate-y-1/2 lg:top-[calc(8rem+220px)]"
       style={{ ["--wm-left" as string]: `${left}px` }}
     >
       <div
