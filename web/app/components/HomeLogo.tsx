@@ -91,6 +91,9 @@ export default function HomeLogo() {
   const pathname = usePathname();
   const onHome = pathname === "/";
   const onHistorias = pathname === "/lore" || pathname.startsWith("/lore/");
+  // Perfil: el layout ya deja hueco al watermark (--fact-pad); la columna
+  // a pantalla completa no debe contarse como solape.
+  const onProfile = pathname === "/profile" || pathname.startsWith("/profile/");
   const { mobile, size, left } = useWatermarkBox();
   const { setWatermarkHidden } = useLogoChrome();
   const asideRef = useRef<HTMLElement>(null);
@@ -134,6 +137,11 @@ export default function HomeLogo() {
           return;
         }
         setCovered(banner.getBoundingClientRect().top < window.innerHeight * 0.48);
+        return;
+      }
+
+      if (onProfile) {
+        setCovered(false);
         return;
       }
 
@@ -187,7 +195,7 @@ export default function HomeLogo() {
       window.removeEventListener("resize", tick);
       ro?.disconnect();
     };
-  }, [mobile, onHome, onHistorias, left, size, ready, mounted, pathname]);
+  }, [mobile, onHome, onHistorias, onProfile, left, size, ready, mounted, pathname]);
 
   useEffect(() => {
     // Wordmark en nav solo cuando el watermark de fondo está listo pero oculto por solape
