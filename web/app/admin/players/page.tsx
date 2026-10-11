@@ -30,7 +30,7 @@ export default async function AdminPlayersPage() {
           <div>
             <h1 className="text-2xl font-bold">Jugadores</h1>
             <p className="text-gray-400 text-sm mt-1">
-              {players.length} miembro{players.length !== 1 ? "s" : ""} registrado{players.length !== 1 ? "s" : ""}
+              {players.length} miembro{players.length !== 1 ? "s" : ""} · apodo = nombre en el ranking
             </p>
           </div>
           <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-300">

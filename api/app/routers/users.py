@@ -3,6 +3,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from typing import Optional
 from datetime import date, datetime, timezone
 from app.dependencies import get_current_user, require_admin
 from app.database import get_db
@@ -34,7 +35,9 @@ async def get_me(
 
     return {
         "id": str(current_user.id),
-        "username": current_user.username,
+        "username": current_user.display_name or current_user.username,
+        "discord_username": current_user.username,
+        "display_name": current_user.display_name,
         "discord_id": current_user.discord_id,
         "guild_title": current_user.guild_title,
         "total_points": current_user.total_points,
@@ -93,6 +96,35 @@ def set_user_birthday(
     user.birthday = data.birthday
     db.commit()
     return {"birthday": user.birthday.isoformat()}
+
+
+class DisplayNameInput(BaseModel):
+    display_name: Optional[str] = None
+
+
+@router.patch("/{user_id}/display-name")
+def set_user_display_name(
+    user_id: str,
+    data: DisplayNameInput,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: apodo visible en el ranking (independiente del nick de Discord)."""
+    from uuid import UUID
+    user = db.query(User).filter(User.id == UUID(user_id), User.deleted_at.is_(None)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    name = (data.display_name or "").strip()
+    if len(name) > 255:
+        raise HTTPException(400, "El apodo no puede superar 255 caracteres")
+    user.display_name = name or None
+    db.commit()
+    return {
+        "id": str(user.id),
+        "display_name": user.display_name,
+        "username": user.display_name or user.username,
+        "discord_username": user.username,
+    }
 
 
 @router.get("/me/transactions")
@@ -191,7 +223,9 @@ async def list_players(
     return [
         {
             "id":              str(u.id),
-            "username":        u.username,
+            "username":        u.display_name or u.username,
+            "display_name":    u.display_name,
+            "discord_username": u.username,
             "discord_id":      u.discord_id,
             "guild_title":     u.guild_title,
             "role":            u.role.value,
@@ -224,7 +258,7 @@ def get_ranking(
     Ranking público — no requiere autenticación.
     Posición por puntos con empates (mismo score → misma posición; ranking
     tipo competición: 1, 2, 2, 4…).
-    Incluye Discord avatar + main y hasta 2 alts (caras).
+    Nombre visible: display_name (admin) o username Discord.
     """
     users = (
         db.query(User)
@@ -278,7 +312,9 @@ def get_ranking(
         result.append(
             {
                 "position": position,
-                "username": user.username,
+                "username": user.display_name or user.username,
+                "display_name": user.display_name,
+                "discord_username": user.username,
                 "discord_id": user.discord_id,
                 "total_points": user.total_points,
                 "avatar_url": user.avatar_url,
