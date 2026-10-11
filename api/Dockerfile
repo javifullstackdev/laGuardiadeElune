@@ -18,7 +18,7 @@ COPY app ./app
 COPY scripts ./scripts
 RUN chmod +x ./scripts/entrypoint.sh
 
-RUN mkdir -p /app/uploads/avatars /app/uploads/stories
+RUN mkdir -p /app/uploads/avatars /app/uploads/stories /app/uploads/image_requests
 
 EXPOSE 8000
 
