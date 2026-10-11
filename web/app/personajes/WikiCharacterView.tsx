@@ -3,11 +3,13 @@ import type { ReactNode } from "react";
 import { textToParagraphs } from "@/lib/posts";
 import { relationLabel } from "@/lib/relations";
 import { classLabel, raceLabel, factionLabel, factionColor } from "@/lib/wow";
-import type { WikiCharacter } from "@/lib/wiki";
+import type { WikiCharacter, WikiNeighbor } from "@/lib/wiki";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import ShareBar from "@/app/components/ShareBar";
 import Parchment from "@/app/components/ui/Parchment";
 import WikiMobileStage from "@/app/personajes/[realm]/[name]/WikiMobileStage";
+
+export type { WikiNeighbor };
 
 function ScrollSection({ title, text }: { title?: string; text: string | null }) {
   if (!text?.trim()) return null;
@@ -102,11 +104,15 @@ export default function WikiCharacterView({
   preview,
   loggedIn = false,
   onDismiss,
+  prev,
+  next,
 }: {
   char: WikiCharacter;
   preview?: boolean;
   loggedIn?: boolean;
   onDismiss?: () => void;
+  prev?: WikiNeighbor;
+  next?: WikiNeighbor;
 }) {
   const facts = (
     [
@@ -169,6 +175,8 @@ export default function WikiCharacterView({
         facts={facts}
         crumbs={crumbs}
         onBack={onDismiss}
+        prev={preview ? undefined : prev}
+        next={preview ? undefined : next}
       >
         {lore}
       </WikiMobileStage>
