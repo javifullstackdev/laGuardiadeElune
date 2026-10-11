@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { getCategoryStyle, formatDate, textToParagraphs } from "@/lib/posts";
 import Breadcrumb from "@/app/components/Breadcrumb";
