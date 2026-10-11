@@ -5,6 +5,8 @@ export type HeroSlide = {
   kicker: string;
   title: string;
   subtitle: string;
+  /** Título del personaje (bajo el nombre) en mini-tarjetas */
+  caption?: string | null;
   href?: string;
   cta?: string;
   focus_x?: number;

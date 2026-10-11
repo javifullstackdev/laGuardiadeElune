@@ -43,7 +43,8 @@ export default async function PostPage({
 
   return (
     <main className="min-h-screen text-white">
-      <div className="max-w-2xl mx-auto px-4 py-12">
+      {/* Mismo ancho que el carrusel: max-w-7xl + paddings de HomeHero/HomeReveal */}
+      <article className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-10 sm:py-12">
         <Link
           href="/"
           className="text-sm text-gray-500 hover:text-gray-300 transition-colors mb-8 inline-block"
@@ -58,14 +59,20 @@ export default async function PostPage({
           <span className="text-sm text-gray-500">{formatDate(post.published_at)}</span>
         </div>
 
-        <h1 className="text-4xl font-quest-display font-bold leading-tight mb-3">{post.title}</h1>
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-quest-display font-bold leading-tight mb-3">
+          {post.title}
+        </h1>
         {post.subtitle && (
-          <p className="text-lg text-gray-400 mb-6">{post.subtitle}</p>
+          <p className="text-base sm:text-lg text-gray-400 mb-6">{post.subtitle}</p>
         )}
 
         {post.cover_url && (
-          <div className="mb-8 -mx-4 sm:mx-0 overflow-hidden rounded-xl border border-gray-800">
-            <img src={post.cover_url} alt="" className="w-full max-h-[420px] object-cover" />
+          <div className="mb-8 overflow-hidden rounded-2xl border border-gray-800">
+            <img
+              src={post.cover_url}
+              alt=""
+              className="w-full max-h-[min(65svh,720px)] object-cover"
+            />
           </div>
         )}
 
@@ -73,7 +80,7 @@ export default async function PostPage({
 
         <div className="space-y-5">
           {paragraphs.map((paragraph, i) => (
-            <p key={i} className="text-gray-300 leading-relaxed text-[1.05rem]">
+            <p key={i} className="text-gray-300 leading-relaxed text-[1.05rem] sm:text-lg">
               {paragraph}
             </p>
           ))}
@@ -85,7 +92,7 @@ export default async function PostPage({
           title={post.title}
           loggedIn={!!token}
         />
-      </div>
+      </article>
     </main>
   );
 }
