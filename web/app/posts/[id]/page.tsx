@@ -112,7 +112,7 @@ export default async function PostPage({
 
         <div className="prose prose-invert max-w-none prose-p:text-gray-300 prose-p:leading-relaxed prose-p:text-[1.05rem] sm:prose-p:text-lg prose-headings:font-quest-display prose-headings:text-yellow-400 prose-a:text-yellow-500 hover:prose-a:text-yellow-400">
           <ReactMarkdown>
-            {post.content}
+            {post.content.replace(/\\n/g, '\n')}
           </ReactMarkdown>
         </div>
 
