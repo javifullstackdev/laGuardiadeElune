@@ -656,7 +656,7 @@ function CharacterDetail({
 
       {/* Barra de pestañas fija (solo scroll horizontal) */}
       <div
-        className="relative z-20 shrink-0 bg-[#030712]/90 backdrop-blur-sm px-4 sm:pr-8 sm:pl-[var(--fact-pad)]"
+        className="relative z-20 shrink-0 px-4 sm:pr-8 sm:pl-[var(--fact-pad)] bg-transparent"
         style={factStyle}
       >
         <div
@@ -688,9 +688,8 @@ function CharacterDetail({
         style={factStyle}
       >
         <div
-          className={`flex h-full w-full will-change-transform ${
-            dragging ? "" : "transition-transform duration-300 ease-out"
-          }`}
+          className={`flex h-full w-full will-change-transform ${dragging ? "" : "transition-transform duration-300 ease-out"
+            }`}
           style={{
             transform: `translateX(calc(${-tabIndex * 100}% + ${dragX}px))`,
           }}
@@ -701,11 +700,10 @@ function CharacterDetail({
             return (
               <div
                 key={t.key}
-                className={`w-full h-full shrink-0 ${panelPad} ${
-                  t.key === "bio"
-                    ? "overflow-hidden flex flex-col pt-3 pb-10 sm:pt-4 sm:pb-14"
-                    : "overflow-y-auto overscroll-y-contain scrollbar-none py-3 sm:py-4"
-                }`}
+                className={`w-full h-full shrink-0 ${panelPad} ${t.key === "bio"
+                  ? "overflow-hidden flex flex-col pt-3 pb-10 sm:pt-4 sm:pb-14"
+                  : "overflow-y-auto overscroll-y-contain scrollbar-none py-3 sm:py-4"
+                  }`}
                 aria-hidden={!active}
               >
                 {active || Math.abs(tabs.findIndex((x) => x.key === t.key) - tabIndex) <= 1 ? (
@@ -1014,7 +1012,7 @@ function BioTab({
   return (
     <div className="h-full min-h-0 flex flex-col gap-4 max-w-2xl">
       <p className="shrink-0 text-sm text-gray-400">
-        Escribe aquí la ficha. La vista previa muestra cómo se verá en el pergamino cuando el Eremita la publique.
+        Escribe aquí una breve biografía del personaje. La vista previa muestra cómo se verá en el pergamino cuando el Eremita la publique.
       </p>
       <div className="relative min-h-0 flex-1">
         <label className="text-xs text-gray-500 block mb-1">Biografía</label>
@@ -1910,17 +1908,15 @@ function CharacterImageSlot({
         <img
           src={preview}
           alt=""
-          className={`shrink-0 border border-white/15 object-cover ${
-            isFace
-              ? "w-16 h-16 rounded-full"
-              : "w-14 h-[4.5rem] rounded-lg object-top"
-          }`}
+          className={`shrink-0 border border-white/15 object-cover ${isFace
+            ? "w-16 h-16 rounded-full"
+            : "w-14 h-[4.5rem] rounded-lg object-top"
+            }`}
         />
       ) : (
         <div
-          className={`shrink-0 bg-gray-800 border border-white/10 flex items-center justify-center text-sm font-bold text-gray-400 ${
-            isFace ? "w-16 h-16 rounded-full" : "w-14 h-[4.5rem] rounded-lg"
-          }`}
+          className={`shrink-0 bg-gray-800 border border-white/10 flex items-center justify-center text-sm font-bold text-gray-400 ${isFace ? "w-16 h-16 rounded-full" : "w-14 h-[4.5rem] rounded-lg"
+            }`}
         >
           {initials}
         </div>
