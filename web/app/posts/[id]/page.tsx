@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { getCategoryStyle, formatDate, textToParagraphs } from "@/lib/posts";
+import { getCategoryStyle, formatDate } from "@/lib/posts";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import ShareBar from "../../components/ShareBar";
+import ReactMarkdown from "react-markdown";
 
 import { apiUrl } from "@/lib/api";
 type Post = {
@@ -71,11 +72,9 @@ export default async function PostPage({
   }
 
   const cat = getCategoryStyle(post.category);
-  const paragraphs = textToParagraphs(post.content);
 
   return (
     <main className="min-h-screen text-white">
-      {/* Mismo ancho que el carrusel: max-w-7xl + paddings de HomeHero/HomeReveal */}
       <article className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-10 sm:py-12">
         <Breadcrumb
           items={[
@@ -111,12 +110,10 @@ export default async function PostPage({
 
         <div className="h-px bg-gradient-to-r from-yellow-500/40 to-transparent mb-8" />
 
-        <div className="space-y-5">
-          {paragraphs.map((paragraph, i) => (
-            <p key={i} className="text-gray-300 leading-relaxed text-[1.05rem] sm:text-lg">
-              {paragraph}
-            </p>
-          ))}
+        <div className="prose prose-invert max-w-none prose-p:text-gray-300 prose-p:leading-relaxed prose-p:text-[1.05rem] sm:prose-p:text-lg prose-headings:font-quest-display prose-headings:text-yellow-400 prose-a:text-yellow-500 hover:prose-a:text-yellow-400">
+          <ReactMarkdown>
+            {post.content}
+          </ReactMarkdown>
         </div>
 
         <ShareBar
