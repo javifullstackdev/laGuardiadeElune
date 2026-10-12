@@ -11,9 +11,11 @@
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.3.5",
     "@hugeicons/react": "^1.1.10",
+    "@tailwindcss/typography": "^0.5.20",
     "framer-motion": "^13.4.3",
     "next": "16.3.5",
     "react": "19.2.8",
+<<<<<<< HEAD
 <<<<<<< Updated upstream
     "react-dom": "19.2.8"
 =======
@@ -21,6 +23,10 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1"
 >>>>>>> Stashed changes
+=======
+    "react-dom": "19.2.8",
+    "react-markdown": "^10.1.0"
+>>>>>>> main
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -112,13 +112,8 @@ export default async function PostPage({
         <div className="h-px bg-gradient-to-r from-yellow-500/40 to-transparent mb-8" />
 
         <div className="prose prose-invert max-w-none prose-p:text-gray-300 prose-p:leading-relaxed prose-p:text-[1.05rem] sm:prose-p:text-lg prose-headings:font-quest-display prose-headings:text-yellow-400 prose-a:text-yellow-500 hover:prose-a:text-yellow-400">
-<<<<<<< Updated upstream
-          <ReactMarkdown>
-            {post.content}
-=======
           <ReactMarkdown remarkPlugins={[remarkGfm]}>
             {post.content.replace(/\\n/g, '\n')}
->>>>>>> Stashed changes
           </ReactMarkdown>
         </div>
 
