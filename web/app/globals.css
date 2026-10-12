@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 :root {
   --background: #030712;
@@ -546,7 +547,7 @@ html[data-elune-intro="playing"] nav {
     margin-bottom: 1.1rem;
   }
 
-  .wiki-mobile-lore .quest-parchment-body section + section {
+  .wiki-mobile-lore .quest-parchment-body section+section {
     margin-top: 2.6rem;
   }
 }
