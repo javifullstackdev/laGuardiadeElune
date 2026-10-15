@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 import uuid
 from app.database import get_db
@@ -7,11 +8,17 @@ from app.models.user import User
 from app.schemas.post import PostResponse, PostCreate, PostUpdate
 from app.dependencies import require_admin
 from app.services.slugs import is_uuid, unique_slug
+from app.urls import static_url
 
 router = APIRouter(
     prefix="/posts",
     tags=["posts"]
 )
+
+POST_UPLOAD_DIR = Path("uploads/posts")
+POST_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+COVER_EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+MAX_COVER_SIZE = 5 * 1024 * 1024
 
 @router.get("/", response_model=list[PostResponse])
 def get_posts(db: Session = Depends(get_db)):
@@ -24,6 +31,21 @@ def get_post(post_id: str, db: Session = Depends(get_db)):
     if post is None:
         raise HTTPException(status_code=404, detail="Post not found")
     return post
+
+@router.post("/cover")
+async def upload_post_cover(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_admin),
+):
+    extension = COVER_EXTENSIONS.get(file.content_type)
+    if extension is None:
+        raise HTTPException(status_code=400, detail="La portada debe ser JPEG, PNG o WebP")
+    content = await file.read()
+    if len(content) > MAX_COVER_SIZE:
+        raise HTTPException(status_code=400, detail="La portada no puede superar 5 MB")
+    filename = f"{uuid.uuid4().hex}.{extension}"
+    (POST_UPLOAD_DIR / filename).write_bytes(content)
+    return {"cover_url": static_url(f"posts/{filename}")}
 
 @router.post("/", response_model=PostResponse, status_code=201)
 def create_post(

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import DeleteButton from "./DeleteButton";
+import CoverField from "./CoverField";
 import { CATEGORIES, getCategoryStyle, formatDate } from "@/lib/posts";
 
 import { apiUrl } from "@/lib/api";
@@ -72,12 +73,8 @@ export default async function AdminPostsPage({
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Imagen de portada (URL)</label>
-              <input
-                name="cover_url"
-                placeholder="https://... o /hero/01.jpg"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
-              />
+              <label className="block text-sm text-gray-400 mb-1">Imagen de portada</label>
+              <CoverField />
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">Categoría</label>
@@ -142,12 +139,7 @@ export default async function AdminPostsPage({
                           placeholder="Subtítulo"
                           className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"
                         />
-                        <input
-                          name="cover_url"
-                          defaultValue={post.cover_url ?? ""}
-                          placeholder="URL de portada"
-                          className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm"
-                        />
+                        <CoverField defaultValue={post.cover_url ?? ""} />
                         <select
                           name="category"
                           defaultValue={post.category ?? ""}

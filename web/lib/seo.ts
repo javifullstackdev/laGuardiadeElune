@@ -8,6 +8,17 @@ export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
+const UPLOADS_PREFIX = `${SITE_URL}/static/`;
+
+/** Las imágenes subidas a la API se sirven reducidas en /static/share/ para que WhatsApp las acepte. */
+function shareImageUrl(src: string): string {
+  const absolute = absoluteUrl(src);
+  if (!absolute.startsWith(UPLOADS_PREFIX) || absolute.startsWith(`${UPLOADS_PREFIX}share/`)) {
+    return absolute;
+  }
+  return `${UPLOADS_PREFIX}share/${absolute.slice(UPLOADS_PREFIX.length)}`;
+}
+
 type ShareMetadataInput = {
   title: string;
   description: string;
@@ -32,7 +43,7 @@ export function buildShareMetadata({
   publishedTime,
 }: ShareMetadataInput): Metadata {
   const url = absoluteUrl(path);
-  const imageUrl = absoluteUrl(image || DEFAULT_SHARE_IMAGE.url);
+  const imageUrl = image ? shareImageUrl(image) : absoluteUrl(DEFAULT_SHARE_IMAGE.url);
   const sized = image ? {} : { width: DEFAULT_SHARE_IMAGE.width, height: DEFAULT_SHARE_IMAGE.height };
 
   const openGraph = {
