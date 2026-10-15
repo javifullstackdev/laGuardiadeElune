@@ -6,6 +6,7 @@ from app.models.post import Post
 from app.models.user import User
 from app.schemas.post import PostResponse, PostCreate, PostUpdate
 from app.dependencies import require_admin
+from app.services.slugs import is_uuid, unique_slug
 
 router = APIRouter(
     prefix="/posts",
@@ -18,7 +19,8 @@ def get_posts(db: Session = Depends(get_db)):
 
 @router.get("/{post_id}", response_model=PostResponse)
 def get_post(post_id: str, db: Session = Depends(get_db)):
-    post = db.query(Post).filter(Post.id == post_id).first()
+    column = Post.id if is_uuid(post_id) else Post.slug
+    post = db.query(Post).filter(column == post_id).first()
     if post is None:
         raise HTTPException(status_code=404, detail="Post not found")
     return post
@@ -32,6 +34,7 @@ def create_post(
     post = Post(
         id=uuid.uuid4(),
         title=body.title,
+        slug=unique_slug(db, Post, body.title, "post"),
         content=body.content,
         category=body.category,
         subtitle=body.subtitle,

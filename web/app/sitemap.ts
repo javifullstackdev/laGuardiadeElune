@@ -3,8 +3,8 @@ import { apiUrl } from "@/lib/api";
 import { SITE_URL } from "@/lib/site";
 
 type WikiListItem = { name: string; realm: string };
-type StoryListItem = { id: string };
-type PostListItem = { id: string; published_at?: string };
+type StoryListItem = { id: string; slug?: string | null };
+type PostListItem = { id: string; slug?: string | null; published_at?: string };
 
 async function safeJson<T>(path: string): Promise<T[]> {
   try {
@@ -41,7 +41,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   const postEntries: MetadataRoute.Sitemap = posts.map((p) => ({
-    url: `${SITE_URL}/posts/${encodeURIComponent(p.id)}`,
+    url: `${SITE_URL}/posts/${encodeURIComponent(p.slug ?? p.id)}`,
     lastModified: p.published_at ? new Date(p.published_at) : undefined,
     changeFrequency: "weekly",
     priority: 0.6,
@@ -54,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const storyEntries: MetadataRoute.Sitemap = stories.map((s) => ({
-    url: `${SITE_URL}/lore/${encodeURIComponent(s.id)}`,
+    url: `${SITE_URL}/lore/${encodeURIComponent(s.slug ?? s.id)}`,
     changeFrequency: "weekly",
     priority: 0.7,
   }));

@@ -57,6 +57,7 @@ export function getCategoryStyle(value: string | null): Category {
 
 export type Post = {
   id: string;
+  slug?: string | null;
   title: string;
   content: string;
   category: string | null;
@@ -64,6 +65,10 @@ export type Post = {
   subtitle: string | null;
   cover_url: string | null;
 };
+
+export function postHref(post: { id: string; slug?: string | null }): string {
+  return `/posts/${post.slug ?? post.id}`;
+}
 
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es-ES", {

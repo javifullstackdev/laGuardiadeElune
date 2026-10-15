@@ -3,7 +3,7 @@ import HomeHero from "./components/HomeHero";
 import HomeReveal from "./components/HomeReveal";
 import FadeUp from "./components/FadeUp";
 import { HERO_SLIDES, type HeroSlide } from "@/lib/hero";
-import { getCategoryStyle, postSubtitle, formatDate } from "@/lib/posts";
+import { getCategoryStyle, postSubtitle, formatDate, postHref} from "@/lib/posts";
 import StoryTile from "./components/StoryTile";
 import WikiTile from "./components/WikiTile";
 import type { StoryPublic } from "@/lib/stories";
@@ -140,7 +140,7 @@ function PostTile({ post }: { post: Post }) {
 
   return (
     <Link
-      href={`/posts/${post.id}`}
+      href={postHref(post)}
       draggable={false}
       className="group flex flex-col h-full rounded-lg overflow-hidden bg-[#151515] hover:bg-[#1c1c1c] transition-colors select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
     >

@@ -52,6 +52,7 @@ class StoryReject(BaseModel):
 
 class StoryPublic(BaseModel):
     id: UUID
+    slug: str | None = None
     title: str
     status: str
     biography: str | None
@@ -74,6 +75,7 @@ class StoryPublic(BaseModel):
 
 class StoryMine(BaseModel):
     id: UUID
+    slug: str | None = None
     status: str
     title: str
     rejection_reason: str | None = None

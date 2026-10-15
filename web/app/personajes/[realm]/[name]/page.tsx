@@ -4,6 +4,7 @@ import Breadcrumb from "@/app/components/Breadcrumb";
 import { loadWikiChar, type WikiCharacter, type WikiListItem, type WikiNeighbor } from "@/lib/wiki";
 import WikiCharacterView from "@/app/personajes/WikiCharacterView";
 import { apiUrl } from "@/lib/api";
+import { buildShareMetadata } from "@/lib/seo";
 
 function toNeighbor(item: WikiListItem): WikiNeighbor {
   return {
@@ -55,18 +56,13 @@ export async function generateMetadata({
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 155) || `Ficha pública de ${char.display_name} en La Guardia de Elune.`;
-  return {
+  return buildShareMetadata({
     title: char.display_name,
     description,
-    openGraph: {
-      title: char.display_name,
-      description,
-      type: "profile",
-      images: char.cover_url
-        ? [{ url: char.cover_url, alt: char.display_name }]
-        : undefined,
-    },
-  };
+    path: `/personajes/${encodeURIComponent(char.realm)}/${encodeURIComponent(char.name)}`,
+    image: char.cover_url,
+    type: "profile",
+  });
 }
 
 export default async function WikiCharacterPage({

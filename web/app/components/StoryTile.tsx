@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { characterSignature, storyExcerpt, type StoryPublic } from "@/lib/stories";
+import { characterSignature, storyExcerpt, storyHref, type StoryPublic } from "@/lib/stories";
 
 export default function StoryTile({ story }: { story: StoryPublic }) {
   const excerpt = storyExcerpt(story);
@@ -7,7 +7,7 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
 
   return (
     <Link
-      href={`/lore/${story.id}`}
+      href={storyHref(story)}
       draggable={false}
       className="group flex flex-col h-full rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] hover:bg-[#1a2233] transition-colors select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
     >
