@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios, image_requests
+from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios, image_requests, share
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -36,6 +36,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Debe registrarse antes del mount de /static para tener prioridad sobre él.
+app.include_router(share.router)
 
 # Archivos subidos (avatares, etc.) servidos en /static/
 app.mount("/static", StaticFiles(directory="uploads"), name="static")
