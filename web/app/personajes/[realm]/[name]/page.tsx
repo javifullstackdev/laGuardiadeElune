@@ -32,12 +32,22 @@ function neighbors(
   };
 }
 
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ realm: string; name: string }>;
 }): Promise<Metadata> {
-  const { realm, name } = await params;
+  const { realm: rawRealm, name: rawName } = await params;
+  const realm = safeDecode(rawRealm);
+  const name = safeDecode(rawName);
   const char = await loadWikiChar(realm, name);
   if (!char) return { title: "Ficha no encontrada" };
   const description =
@@ -64,7 +74,9 @@ export default async function WikiCharacterPage({
 }: {
   params: Promise<{ realm: string; name: string }>;
 }) {
-  const { realm, name } = await params;
+  const { realm: rawRealm, name: rawName } = await params;
+  const realm = safeDecode(rawRealm);
+  const name = safeDecode(rawName);
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   const char = await loadWikiChar(realm, name);
