@@ -42,7 +42,7 @@ def _resolve_target(db: Session, target_type: str, target_id) -> dict | None:
         return {
             "title": post.title,
             "subtitle": post.subtitle,
-            "href": f"/posts/{post.id}",
+            "href": f"/posts/{post.slug or post.id}",
             "meta": post.category,
         }
     if target_type == "story":
@@ -58,7 +58,7 @@ def _resolve_target(db: Session, target_type: str, target_id) -> dict | None:
         return {
             "title": story.title,
             "subtitle": f"{char.name}-{char.realm}",
-            "href": f"/lore/{story.id}",
+            "href": f"/lore/{story.slug or story.id}",
             "meta": story.status,
         }
     if target_type == "character":

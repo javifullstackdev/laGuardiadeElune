@@ -4,6 +4,7 @@ import Link from "next/link";
 import StoryReviewPanel from "./StoryReviewPanel";
 import StoryDeleteButton from "./StoryDeleteButton";
 import type { StoryPending, StoryPublic } from "@/lib/stories";
+import { storyHref } from "@/lib/stories";
 import { formatDate } from "@/lib/posts";
 
 import { apiUrl } from "@/lib/api";
@@ -65,7 +66,7 @@ export default async function AdminStoriesPage() {
                 >
                   <div className="min-w-0">
                     <Link
-                      href={`/lore/${story.id}`}
+                      href={storyHref(story)}
                       className="font-medium hover:text-yellow-400 transition-colors"
                     >
                       {story.title}

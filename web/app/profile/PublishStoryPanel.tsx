@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { storyExcerpt, type StoryMine } from "@/lib/stories";
+import { storyExcerpt, storyHref, type StoryMine } from "@/lib/stories";
 import { RELATION_TYPES } from "@/lib/relations";
 
 type Mention = {
@@ -358,7 +358,7 @@ export default function PublishStoryPanel({
                       </p>
                     )}
                     <Link
-                      href={`/lore/${story.id}`}
+                      href={storyHref(story)}
                       className="inline-block text-xs text-yellow-400 hover:underline"
                     >
                       Abrir en página completa

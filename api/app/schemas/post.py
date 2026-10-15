@@ -18,6 +18,7 @@ class PostUpdate(BaseModel):
 
 class PostResponse(BaseModel):
     id: UUID
+    slug: str | None = None
     title: str
     content: str
     category: str | None

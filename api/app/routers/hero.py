@@ -69,7 +69,7 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
         title = title or story.title
         subtitle = subtitle or _excerpt(story.biography or story.personality or story.appearance)
         kicker = kicker or "Historia"
-        href = href or f"/lore/{story.id}"
+        href = href or f"/lore/{story.slug or story.id}"
         cta = cta or "Leer historia"
     elif kind == "character":
         char = (

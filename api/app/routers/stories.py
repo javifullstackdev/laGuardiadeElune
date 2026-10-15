@@ -17,6 +17,7 @@ from app.schemas.story import (
 from app.services.claims import (
     awaiting_relations, claims_out, replace_claims,
 )
+from app.services.slugs import is_uuid, unique_slug
 from app.urls import static_url
 
 router = APIRouter(prefix="/stories", tags=["stories"])
@@ -39,6 +40,7 @@ def _cover_url(story: CharacterStory, char: Character) -> str | None:
 def _mine_out(db: Session, story: CharacterStory, char: Character) -> StoryMine:
     return StoryMine(
         id=story.id,
+        slug=story.slug,
         status=story.status,
         title=story.title,
         rejection_reason=story.rejection_reason,
@@ -76,6 +78,7 @@ def _like_count(db: Session, story_id) -> int:
 def _to_public(db: Session, story: CharacterStory, char: Character, author: User) -> StoryPublic:
     return StoryPublic(
         id=story.id,
+        slug=story.slug,
         title=story.title,
         status=story.status,
         biography=story.biography,
@@ -180,7 +183,7 @@ def get_story(
         db.query(CharacterStory, Character, User)
         .join(Character, Character.id == CharacterStory.character_id)
         .join(User, User.id == CharacterStory.author_id)
-        .filter(CharacterStory.id == story_id)
+        .filter((CharacterStory.id if is_uuid(story_id) else CharacterStory.slug) == story_id)
         .first()
     )
     if not row:
@@ -254,6 +257,7 @@ async def submit_story(
         character_id=char.id,
         author_id=current_user.id,
         title=story_title,
+        slug=unique_slug(db, CharacterStory, story_title, "historia"),
         biography=body.strip(),
         personality=None,
         appearance=None,

@@ -60,9 +60,6 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: ["/elune/elune.png"],
   },
-  alternates: {
-    canonical: "/",
-  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

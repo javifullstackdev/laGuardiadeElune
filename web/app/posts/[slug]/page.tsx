@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { permanentRedirect } from "next/navigation";
 import { getCategoryStyle, formatDate } from "@/lib/posts";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import ShareBar from "../../components/ShareBar";
@@ -8,8 +9,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { apiUrl } from "@/lib/api";
+import { buildShareMetadata } from "@/lib/seo";
 type Post = {
   id: string;
+  slug?: string | null;
   title: string;
   content: string;
   category: string | null;
@@ -18,8 +21,8 @@ type Post = {
   cover_url?: string | null;
 };
 
-async function loadPost(id: string): Promise<Post | null> {
-  const res = await fetch(apiUrl(`/posts/${id}`), { cache: "no-store" });
+async function loadPost(ref: string): Promise<Post | null> {
+  const res = await fetch(apiUrl(`/posts/${encodeURIComponent(ref)}`), { cache: "no-store" });
   if (!res.ok) return null;
   return res.json();
 }
@@ -27,37 +30,36 @@ async function loadPost(id: string): Promise<Post | null> {
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const post = await loadPost(id);
+  const { slug } = await params;
+  const post = await loadPost(slug);
   if (!post) return { title: "Post no encontrado" };
   const description =
     post.subtitle?.trim() ||
     post.content.replace(/\s+/g, " ").trim().slice(0, 155) ||
     post.title;
-  return {
+  return buildShareMetadata({
     title: post.title,
     description,
-    openGraph: {
-      title: post.title,
-      description,
-      type: "article",
-      publishedTime: post.published_at,
-      images: post.cover_url ? [{ url: post.cover_url, alt: post.title }] : undefined,
-    },
-  };
+    path: `/posts/${post.slug ?? post.id}`,
+    image: post.cover_url,
+    type: "article",
+    publishedTime: post.published_at,
+  });
 }
 
 export default async function PostPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
+  const { slug } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
-  const post = await loadPost(id);
+  const post = await loadPost(slug);
+
+  if (post?.slug && post.slug !== slug) permanentRedirect(`/posts/${post.slug}`);
 
   if (!post) {
     return (

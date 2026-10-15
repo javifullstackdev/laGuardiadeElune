@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { permanentRedirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { textToParagraphs } from "@/lib/posts";
 import ShareBar from "../../components/ShareBar";
@@ -13,6 +14,7 @@ import { isHorde } from "@/lib/wow";
 import StoryScene from "../StoryScene";
 
 import { apiUrl } from "@/lib/api";
+import { buildShareMetadata } from "@/lib/seo";
 function highlightNames(text: string, names: string[]) {
   if (!names.length) return text;
   const escaped = names
@@ -89,10 +91,10 @@ function StoryParchment({
 }
 
 async function loadStory(
-  id: string,
+  ref: string,
   token?: string,
 ): Promise<StoryPublic | null> {
-  const res = await fetch(apiUrl(`/stories/${id}`), {
+  const res = await fetch(apiUrl(`/stories/${encodeURIComponent(ref)}`), {
     cache: "no-store",
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
@@ -103,39 +105,37 @@ async function loadStory(
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const story = await loadStory(id);
+  const { slug } = await params;
+  const story = await loadStory(slug);
   if (!story) return { title: "Historia no encontrada" };
   const description =
     (story.biography || story.personality || story.appearance || "")
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 155) || `Historia de ${story.title} en La Guardia de Elune.`;
-  return {
+  return buildShareMetadata({
     title: story.title,
     description,
-    openGraph: {
-      title: story.title,
-      description,
-      type: "article",
-      images: story.cover_url
-        ? [{ url: story.cover_url, alt: story.title }]
-        : undefined,
-    },
-  };
+    path: `/lore/${story.slug ?? story.id}`,
+    image: story.cover_url,
+    type: "article",
+    publishedTime: story.published_at,
+  });
 }
 
 export default async function LoreDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }) {
-  const { id } = await params;
+  const { slug } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
-  const story = await loadStory(id, token);
+  const story = await loadStory(slug, token);
+
+  if (story?.slug && story.slug !== slug) permanentRedirect(`/lore/${story.slug}`);
 
   if (!story) {
     return (

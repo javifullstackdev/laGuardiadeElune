@@ -2,6 +2,7 @@ import type { StoryRelation } from "./relations";
 
 export type StoryPublic = {
   id: string;
+  slug?: string | null;
   title: string;
   status?: "pending" | "approved" | "rejected";
   biography: string | null;
@@ -22,6 +23,7 @@ export type StoryPublic = {
 
 export type StoryMine = {
   id: string;
+  slug?: string | null;
   status: "pending" | "approved" | "rejected";
   title: string;
   rejection_reason: string | null;
@@ -50,6 +52,10 @@ export type StoryPending = {
   awaiting_relations: boolean;
   cover_url: string | null;
 };
+
+export function storyHref(story: { id: string; slug?: string | null }): string {
+  return `/lore/${story.slug ?? story.id}`;
+}
 
 export function characterSignature(
   story: Pick<StoryPublic, "character_name" | "character_surname">,
