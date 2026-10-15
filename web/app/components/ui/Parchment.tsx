@@ -20,6 +20,8 @@ export default function Parchment({
   parchmentImage?: string;
   children: ReactNode;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const onScrollProgress = useContext(ParchmentScrollContext);
 
@@ -50,6 +52,36 @@ export default function Parchment({
       cancelAnimationFrame(raf);
     };
   }, [onScrollProgress]);
+
+  // La cabecera es absoluta y el desvanecido del cuerpo se calcula para un título de una línea:
+  // si el título se parte en varias, publicamos la altura extra para que el texto no pise la línea.
+  useLayoutEffect(() => {
+    const sheet = rootRef.current;
+    const heading = titleRef.current;
+    if (!sheet || !heading) return;
+
+    let cancelled = false;
+    const measure = () => {
+      if (cancelled) return;
+      const probe = heading.cloneNode(false) as HTMLElement;
+      probe.textContent = "A";
+      probe.setAttribute("aria-hidden", "true");
+      probe.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;width:auto;white-space:nowrap";
+      heading.parentElement?.appendChild(probe);
+      const oneLine = probe.offsetHeight;
+      probe.remove();
+      sheet.style.setProperty("--title-extra", `${Math.max(0, heading.offsetHeight - oneLine)}px`);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(heading);
+    void document.fonts?.ready.then(measure);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [title, titleFont]);
 
   useLayoutEffect(() => {
     const root = bodyRef.current;
@@ -98,6 +130,7 @@ export default function Parchment({
 
   return (
     <div
+      ref={rootRef}
       className={`quest-parchment${isHorde ? " quest-parchment-horde" : ""}${actions ? " quest-parchment-actions-foot" : ""}`}
       data-faction={isHorde ? "horde" : "alliance"}
     >
@@ -112,7 +145,7 @@ export default function Parchment({
       <header
         className={`quest-parchment-head${titleFont === "display" ? " quest-parchment-head-display" : ""}`}
       >
-        {title ? <h2>{title}</h2> : null}
+        {title ? <h2 ref={titleRef}>{title}</h2> : null}
         <div className="quest-parchment-rule" />
       </header>
       <div ref={bodyRef} className="quest-parchment-body scrollbar-none" lang="es">
