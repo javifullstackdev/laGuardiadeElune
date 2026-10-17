@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, UniqueConstraint, func
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 
@@ -18,4 +18,6 @@ class ProcessedRun(Base):
     timed = Column(Boolean, nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=False)
     guild_member_count = Column(Integer, nullable=False)
+    # Nombres en el grupo que están en el roster de Blizzard, aunque no tengan ficha en la web
+    guild_character_names = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models.character import Character
 from app.models.enums import EventCategory
+from app.models.point_transaction import PointTransaction
 from app.models.processed_run import ProcessedRun
 from app.models.user import User
 from app.services import blizzard, raiderio
@@ -34,6 +35,32 @@ CONCURRENCY = 3
 
 def _parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _party_keys_and_guild_names(
+    details: dict, roster: set[tuple[str, str]]
+) -> tuple[list[tuple[str, str]], list[str]]:
+    keys: list[tuple[str, str]] = []
+    names: list[str] = []
+    for member in details.get("roster") or []:
+        character = member.get("character") or {}
+        name = (character.get("name") or "").strip()
+        realm = (character.get("realm") or {}).get("slug") or ""
+        if not name:
+            continue
+        key = blizzard.character_key(name, realm)
+        keys.append(key)
+        if key in roster:
+            names.append(name)
+    return keys, names
+
+
+def _run_reason(dungeon: str, level: int, timed: bool, guild_names: list[str], party_size: int) -> str:
+    clock = "a tiempo" if timed else "fuera de tiempo"
+    count = f"{len(guild_names)}/{party_size} de la hermandad"
+    if guild_names:
+        return f"M+ {dungeon} +{level} {clock} — {', '.join(guild_names)} ({count})"
+    return f"M+ {dungeon} +{level} {clock} ({count})"
 
 
 def _web_characters(db: Session) -> dict[tuple[str, str], Character]:
@@ -60,6 +87,7 @@ async def sync_mythic_plus(db: Session) -> dict:
         "runs_scored": 0,
         "transactions": 0,
         "errors": [],
+        "runs": [],
     }
     season = season_service.current_season(db)
     if season is None:
@@ -112,15 +140,13 @@ async def sync_mythic_plus(db: Session) -> dict:
         if not details or details.get("deleted_at") or details.get("status") != "finished":
             continue
 
-        members = [
-            blizzard.character_key(m["character"]["name"], m["character"]["realm"]["slug"])
-            for m in details.get("roster", [])
-        ]
-        guild_count = sum(1 for key in members if key in roster)
+        members, guild_names = _party_keys_and_guild_names(details, roster)
+        guild_count = len(guild_names)
         timed = (details.get("num_chests") or 0) > 0
         level = details["mythic_level"]
         completed_at = _parse_time(details["completed_at"])
         dungeon = (details.get("dungeon") or {}).get("name") or run.get("dungeon") or "?"
+        reason = _run_reason(dungeon, level, timed, guild_names, len(members))
 
         processed = ProcessedRun(
             source=SOURCE,
@@ -130,6 +156,7 @@ async def sync_mythic_plus(db: Session) -> dict:
             timed=timed,
             completed_at=completed_at,
             guild_member_count=guild_count,
+            guild_character_names=", ".join(guild_names),
         )
         db.add(processed)
         try:
@@ -137,10 +164,6 @@ async def sync_mythic_plus(db: Session) -> dict:
             created = 0
             amount = points_service.mythic_plus_points(level, timed)
             if guild_count >= MIN_GUILD_MEMBERS and amount > 0:
-                reason = (
-                    f"M+ {dungeon} +{level} {'a tiempo' if timed else 'fuera de tiempo'}"
-                    f" ({guild_count}/{len(members)} de la hermandad)"
-                )
                 awarded: set = set()
                 for key in members:
                     char = characters.get(key)
@@ -166,8 +189,72 @@ async def sync_mythic_plus(db: Session) -> dict:
         report["runs_new"] += 1
         report["runs_scored"] += created > 0
         report["transactions"] += created
+        report["runs"].append(
+            {
+                "dungeon": dungeon,
+                "level": level,
+                "timed": timed,
+                "guild_characters": guild_names,
+                "guild_count": guild_count,
+                "party_size": len(members),
+                "scored": created > 0,
+                "reason": reason,
+            }
+        )
 
+    await _fill_missing_guild_names(db, roster, report)
     return report
+
+
+async def _fill_missing_guild_names(
+    db: Session, roster: set[tuple[str, str]], report: dict
+) -> None:
+    """Completa nombres de hermandad en partidas ya guardadas (p. ej. la primera que ya puntuó)."""
+    missing = (
+        db.query(ProcessedRun)
+        .filter(ProcessedRun.source == SOURCE, ProcessedRun.guild_character_names.is_(None))
+        .all()
+    )
+    if not missing:
+        return
+    changed = False
+    for processed in missing:
+        try:
+            season_slug, run_id = processed.external_id.split(":", 1)
+            details = await raiderio.run_details(season_slug, int(run_id))
+        except (ValueError, raiderio.RaiderIOError) as exc:
+            report["errors"].append(f"{processed.external_id}: {exc}")
+            continue
+        if not details:
+            processed.guild_character_names = ""
+            changed = True
+            continue
+        _, guild_names = _party_keys_and_guild_names(details, roster)
+        processed.guild_character_names = ", ".join(guild_names)
+        party_size = len(details.get("roster") or []) or processed.guild_member_count
+        reason = _run_reason(
+            processed.dungeon, processed.mythic_level, processed.timed, guild_names, party_size
+        )
+        db.query(PointTransaction).filter(PointTransaction.processed_run_id == processed.id).update(
+            {PointTransaction.reason: reason},
+            synchronize_session=False,
+        )
+        changed = True
+        if not any(item.get("reason") == reason for item in report["runs"]):
+            report["runs"].append(
+                {
+                    "dungeon": processed.dungeon,
+                    "level": processed.mythic_level,
+                    "timed": processed.timed,
+                    "guild_characters": guild_names,
+                    "guild_count": len(guild_names),
+                    "party_size": party_size,
+                    "scored": True,
+                    "reason": reason,
+                }
+            )
+    if changed:
+        db.commit()
 
 
 async def sync_in_background() -> None:

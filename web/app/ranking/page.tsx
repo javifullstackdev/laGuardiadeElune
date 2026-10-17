@@ -83,8 +83,8 @@ export default async function RankingPage() {
             <p className="text-yellow-400/90 mt-2 text-sm sm:text-base font-semibold">{season.name}</p>
           )}
           <p className="text-gray-400 mt-2 text-sm sm:text-base">
-            La Guardia de Elune — clasificación por puntos de la temporada. Misma puntuación, misma posición.
-            Toca una tarjeta para ver los puntos.
+            La Guardia de Elune — clasificación por puntos de la temporada. Misma puntuación, mismo
+            puesto (misma línea). En el móvil, toca una tarjeta para ver los puntos.
           </p>
         </header>
 
