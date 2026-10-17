@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import func as sqlfunc, or_
 from sqlalchemy.orm import Session
@@ -11,7 +11,7 @@ from app.models.character import Character
 from app.models.point_transaction import PointTransaction
 from app.models.processed_run import ProcessedRun
 from app.models.user import User
-from app.services import mplus_sync
+from app.services import dungeons, mplus_sync
 from app.services import points as points_service
 from app.services.blizzard import BlizzardError
 
@@ -42,6 +42,7 @@ def serialize_admin_tx(
     character: Character | None,
     run: ProcessedRun | None,
 ) -> dict:
+    shown = dungeons.present(run.dungeon, run.dungeon_slug) if run else None
     return {
         "id": str(tx.id),
         "user_id": str(tx.user_id),
@@ -61,7 +62,9 @@ def serialize_admin_tx(
         "created_at": tx.created_at.isoformat(),
         "processed_run_id": str(tx.processed_run_id) if tx.processed_run_id else None,
         "guild_characters": _guild_names(run),
-        "dungeon": run.dungeon if run else None,
+        "dungeon": shown["name"] if run else None,
+        "dungeon_slug": shown["slug"] if run else None,
+        "dungeon_image_url": shown["image_url"] if run else None,
         "mythic_level": run.mythic_level if run else None,
         "timed": run.timed if run else None,
         "completed_at": run.completed_at.isoformat() if run and run.completed_at else None,
@@ -128,6 +131,36 @@ def admin_history(
         .all()
     )
     return [serialize_admin_tx(tx, user, character, run) for tx, user, character, run in rows]
+
+
+COVER_EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+MAX_COVER_SIZE = 5 * 1024 * 1024
+
+
+@router.get("/admin/dungeons")
+def admin_dungeons(_: User = Depends(require_admin)):
+    return dungeons.list_catalog()
+
+
+@router.post("/admin/dungeons/{slug}/image")
+async def admin_dungeon_image(
+    slug: str,
+    _: User = Depends(require_admin),
+    file: UploadFile = File(...),
+):
+    if slug not in dungeons.BY_SLUG:
+        raise HTTPException(404, "Mazmorra no reconocida")
+    extension = COVER_EXTENSIONS.get(file.content_type)
+    if extension is None:
+        raise HTTPException(400, "La imagen debe ser JPEG, PNG o WebP")
+    content = await file.read()
+    if len(content) > MAX_COVER_SIZE:
+        raise HTTPException(400, "La imagen no puede superar 5 MB")
+    dungeons.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    for ext in dungeons.IMAGE_EXTS:
+        (dungeons.UPLOAD_DIR / f"{slug}.{ext}").unlink(missing_ok=True)
+    (dungeons.UPLOAD_DIR / f"{slug}.{extension}").write_bytes(content)
+    return dungeons.present(None, slug)
 
 
 @router.patch("/admin/{tx_id}")

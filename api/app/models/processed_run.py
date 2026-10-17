@@ -14,6 +14,7 @@ class ProcessedRun(Base):
     # Raider.io: "<season>:<keystone_run_id>"; el id solo es único dentro de su temporada
     external_id = Column(String(64), nullable=False)
     dungeon = Column(String(255), nullable=False)
+    dungeon_slug = Column(String(64), nullable=True)
     mythic_level = Column(Integer, nullable=False)
     timed = Column(Boolean, nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=False)

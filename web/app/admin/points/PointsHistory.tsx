@@ -24,6 +24,8 @@ export type HistoryTx = {
   processed_run_id: string | null;
   guild_characters: string[];
   dungeon: string | null;
+  dungeon_slug: string | null;
+  dungeon_image_url: string | null;
   mythic_level: number | null;
   timed: boolean | null;
   completed_at: string | null;
@@ -57,13 +59,22 @@ function apiDetail(data: unknown, fallback: string): string {
 }
 
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString("es-ES", {
+  return new Date(iso).toLocaleDateString("es-ES", {
     day: "numeric",
-    month: "short",
+    month: "long",
     year: "numeric",
+  });
+}
+
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("es-ES", {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function fmtWhen(iso: string) {
+  return `${fmtDate(iso)} · ${fmtTime(iso)}`;
 }
 
 function splitReason(reason: string) {
@@ -172,30 +183,52 @@ export default function PointsHistory({
 
 function RunCard({ txs, onChanged }: { txs: HistoryTx[]; onChanged: () => Promise<void> }) {
   const sample = txs[0];
-  const timed = sample.timed;
-  const title =
-    sample.dungeon && sample.mythic_level != null
-      ? `${sample.dungeon} +${sample.mythic_level}`
-      : splitReason(sample.reason).title;
+  const when = sample.completed_at ?? sample.occurred_at;
+  const title = sample.dungeon || splitReason(sample.reason).title;
 
   return (
     <article className="rounded-xl border border-gray-800 bg-gray-900 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-800">
-        <p className="text-xs uppercase tracking-wider text-gray-500">Mítica+</p>
-        <h3 className="text-base font-semibold text-white mt-1">
-          {timed === true ? "A tiempo" : timed === false ? "Fuera de tiempo" : "M+"}
-          {" — "}
-          {title}
-        </h3>
-        <p className="text-xs text-gray-500 mt-1">{fmtDate(sample.completed_at ?? sample.occurred_at)}</p>
-        {sample.guild_characters.length > 0 && (
-          <p className="text-sm text-gray-300 mt-3">
-            <span className="text-xs uppercase tracking-wider text-gray-500 block mb-1">
-              Participantes de la hermandad
-            </span>
-            {sample.guild_characters.join(", ")}
-          </p>
+      <header className="relative min-h-[13rem] isolate">
+        {sample.dungeon_image_url ? (
+          <img
+            src={sample.dungeon_image_url}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gray-800" />
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#070b14] via-[#070b14]/75 to-black/25" />
+        <div className="relative z-10 flex flex-col justify-end min-h-[13rem] p-5">
+          <p className="text-xs uppercase tracking-wider text-yellow-400/90">
+            {sample.timed === true ? "A tiempo" : sample.timed === false ? "Fuera de tiempo" : "Mítica+"}
+          </p>
+          <h3 className="text-2xl font-quest-display font-bold text-white mt-1 leading-tight">
+            {title}
+            {sample.mythic_level != null && (
+              <span className="text-yellow-400"> +{sample.mythic_level}</span>
+            )}
+          </h3>
+          <p className="text-sm text-gray-200 mt-2">
+            {fmtDate(when)}
+            <span className="text-gray-500"> · </span>
+            {fmtTime(when)}
+          </p>
+          {sample.guild_characters.length > 0 && (
+            <p className="text-sm text-gray-200 mt-3">
+              <span className="text-[11px] uppercase tracking-wider text-gray-400 block mb-0.5">
+                Participantes
+              </span>
+              {sample.guild_characters.join(", ")}
+            </p>
+          )}
+        </div>
+      </header>
+      <div className="hidden sm:grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_5.5rem_auto] gap-3 px-5 py-2 text-[11px] uppercase tracking-wider text-gray-500 border-b border-gray-800">
+        <span>Personaje</span>
+        <span>Jugador</span>
+        <span className="text-right">Puntos</span>
+        <span className="text-right">Acciones</span>
       </div>
       <ul className="divide-y divide-gray-800">
         {txs.map((tx) => (
@@ -254,56 +287,114 @@ function TxBody({
     await onChanged();
   }
 
+  const pointsClass = !tx.active
+    ? "text-gray-500 line-through"
+    : counted > 0
+      ? "text-green-400"
+      : "text-gray-400";
+
   return (
     <div className={tx.active ? "" : "opacity-60"}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-medium text-gray-100">
-            {tx.username}
-            {tx.character_name ? (
-              <span className="text-gray-400 font-normal"> · {tx.character_name}</span>
-            ) : null}
-            {!tx.active && (
-              <span className="ml-2 text-[11px] uppercase tracking-wide text-red-400">Anulada</span>
+      {compact ? (
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_5.5rem_auto] gap-2 sm:gap-3 sm:items-center">
+          <div className="min-w-0">
+            <p className="font-medium text-gray-100 truncate">
+              {tx.character_name ?? "—"}
+              {!tx.active && (
+                <span className="ml-2 text-[11px] uppercase tracking-wide text-red-400">Anulada</span>
+              )}
+            </p>
+            {tx.character_realm && (
+              <p className="text-xs text-gray-500 truncate">{tx.character_realm}</p>
             )}
-          </p>
-          {!compact && <p className="text-sm text-gray-200 mt-1">{title}</p>}
-          {detail && <p className="text-xs text-gray-400 mt-0.5">{detail}</p>}
-          <p className="text-xs text-gray-500 mt-1">
-            {category}
-            {category ? " · " : ""}
-            {BUCKET_LABEL[tx.bucket]}
-            {tx.weekly_capped ? "" : " · ajuste de admin"}
-            {" · "}
-            {fmtDate(tx.occurred_at)}
-          </p>
-          {tx.admin_note && (
-            <p className="text-xs text-amber-400/90 mt-1">Motivo admin: {tx.admin_note}</p>
-          )}
-        </div>
-        <div className="text-right shrink-0">
-          <p
-            className={`font-bold tabular-nums ${
-              !tx.active ? "text-gray-500 line-through" : counted > 0 ? "text-green-400" : "text-gray-400"
-            }`}
-          >
+          </div>
+          <p className="text-sm text-gray-300 truncate">{tx.username}</p>
+          <p className={`font-bold tabular-nums sm:text-right ${pointsClass}`}>
             {counted > 0 ? "+" : ""}
             {counted}
+            {partial && tx.active ? (
+              <span className="block text-[11px] font-normal text-gray-500">de {tx.amount}</span>
+            ) : null}
           </p>
-          {partial && tx.active && (
-            <p className="text-[11px] text-gray-500">de {tx.amount} (tope)</p>
-          )}
-          {tx.active && (
-            <button
-              type="button"
-              onClick={() => setOpen((v) => !v)}
-              className="text-xs text-gray-400 hover:text-yellow-400 mt-2"
-            >
-              {open ? "Cerrar" : "Editar"}
-            </button>
-          )}
+          <div className="flex sm:justify-end gap-2">
+            {tx.active && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setOpen((v) => !v)}
+                  className="text-xs px-2.5 py-1 rounded-lg border border-gray-700 text-gray-300 hover:border-yellow-400/50 hover:text-yellow-400"
+                >
+                  {open ? "Cerrar" : "Editar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(true)}
+                  className="text-xs px-2.5 py-1 rounded-lg border border-red-900/60 text-red-300 hover:bg-red-950/40"
+                >
+                  Anular
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-medium text-gray-100">
+              {tx.username}
+              {tx.character_name ? (
+                <span className="text-gray-400 font-normal"> · {tx.character_name}</span>
+              ) : null}
+              {!tx.active && (
+                <span className="ml-2 text-[11px] uppercase tracking-wide text-red-400">Anulada</span>
+              )}
+            </p>
+            <p className="text-sm text-gray-200 mt-1">{title}</p>
+            {detail && <p className="text-xs text-gray-400 mt-0.5">{detail}</p>}
+            <p className="text-xs text-gray-500 mt-1">
+              {category}
+              {category ? " · " : ""}
+              {BUCKET_LABEL[tx.bucket]}
+              {tx.weekly_capped ? "" : " · ajuste de admin"}
+              {" · "}
+              {fmtWhen(tx.occurred_at)}
+            </p>
+            {tx.admin_note && (
+              <p className="text-xs text-amber-400/90 mt-1">Motivo admin: {tx.admin_note}</p>
+            )}
+          </div>
+          <div className="text-right shrink-0">
+            <p className={`font-bold tabular-nums ${pointsClass}`}>
+              {counted > 0 ? "+" : ""}
+              {counted}
+            </p>
+            {partial && tx.active && (
+              <p className="text-[11px] text-gray-500">de {tx.amount} (tope)</p>
+            )}
+            {tx.active && (
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setOpen((v) => !v)}
+                  className="text-xs px-2.5 py-1 rounded-lg border border-gray-700 text-gray-300 hover:text-yellow-400"
+                >
+                  {open ? "Cerrar" : "Editar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(true)}
+                  className="text-xs px-2.5 py-1 rounded-lg border border-red-900/60 text-red-300"
+                >
+                  Anular
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {compact && tx.admin_note && (
+        <p className="text-xs text-amber-400/90 mt-2">Motivo admin: {tx.admin_note}</p>
+      )}
 
       {open && tx.active && (
         <form
