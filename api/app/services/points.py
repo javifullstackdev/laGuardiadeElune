@@ -180,6 +180,66 @@ def cap_status(db: Session, user_id, season: Season, path: UserPath, at: datetim
     }
 
 
+def apply_user_delta(db: Session, user_id, delta: int) -> None:
+    if not delta:
+        return
+    db.query(User).filter(User.id == user_id).update(
+        {User.total_points: User.total_points + delta},
+        synchronize_session="fetch",
+    )
+
+
+def _season_of(db: Session, tx: PointTransaction) -> Season | None:
+    if not tx.season_id:
+        return None
+    return db.query(Season).filter(Season.id == tx.season_id).first()
+
+
+def void_transaction(db: Session, tx: PointTransaction, note: str) -> PointTransaction:
+    """Anula una asignación. El tope de esa semana se recalcula; hace falta un motivo."""
+    note = note.strip()
+    if not note:
+        raise ValueError("Indica el motivo de la anulación")
+    if not tx.active:
+        raise ValueError("Esta asignación ya está anulada")
+    gained = effective_amount(tx)
+    tx.active = False
+    tx.admin_note = note
+    apply_user_delta(db, tx.user_id, -gained)
+    season = _season_of(db, tx)
+    if tx.weekly_capped and season:
+        recalculate_season(db, tx.user_id, season)
+    db.flush()
+    return tx
+
+
+def update_transaction_amount(db: Session, tx: PointTransaction, amount: int, note: str) -> PointTransaction:
+    """Cambia los puntos de una asignación activa. El motivo queda en admin_note."""
+    note = note.strip()
+    if not note:
+        raise ValueError("Indica el motivo del cambio")
+    if not tx.active:
+        raise ValueError("No se puede editar una asignación anulada")
+    if amount == tx.amount:
+        tx.admin_note = note
+        db.flush()
+        return tx
+    if tx.weekly_capped:
+        if amount <= 0:
+            raise ValueError("La cantidad debe ser mayor que 0")
+        tx.amount = amount
+        tx.admin_note = note
+        season = _season_of(db, tx)
+        if season:
+            recalculate_season(db, tx.user_id, season)
+    else:
+        apply_user_delta(db, tx.user_id, amount - tx.amount)
+        tx.amount = amount
+        tx.admin_note = note
+    db.flush()
+    return tx
+
+
 def season_points(db: Session, season: Season, user_ids=None) -> dict:
     """Puntos que cuentan en la temporada, por usuario (incluye los ajustes de admin)."""
     when = func.coalesce(PointTransaction.occurred_at, PointTransaction.created_at)

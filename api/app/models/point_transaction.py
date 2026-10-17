@@ -32,3 +32,5 @@ class PointTransaction(Base):
     processed_run_id = Column(
         UUID(as_uuid=True), ForeignKey("processed_runs.id", ondelete="SET NULL"), nullable=True
     )
+    # Motivo del último ajuste o anulación de un admin
+    admin_note = Column(Text, nullable=True)
