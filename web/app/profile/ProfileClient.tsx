@@ -134,7 +134,7 @@ type CharPatch = Partial<Pick<Character,
   "avatar_url" | "face_display_url" | "custom_avatar_url" | "pending_avatar_url" |
   "custom_face_url" | "pending_face_url" |
   "bio_status" | "published_story_id" | "public_fields" |
-  "bio_answers" | "bio_answers_pending" | "bio_rejection_reason"
+  "bio_answers" | "bio_answers_pending" | "bio_rejection_reason" | "is_verified"
 >>;
 
 // ── Componente principal ───────────────────────────────────────────────────
@@ -1124,6 +1124,31 @@ function DetailsTab({
     setError(null);
   }, [char.name, char.realm]);
 
+  const [verifying, setVerifying] = useState(false);
+  const [verifyMessage, setVerifyMessage] = useState<string | null>(null);
+
+  async function handleVerify() {
+    setVerifying(true);
+    setVerifyMessage(null);
+    try {
+      const res = await fetch("/api/characters/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: char.name, realm: char.realm }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setVerifyMessage(data.detail ?? data.error ?? "No se pudo verificar el personaje.");
+        return;
+      }
+      onDetailsPatch({ is_verified: true });
+    } catch {
+      setVerifyMessage("No se pudo contactar con el servidor.");
+    } finally {
+      setVerifying(false);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     setError(null);
@@ -1189,7 +1214,18 @@ function DetailsTab({
             {isPending ? "..." : "Establecer como main"}
           </button>
         )}
+        {char.game === "retail" && !char.is_verified && (
+          <button
+            type="button"
+            onClick={handleVerify}
+            disabled={verifying}
+            className="px-2.5 py-0.5 rounded-full bg-gray-800 hover:bg-gray-700 text-blue-400 text-xs border border-gray-700 transition-colors disabled:opacity-50"
+          >
+            {verifying ? "Verificando..." : "Verificar con Battle.net"}
+          </button>
+        )}
       </div>
+      {verifyMessage && <p className="text-sm text-gray-400">{verifyMessage}</p>}
 
       <div className="space-y-3">
         <CharacterImageSlot
@@ -1313,6 +1349,11 @@ function TitlesTab({
           </button>
           {syncMessage && <p className="text-sm text-gray-400">{syncMessage}</p>}
         </div>
+      )}
+      {char.game === "retail" && !char.is_verified && (
+        <p className="text-sm text-gray-400">
+          Verifica este personaje en la pestaña Datos para sincronizar sus títulos con el juego.
+        </p>
       )}
       <section className="space-y-3">
         <div>

@@ -227,6 +227,40 @@ async def sync_character_titles(
     return {"granted": granted}
 
 
+@router.post("/{name}/{realm}/verify")
+async def verify_character(
+    name: str, realm: str,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Comprueba en el roster de Battle.net que el personaje es del usuario y lo marca como verificado."""
+    char = _get_own_character(name, realm, current_user, db)
+    if char.game != "retail":
+        raise HTTPException(400, "Solo los personajes Retail se verifican con Battle.net")
+    if char.is_verified:
+        return {"is_verified": True}
+    if not _has_valid_blizzard_token(current_user):
+        raise HTTPException(
+            409, "Tu sesión de Battle.net ha caducado. Vuelve a vincular tu cuenta para verificar el personaje."
+        )
+
+    async with httpx.AsyncClient() as client:
+        checked, entry = await _find_in_user_roster(
+            client, current_user.blizzard_access_token, char.name, char.realm
+        )
+    if not checked:
+        raise HTTPException(502, "No se ha podido consultar Battle.net. Inténtalo de nuevo en unos minutos.")
+    if entry is None:
+        raise HTTPException(403, "Este personaje no pertenece a tu cuenta de Battle.net")
+
+    char.is_verified = True
+    char.blizzard_character_id = entry["id"]
+    db.commit()
+    background_tasks.add_task(title_sync.sync_character_in_background, char.id)
+    return {"is_verified": True}
+
+
 @router.patch("/{name}/{realm}/favorite-title", response_model=CharacterResponse)
 def set_favorite_title(
     name: str, realm: str,
@@ -710,6 +744,17 @@ def _is_low_quality_render(url: str | None) -> bool:
     if not url:
         return True
     return url.rstrip("/").endswith("-avatar.jpg")
+
+
+def _has_valid_blizzard_token(user: User) -> bool:
+    if not user.blizzard_access_token:
+        return False
+    expires = user.blizzard_token_expires_at
+    if expires is None:
+        return True
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    return expires > datetime.now(timezone.utc)
 
 
 async def _find_in_user_roster(
