@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { classLabel, realmLabel } from "@/lib/wow";
+import NewTitleForm from "./NewTitleForm";
 
 import { apiUrl } from "@/lib/api";
 const SOURCE_OPTIONS = [
@@ -30,6 +31,7 @@ type TitleWithHolders = {
   source: string;
   slot?: string;
   description: string | null;
+  blizzard_title_id?: number | null;
   holders: CharacterBrief[];
 };
 
@@ -84,52 +86,7 @@ export default async function AdminTitlesPage({
         {/* Formulario de creación */}
         <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 mb-10">
           <h2 className="text-lg font-semibold mb-5">Nuevo título</h2>
-          <form action="/api/admin/titles" method="POST" className="space-y-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Nombre del título *</label>
-              <input
-                name="name"
-                placeholder='p.ej. "Líder de la Guardia" o "Comandante"'
-                required
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Posición</label>
-              <select
-                name="slot"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
-              >
-                <option value="title">Título (debajo del nombre)</option>
-                <option value="prefix">Antetítulo (delante del nombre)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Origen</label>
-              <select
-                name="source"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
-              >
-                {SOURCE_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Descripción</label>
-              <input
-                name="description"
-                placeholder="Descripción breve del título (opcional)"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500"
-              />
-            </div>
-            <button
-              type="submit"
-              className="bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-5 py-2 rounded-lg text-sm transition-colors"
-            >
-              Crear título
-            </button>
-          </form>
+          <NewTitleForm sourceOptions={SOURCE_OPTIONS} />
         </section>
 
         {/* Formulario de asignación */}
@@ -214,6 +171,11 @@ export default async function AdminTitlesPage({
                           >
                             {SOURCE_OPTIONS.find((s) => s.value === title.source)?.label ?? title.source}
                           </span>
+                          {title.blizzard_title_id != null && (
+                            <span className="text-xs px-2 py-0.5 rounded-full border font-medium bg-sky-500/15 text-sky-300 border-sky-500/30">
+                              Blizzard #{title.blizzard_title_id}
+                            </span>
+                          )}
                         </div>
                         {title.description && (
                           <p className="text-sm text-gray-400">{title.description}</p>

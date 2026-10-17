@@ -9,7 +9,7 @@ import uuid as _uuid
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sa_func
 
@@ -30,6 +30,7 @@ from app.schemas.character import (
     CharacterBioUpdate, RelationCreate, RelationOut, RelationCharacterOut,
     AchievementOut, merge_public_fields,
 )
+from app.services import blizzard, title_sync
 from app.services.bio_questions import answers_complete, normalize_answers
 from app.urls import static_url
 
@@ -209,6 +210,23 @@ def get_character_titles(
     )
 
 
+@router.post("/{name}/{realm}/sync-titles")
+async def sync_character_titles(
+    name: str, realm: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Importa los títulos del catálogo que el personaje ya tiene desbloqueados en el juego."""
+    char = _get_own_character(name, realm, current_user, db)
+    if char.game != "retail":
+        raise HTTPException(400, "Solo los personajes Retail tienen títulos en el juego")
+    try:
+        granted = await title_sync.sync_character(db, char)
+    except blizzard.BlizzardError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    return {"granted": granted}
+
+
 @router.patch("/{name}/{realm}/favorite-title", response_model=CharacterResponse)
 def set_favorite_title(
     name: str, realm: str,
@@ -226,8 +244,10 @@ def set_favorite_title(
         ).first()
         if not has_title:
             raise HTTPException(400, "Este personaje no tiene ese título")
-        title = db.query(Title).filter(Title.id == data.title_id).first()
-        if not title or title.slot == "prefix":
+        title = db.query(Title).filter(Title.id == data.title_id, Title.is_active == True).first()
+        if not title:
+            raise HTTPException(400, "Ese título no está disponible")
+        if title.slot == "prefix":
             raise HTTPException(400, "Ese es un antetítulo; elígelo en Antetítulos")
         char.favorite_title_id = data.title_id
 
@@ -548,6 +568,7 @@ def delete_relation(
 @router.post("/add", response_model=CharacterResponse, status_code=201)
 async def add_character(
     data: CharacterAddInput,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -583,8 +604,19 @@ async def add_character(
     # Obtener render + cara del Character Media API si es Retail y hay token
     render_url = None
     face_url = None
+    is_verified = data.game != "retail"
+    blizzard_character_id = data.blizzard_character_id
     if data.game == "retail" and current_user.blizzard_access_token:
         async with httpx.AsyncClient() as client:
+            roster_checked, roster_entry = await _find_in_user_roster(
+                client, current_user.blizzard_access_token, data.name, data.realm
+            )
+            if roster_checked and roster_entry is None:
+                raise HTTPException(403, "Este personaje no pertenece a tu cuenta de Battle.net")
+            if roster_entry is not None:
+                is_verified = True
+                blizzard_character_id = roster_entry["id"]
+
             media = await _fetch_character_media(
                 client, data.name, data.realm, current_user.blizzard_access_token
             )
@@ -597,7 +629,7 @@ async def add_character(
         name=data.name,
         realm=data.realm,
         surname=data.surname or None,
-        blizzard_character_id=data.blizzard_character_id,
+        blizzard_character_id=blizzard_character_id,
         render_url=render_url,
         face_url=face_url,
         wow_class=wow_class,
@@ -607,11 +639,14 @@ async def add_character(
         gender=data.gender,
         is_main=data.is_main,
         is_alt=not data.is_main,
-        is_verified=True,
+        is_verified=is_verified,
     )
     db.add(char)
     db.commit()
     db.refresh(char)
+
+    if char.game == "retail":
+        background_tasks.add_task(title_sync.sync_character_in_background, char.id)
     return char
 
 
@@ -675,6 +710,36 @@ def _is_low_quality_render(url: str | None) -> bool:
     if not url:
         return True
     return url.rstrip("/").endswith("-avatar.jpg")
+
+
+async def _find_in_user_roster(
+    client: httpx.AsyncClient,
+    access_token: str,
+    name: str,
+    realm: str,
+) -> tuple[bool, dict | None]:
+    """
+    Busca el personaje en la cuenta de Battle.net del usuario.
+    Devuelve (comprobado, entrada); comprobado=False si Blizzard no pudo responder.
+    """
+    try:
+        res = await client.get(
+            f"https://{BLIZZARD_REGION}.api.blizzard.com/profile/user/wow",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"namespace": f"profile-{BLIZZARD_REGION}", "locale": "es_ES"},
+            timeout=8.0,
+        )
+    except httpx.HTTPError:
+        return False, None
+    if res.status_code != 200:
+        return False, None
+
+    wanted = (name.lower(), blizzard.realm_slug(realm))
+    for account in res.json().get("wow_accounts", []):
+        for char in account.get("characters", []):
+            if (char["name"].lower(), char["realm"]["slug"].lower()) == wanted:
+                return True, char
+    return True, None
 
 
 async def _fetch_character_media(

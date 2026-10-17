@@ -4,7 +4,7 @@ Gestión del catálogo de títulos y asignación a personajes (solo admin/office
 """
 
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -17,6 +17,7 @@ from app.models.title import Title
 from app.models.character import Character
 from app.models.character_title import CharacterTitle
 from app.schemas.character import TitleOut
+from app.services import blizzard, title_sync
 
 router = APIRouter(prefix="/titles", tags=["titles"])
 
@@ -28,6 +29,11 @@ class TitleCreateInput(BaseModel):
     source: str = "custom"
     slot: str = "title"
     description: Optional[str] = None
+    blizzard_title_id: Optional[int] = None
+
+
+class BlizzardLinkInput(BaseModel):
+    blizzard_title_id: Optional[int] = None
 
 
 class AwardTitleInput(BaseModel):
@@ -37,7 +43,17 @@ class AwardTitleInput(BaseModel):
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-# _require_admin eliminado: se usa require_admin de app.dependencies en su lugar
+
+def _ensure_blizzard_id_free(
+    db: Session, blizzard_title_id: int, exclude_title_id: Optional[UUID] = None
+) -> None:
+    query = db.query(Title.id).filter(Title.blizzard_title_id == blizzard_title_id)
+    if exclude_title_id is not None:
+        query = query.filter(Title.id != exclude_title_id)
+    if query.first():
+        raise HTTPException(
+            status_code=400, detail="Ese título de Blizzard ya está en el catálogo"
+        )
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -89,6 +105,7 @@ def list_titles_admin(
             source=title.source,
             slot=getattr(title, "slot", None) or "title",
             description=title.description,
+            blizzard_title_id=title.blizzard_title_id,
             holders=[
                 CharacterBrief(
                     name=h.name,
@@ -104,10 +121,13 @@ def list_titles_admin(
 @router.post("/", response_model=TitleOut, status_code=201)
 def create_title(
     data: TitleCreateInput,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
     """Crea un nuevo título en el catálogo. Solo admin/officer."""
+    if data.blizzard_title_id is not None:
+        _ensure_blizzard_id_free(db, data.blizzard_title_id)
 
     slot = data.slot if data.slot in ("title", "prefix") else "title"
     existing = db.query(Title).filter(Title.name == data.name, Title.slot == slot).first()
@@ -120,10 +140,42 @@ def create_title(
         source=data.source,
         slot=slot,
         description=data.description,
+        blizzard_title_id=data.blizzard_title_id,
     )
     db.add(title)
     db.commit()
     db.refresh(title)
+
+    if title.blizzard_title_id is not None:
+        background_tasks.add_task(title_sync.sync_all_characters)
+    return title
+
+
+@router.patch("/{title_id}/blizzard-link", response_model=TitleOut)
+def link_blizzard_title(
+    title_id: UUID,
+    data: BlizzardLinkInput,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """
+    Enlaza un título existente con uno de Blizzard, o lo desenlaza con null.
+    Al desenlazar, los personajes conservan el título: pasa a ser solo de la web.
+    """
+    title = db.query(Title).filter(Title.id == title_id).first()
+    if not title:
+        raise HTTPException(status_code=404, detail="Título no encontrado")
+
+    if data.blizzard_title_id is not None:
+        _ensure_blizzard_id_free(db, data.blizzard_title_id, exclude_title_id=title.id)
+
+    title.blizzard_title_id = data.blizzard_title_id
+    db.commit()
+    db.refresh(title)
+
+    if title.blizzard_title_id is not None:
+        background_tasks.add_task(title_sync.sync_all_characters)
     return title
 
 
@@ -220,3 +272,63 @@ def revoke_title(
 
     db.delete(ct)
     db.commit()
+
+
+# ── Selector de títulos de Blizzard ──────────────────────────────────────────
+
+class BlizzardTitleHit(BaseModel):
+    id: int
+    name: str
+    already_linked: bool
+
+
+class BlizzardTitleDetail(BaseModel):
+    id: int
+    name: str
+    template: str
+    slot: str
+    source_type: Optional[str] = None
+    achievements: list[str] = []
+    already_linked: bool
+
+
+def _linked_blizzard_ids(db: Session, ids: list[int]) -> set[int]:
+    if not ids:
+        return set()
+    rows = db.query(Title.blizzard_title_id).filter(Title.blizzard_title_id.in_(ids)).all()
+    return {row[0] for row in rows}
+
+
+@router.get("/blizzard-index", response_model=list[BlizzardTitleHit])
+async def search_blizzard_titles(
+    q: str = Query(..., min_length=2),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Busca en el índice de títulos de Blizzard. Solo admin/officer."""
+    try:
+        hits = await blizzard.search_titles(q)
+    except blizzard.BlizzardError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    linked = _linked_blizzard_ids(db, [h["id"] for h in hits])
+    return [BlizzardTitleHit(**h, already_linked=h["id"] in linked) for h in hits]
+
+
+@router.get("/blizzard-index/{blizzard_title_id}", response_model=BlizzardTitleDetail)
+async def get_blizzard_title(
+    blizzard_title_id: int,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Detalle de un título de Blizzard con el slot deducido de su plantilla."""
+    try:
+        detail = await blizzard.get_title(blizzard_title_id)
+    except blizzard.BlizzardError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Ese título no existe en Blizzard")
+
+    linked = _linked_blizzard_ids(db, [blizzard_title_id])
+    return BlizzardTitleDetail(**detail, already_linked=blizzard_title_id in linked)
+

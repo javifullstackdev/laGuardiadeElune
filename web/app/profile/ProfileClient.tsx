@@ -1265,8 +1265,55 @@ function TitlesTab({
   onFavoritePrefixChange: (t: TitleData | null) => void;
 }) {
   const { maxDisplayedTitles } = getEntitlements();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const canSync = char.game === "retail" && char.is_verified;
+
+  async function handleSync() {
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const res = await fetch("/api/characters/sync-titles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: char.name, realm: char.realm }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSyncMessage(data.detail ?? data.error ?? "No se pudo sincronizar con el juego.");
+        return;
+      }
+      if (data.granted > 0) {
+        setSyncMessage(
+          data.granted === 1 ? "Se ha añadido 1 título." : `Se han añadido ${data.granted} títulos.`
+        );
+        setRefreshKey((k) => k + 1);
+      } else {
+        setSyncMessage("No hay títulos nuevos del juego para añadir.");
+      }
+    } catch {
+      setSyncMessage("No se pudo contactar con el servidor.");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
+      {canSync && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            type="button"
+            onClick={handleSync}
+            disabled={syncing}
+            className="text-sm px-3 py-1.5 rounded-lg border border-gray-700 text-gray-300 hover:text-yellow-400 hover:border-yellow-500/40 transition-colors disabled:opacity-50"
+          >
+            {syncing ? "Sincronizando..." : "Sincronizar con el juego"}
+          </button>
+          {syncMessage && <p className="text-sm text-gray-400">{syncMessage}</p>}
+        </div>
+      )}
       <section className="space-y-3">
         <div>
           <h2 className="text-xs text-gray-500 uppercase tracking-wider">Antetítulos</h2>
@@ -1280,6 +1327,7 @@ function TitlesTab({
           favorite={char.favorite_prefix ?? null}
           emptyLabel="Este personaje aún no tiene antetítulos."
           onFavoriteChange={onFavoritePrefixChange}
+          refreshKey={refreshKey}
         />
       </section>
       <section className="space-y-3">
@@ -1298,6 +1346,7 @@ function TitlesTab({
           favorite={char.favorite_title}
           emptyLabel="Este personaje aún no tiene títulos."
           onFavoriteChange={onFavoriteTitleChange}
+          refreshKey={refreshKey}
         />
       </section>
     </div>
@@ -1551,13 +1600,14 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
 // ── Sección títulos ───────────────────────────────────────────────────────
 
 function CharacterTitlesSection({
-  char, slot, favorite, emptyLabel, onFavoriteChange,
+  char, slot, favorite, emptyLabel, onFavoriteChange, refreshKey = 0,
 }: {
   char: Character;
   slot: "title" | "prefix";
   favorite: TitleData | null;
   emptyLabel: string;
   onFavoriteChange: (t: TitleData | null) => void;
+  refreshKey?: number;
 }) {
   const [titles, setTitles] = useState<TitleData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1578,7 +1628,7 @@ function CharacterTitlesSection({
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [char.name, char.realm, slot]);
+  }, [char.name, char.realm, slot, refreshKey]);
 
   async function handleSetFavorite(title: TitleData | null) {
     setSaving(true);
