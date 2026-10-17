@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { apiUrl } from "@/lib/api";
 import { absoluteUrl } from "@/lib/site-url";
-/** POST /api/admin/titles/award â€” otorga un tÃ­tulo a un personaje */
+/** POST /api/admin/titles/award — otorga un título a un personaje */
 export async function POST(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   if (!token) return NextResponse.redirect(absoluteUrl("/", request));
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   const redirect = absoluteUrl("/admin/titles", request);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    redirect.searchParams.set("error", err.detail ?? "Error al otorgar el tÃ­tulo");
+    redirect.searchParams.set("error", err.detail ?? "Error al otorgar el título");
   }
 
   return NextResponse.redirect(redirect);
