@@ -67,6 +67,13 @@ const SECTIONS = [
     color:       "border-rose-500/40 hover:border-rose-400",
     badge:       "bg-rose-500/20 text-rose-300",
   },
+  {
+    href:        "/admin/points",
+    title:       "Puntos",
+    description: "Forzar ahora la revisión de míticas+ (Raider.io) en lugar de esperar al job de 6 h.",
+    color:       "border-emerald-500/40 hover:border-emerald-400",
+    badge:       "bg-emerald-500/20 text-emerald-300",
+  },
 ];
 
 export default async function AdminPage() {
