@@ -45,7 +45,7 @@ const STATS: { key: StatKey; label: string }[] = [
   { key: "transactions", label: "Puntos otorgados" },
 ];
 
-export default function SyncMythicButton() {
+export default function SyncMythicButton({ onSynced }: { onSynced?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<Report | null>(null);
@@ -62,6 +62,7 @@ export default function SyncMythicButton() {
         return;
       }
       setReport(data as Report);
+      onSynced?.();
     } catch {
       setReport(null);
       setError("No se pudo contactar con la API");
