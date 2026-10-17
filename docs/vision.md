@@ -44,6 +44,7 @@ Ejemplo: "El mejor pollo de todos" solo lo puede tener un Druida; el título aso
 ## 7. Títulos: ¿a nivel de cuenta o de personaje?
 Los títulos son a nivel de personaje. El jugador elige **uno** para mostrar (`favorite_title`) debajo del nombre en perfil y ficha.
 El **antetítulo** (`favorite_prefix`, p. ej. «Comandante») también se desbloquea por logros y se otorga como un título con `slot=prefix`. El jugador elige cuál mostrar delante del nombre. Ya no se edita a mano en Datos. Visibilidad pública: `public_fields.prefix` / `public_fields.title`.
+Los títulos pueden **enlazarse con el juego**: el admin elige en `/admin/titles` el título de Blizzard (`blizzard_title_id`) y la web concede automáticamente a cada personaje Retail verificado los que ya tiene desbloqueados. Los títulos sin enlace (rango de hermandad, logros del servidor) solo se otorgan a mano. Ver «Títulos del juego».
 ## 7b. Ficha vs historias
 La **ficha pública** (biografía, personalidad, aspecto) la escribe el jugador en Bio; puede abrir **Vista previa** (misma UI que `/personajes/...`). Al pulsar Publicar, el Eremita la revisa (`bio_answers_pending`). Edad, origen, residencia y qué campos se ven se editan en Datos, sin pasar por el Eremita.
 Las **historias** las escribe el jugador y el Eremita las revisa; no sustituyen la ficha. En la ficha pública **no** se lista Relatos: el relato vive en `/lore/[id]`. Publicada, no hay Eliminar en la web pública: solo staff desde `/admin/stories`.
@@ -78,6 +79,7 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - Por votación: premios creativos. Nominaciones a través de la web.
 ## 13. Alta de personajes
 - **Web:** importar desde Battle.net (lista real de la cuenta). Retail o Forever (apellido obligatorio en Forever).
+- **Verificación (Retail):** un personaje solo queda `is_verified` si aparece en el roster de Battle.net de su dueño (`/profile/user/wow`). Si el dueño tiene token y el personaje no está en su roster, el alta se rechaza (403). Sin token, o con Blizzard caído, entra sin verificar y se puede verificar después desde Datos. Forever no se verifica. El servidor nunca se fía del cliente: el flag solo cambia si Blizzard lo confirma.
 - **Discord `/registrar_personaje`:** solo admin. En Retail consulta la armería (EU) antes de guardar; si no existe, no se crea. Forever no pasa por la armería.
 - Grado de relación: Ocasional / Cercana / Estrecha según historias en común confirmadas; badge Recíproca si ambos se relacionan con el mismo tipo.
 # 4. Entidades
@@ -85,7 +87,7 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 - character: personaje WoW del jugador (Retail o Forever)
 - achievement: catálogo de logros (`account_wide` / `character_specific`)
 - user achievement: logro ganado por un jugador (opcionalmente ligado a un personaje)
-- title / character title: catálogo y títulos ganados por personaje
+- title / character title: catálogo y títulos ganados por personaje (`blizzard_title_id` opcional enlaza un título con el del juego)
 - character relation: relación narrativa (tipo, dirección)
 - relation claim: mención en historia pendiente de confirmar
 - character story: relato del jugador revisado por el Eremita
@@ -120,13 +122,13 @@ Criterio de balance: un evento de campaña bien ejecutado debe equipararse en pu
 
 Ramas, archivos y commits en inglés: [conventions.md](conventions.md).
 
-## Base de datos — tablas activas (~28 migraciones Alembic)
+## Base de datos — tablas activas (37 migraciones Alembic)
 
 | Tabla | Descripción |
 |---|---|
 | `users` | Jugadores: Discord OAuth, Blizzard OAuth, rol, path, puntos, birthday |
 | `characters` | Personajes: Retail/Forever, ficha, cuestionario, avatares, render Blizzard |
-| `titles` | Catálogo de títulos y antetítulos (`slot`: `title` debajo del nombre, `prefix` delante) |
+| `titles` | Catálogo de títulos y antetítulos (`slot`: `title` debajo del nombre, `prefix` delante); `blizzard_title_id` único (NULL = título solo web) |
 | `character_titles` | Junction: qué personaje tiene qué título |
 | `character_relations` | Relaciones narrativas (ally, rival, family, …) |
 | `relation_claims` | Menciones en historias pendientes de confirmar |
@@ -177,7 +179,7 @@ Ramas, archivos y commits en inglés: [conventions.md](conventions.md).
 - CRUD completo de posts protegido (`POST`, `PATCH`, `DELETE /posts/{id}`)
 - Panel `/admin` — hub: Posts, Títulos, Jugadores, Avatares, Bios, Historias, Carrusel
 - Panel `/admin/posts` — formulario de creación, edición inline y borrado
-- Panel `/admin/titles` — crear títulos o antetítulos (`slot`) y otorgar/revocar a personajes
+- Panel `/admin/titles` — crear títulos o antetítulos (`slot`) y otorgar/revocar a personajes; buscador de títulos de Blizzard que rellena el formulario y enlaza el título
 - Panel `/admin/players` — gestión de jugadores (tabla con roles y datos)
 - Panel `/admin/avatars` — revisión y aprobación de avatares pendientes
 - Navbar con botón Admin visible solo para admin/officer
@@ -201,20 +203,37 @@ Ramas, archivos y commits en inglés: [conventions.md](conventions.md).
 - Detección de token Blizzard caducado con aviso en perfil
 - Profesiones en tiempo real: `GET /characters/{name}/{realm}/professions` llama a la Profile API de Blizzard (`primaries` + `secondaries`, skill por expansión, recetas)
 - El tab Profesiones maneja Forever, token ausente, token caducado, vacío y datos normales
+- Verificación de propiedad (2026-10-17): `POST /characters/add` cruza el personaje con el roster de Battle.net antes de marcarlo verificado (ver regla 13). Antes cualquier nombre/reino quedaba verificado sin comprobar
+- `POST /characters/{name}/{realm}/verify` + botón «Verificar con Battle.net» en Datos: repite la comprobación para personajes sin verificar. 409 si la sesión de Battle.net ha caducado, 403 si no es suyo, 502 si Blizzard no responde
+- `api/scripts/reverify_characters.py` (puntual): clasifica los Retail verificados en confirmados / ajenos / sin comprobar. Solo informa; `--apply` desverifica los ajenos y `--unverify-unchecked` también los sin comprobar. Primer informe: 3 confirmados, 0 ajenos, 15 sin comprobar (sus dueños deben reiniciar sesión con Battle.net)
 
 ## Perfil de personaje — pestañas (2026-09-27) ✅
 Orden: **Bio · Datos · Puntos · Logros · Títulos · Historias · Relaciones · Profesiones**
 
 - Cabecera: antetítulo (delante), nombre, título (debajo), render/avatar, raza/clase/facción (género Blizzard en las etiquetas)
 - **Bio:** el jugador escribe biografía (y puede guardar/publicar). **Vista previa** abre la ficha pública (`FichaPreview`). Si el Eremita tiene la ficha en revisión, el texto queda bloqueado. Los datos de identidad viven en Datos.
-- **Datos:** identidad de juego (solo lectura) + apellido, origen, residencia, edad lore + checkboxes `public_fields` (qué se ve en la wiki). Se guarda sin el Eremita.
+- **Datos:** identidad de juego (solo lectura) + apellido, origen, residencia, edad lore + checkboxes `public_fields` (qué se ve en la wiki). Se guarda sin el Eremita. En Retail sin verificar, botón **Verificar con Battle.net**.
 - **Puntos:** total de cuenta + historial completo de transacciones (`GET /users/me/transactions?limit=200`)
 - **Logros:** `GET /characters/{name}/{realm}/achievements` — de cuenta (todos los toons) y de este personaje
-- **Títulos:** antetítulos (`slot=prefix`, delante del nombre) y títulos (`slot=title`, debajo). **Usar** / **Quitar** el favorito de cada tipo. De momento un título visible.
+- **Títulos:** antetítulos (`slot=prefix`, delante del nombre) y títulos (`slot=title`, debajo). **Usar** / **Quitar** el favorito de cada tipo. De momento un título visible. En Retail verificado, botón **Sincronizar con el juego** (importa los títulos del catálogo que el personaje ya tiene en Blizzard).
 - **Historias:** escribir y enviar al Eremita + resumen (título, extracto, fecha, estado)
 - **Relaciones:** tipo, grado (Ocasional / Cercana / Estrecha), Recíproca; inbox de menciones
 - **Profesiones:** Profile API de Blizzard (Retail); Forever / sin token / caducado / vacío
 - Premium previsto (no activo): más títulos visibles, bio más larga, más historias — `web/lib/entitlements.ts`
+
+## Títulos del juego — sincronización con Blizzard (2026-10-17) ✅
+Objetivo: que un personaje reciba en la web los títulos y antetítulos que ya desbloqueó en el juego, sin que el admin los otorgue uno a uno.
+
+- **Catálogo propio:** el admin decide qué títulos existen. La web no importa todo el listado de Blizzard, solo comprueba si el personaje tiene los que están en el catálogo y enlazados (`titles.blizzard_title_id`, único; NULL = título solo web).
+- **Fuentes (Blizzard):** Game Data `/data/wow/title/index` y `/data/wow/title/{id}` (`static-eu`, token de client credentials cacheado) y Profile `/profile/wow/character/{realm}/{name}/titles` (`profile-eu`).
+- **Antetítulo o título:** se deduce de la plantilla del nombre (`{name}`): texto antes del marcador = antetítulo (`prefix`); marcador primero = título (`title`). Ej.: «Llamaestrellas {name}».
+- **Selector en el admin:** buscador sin tildes (mínimo 2 letras, 300 ms de debounce). Al elegir un resultado se rellenan nombre, slot, origen (logro si el detalle trae logros) y descripción, y el título queda enlazado.
+- **Sincronización:** intersección entre los títulos del juego y el catálogo activo, menos los que ya tiene. Solo inserta (nunca retira), es idempotente por la restricción única y solo cubre personajes Retail verificados.
+- **Cuándo corre:** al crear o enlazar un título (todos los personajes, en segundo plano), al añadir un personaje Retail y con el botón manual. Peticiones a Blizzard en paralelo (máx. 5), escrituras a BD en secuencia; cada tarea en segundo plano abre su propia sesión.
+- **El título activo en el juego se ignora.** En la web cada personaje elige un antetítulo y un título favoritos; los títulos de rango y de logros del servidor son solo web.
+- **Endpoints:** `GET /titles/blizzard-index?q=`, `GET /titles/blizzard-index/{id}`, `PATCH /titles/{id}/blizzard-link`, `POST /characters/{name}/{realm}/sync-titles`. Los 502 indican fallo de Blizzard.
+- **Código:** `api/app/services/blizzard.py` (cliente con reintentos, 429 con Retry-After, refresco de token, índice cacheado 24 h) y `api/app/services/title_sync.py`. Migración `c3e8a1d5f7b2`.
+- **Pendiente:** job periódico (cada 6 h) que llame a `sync_all_characters`; hoy la sincronización masiva solo se dispara al crear o enlazar títulos.
 
 ## Lore público — ficha e historias (2026-09-28) ✅
 - Ficha en `/personajes/[realm]/[name]`: pergamino de misión (`Parchment.tsx` + `web/public/parchment/frame.png`); vista extraída en `WikiCharacterView.tsx`
@@ -281,5 +300,11 @@ Orden: **Bio · Datos · Puntos · Logros · Títulos · Historias · Relaciones
 - Pendiente: dictamen jurídico profesional si se quiere formalizar
 
 ## Próxima sesión — por dónde seguir
-1. Bubu `--profile bot` o Fase 5 auto-sync M+
+1. Job periódico (cada 6 h) que llame a `sync_all_characters` para que los títulos nuevos del juego lleguen sin pulsar el botón.
+2. Bubu `--profile bot` o Fase 5 auto-sync M+.
+3. Dashboard de visitas (aparcado, ver abajo).
+
 Housing en ficha: aparcado (regla 7d) hasta que Blizzard reactive la House API.
+
+## Mejora a futuro — dashboard de visitas (aparcado)
+Sección de admin para ver visitas, origen geográfico (país y región) y canal de entrada (WhatsApp, web, X…). Decisión tomada: analítica propia, no un servicio externo. Pregunta abierta: identificar al visitante recurrente con un hash diario (sin cookie, sin banner) o con cookie de consentimiento (mide el retorno, pero obliga a banner y a actualizar `/cookies`).
