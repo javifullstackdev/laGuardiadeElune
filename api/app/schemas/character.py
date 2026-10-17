@@ -36,6 +36,7 @@ class TitleOut(BaseModel):
     source: str
     slot: str = "title"
     description: Optional[str] = None
+    blizzard_title_id: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
