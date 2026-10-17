@@ -2,6 +2,17 @@
 
 import { useState } from "react";
 
+type ScoredRun = {
+  dungeon: string;
+  level: number;
+  timed: boolean;
+  guild_characters: string[];
+  guild_count: number;
+  party_size: number;
+  scored: boolean;
+  reason: string;
+};
+
 type Report = {
   season: string | null;
   characters: number;
@@ -10,6 +21,7 @@ type Report = {
   runs_scored: number;
   transactions: number;
   errors: string[];
+  runs?: ScoredRun[];
 };
 
 function apiDetail(data: unknown, fallback: string): string {
@@ -92,11 +104,32 @@ export default function SyncMythicButton() {
               </div>
             ))}
           </dl>
-          {report.runs_new === 0 && (
+          {report.runs_new === 0 && (report.runs?.length ?? 0) === 0 && (
             <p className="text-sm text-gray-400">
               No hay partidas nuevas desde el inicio de puntos. Raider.io suele tardar horas en
               publicar las keys, y solo se miran personajes Retail verificados.
             </p>
+          )}
+          {(report.runs?.length ?? 0) > 0 && (
+            <ul className="space-y-2">
+              {report.runs!.map((run) => (
+                <li
+                  key={`${run.dungeon}-${run.level}-${run.reason}`}
+                  className="rounded-lg bg-gray-800/70 border border-gray-700 px-3 py-2 text-sm"
+                >
+                  <p className="text-gray-200">
+                    {run.dungeon} +{run.level} {run.timed ? "a tiempo" : "fuera de tiempo"}
+                    {run.scored ? "" : " · no puntúa"}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {run.guild_characters.length > 0
+                      ? run.guild_characters.join(", ")
+                      : "Nadie del roster"}{" "}
+                    ({run.guild_count}/{run.party_size} de la hermandad)
+                  </p>
+                </li>
+              ))}
+            </ul>
           )}
           {report.errors.length > 0 && (
             <div>

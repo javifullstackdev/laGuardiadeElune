@@ -17,9 +17,9 @@ No uses español: `feat/profile-datos-tab` no.
 
 Nombres en inglés: `ProfileClient.tsx`, `web-guide.md`, `entitlements.ts`.
 
-## Commits
+## Commits y PRs
 
-Mensajes en inglés, estilo conventional commits, explicando el porqué:
+Mensajes de commit, **título y descripción de PR** en inglés. Estilo conventional commits, explicando el porqué. El chat con el usuario puede ir en español.
 
 ```
 feat: add a Details tab and hide profile scrollbars
