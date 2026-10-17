@@ -25,7 +25,20 @@ import httpx
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.database import SessionLocal  # noqa: E402
-import app.models.character_story  # noqa: E402,F401  # registra FK published_story_id
+# Los modelos se resuelven por nombre en relationship(); fuera de la app hay que registrarlos todos
+# o configure_mappers() falla (p. ej. "expression 'Title' failed to locate a name").
+import app.models.achievement  # noqa: E402,F401
+import app.models.character_relation  # noqa: E402,F401
+import app.models.character_story  # noqa: E402,F401
+import app.models.character_title  # noqa: E402,F401
+import app.models.hero_slide  # noqa: E402,F401
+import app.models.image_request  # noqa: E402,F401
+import app.models.point_transaction  # noqa: E402,F401
+import app.models.post  # noqa: E402,F401
+import app.models.relation_claim  # noqa: E402,F401
+import app.models.season  # noqa: E402,F401
+import app.models.title  # noqa: E402,F401
+import app.models.user_achievement  # noqa: E402,F401
 from app.models.character import Character  # noqa: E402
 from app.models.user import User  # noqa: E402
 from app.services.blizzard import realm_slug  # noqa: E402
