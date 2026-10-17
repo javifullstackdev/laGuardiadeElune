@@ -1,24 +1,25 @@
 import type { Metadata } from "next";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import { apiUrl } from "@/lib/api";
+import type { Season } from "@/lib/points";
 import RankingBoard, { type RankEntry, type RankGroup } from "./RankingBoard";
 
 export const metadata: Metadata = {
   title: "Ranking",
   description:
-    "Clasificación por puntos de los miembros de La Guardia de Elune.",
+    "Clasificación por puntos de temporada de los miembros de La Guardia de Elune.",
 };
 
 function groupByRank(ranking: RankEntry[]): RankGroup[] {
   const groups: RankGroup[] = [];
   for (const entry of ranking) {
     const last = groups[groups.length - 1];
-    if (last && last.total_points === entry.total_points) {
+    if (last && last.position === entry.position) {
       last.entries.push(entry);
     } else {
       groups.push({
         position: entry.position,
-        total_points: entry.total_points,
+        points: entry.points,
         entries: [entry],
       });
     }
@@ -26,7 +27,8 @@ function groupByRank(ranking: RankEntry[]): RankGroup[] {
   return groups;
 }
 
-type RankingApiRow = RankEntry & {
+type RankingApiRow = Omit<RankEntry, "points"> & {
+  season_points: number;
   character?: {
     name: string;
     realm: string;
@@ -37,13 +39,18 @@ type RankingApiRow = RankEntry & {
 };
 
 export default async function RankingPage() {
-  const res = await fetch(apiUrl("/users/ranking?limit=50"), { cache: "no-store" });
+  const [res, seasonRes] = await Promise.all([
+    fetch(apiUrl("/users/ranking?limit=50"), { cache: "no-store" }),
+    fetch(apiUrl("/seasons/current"), { cache: "no-store" }),
+  ]);
   const ranking: RankingApiRow[] = res.ok ? await res.json() : [];
+  const season: Season | null = seasonRes.ok ? await seasonRes.json() : null;
   const groups = groupByRank(
     ranking.map((e) => ({
       position: e.position,
       username: e.username,
       discord_id: e.discord_id,
+      points: season ? e.season_points : e.total_points,
       total_points: e.total_points,
       avatar_url: e.avatar_url,
       guild_title: e.guild_title,
@@ -72,8 +79,11 @@ export default async function RankingPage() {
         />
         <header className="mb-10 sm:mb-12">
           <h1 className="text-3xl sm:text-4xl font-quest-display font-bold">Ranking</h1>
+          {season && (
+            <p className="text-yellow-400/90 mt-2 text-sm sm:text-base font-semibold">{season.name}</p>
+          )}
           <p className="text-gray-400 mt-2 text-sm sm:text-base">
-            La Guardia de Elune — clasificación por puntos. Misma puntuación, misma posición.
+            La Guardia de Elune — clasificación por puntos de la temporada. Misma puntuación, misma posición.
             Toca una tarjeta para ver los puntos.
           </p>
         </header>

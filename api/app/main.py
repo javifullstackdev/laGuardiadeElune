@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import os
 from pathlib import Path
 
@@ -5,7 +7,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios, image_requests, share
+from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios, image_requests, share, seasons, points
+from app.services import scheduler
+from app.services.seasons import sync_in_background as season_sync_in_background
+
+# Los loggers de uvicorn no propagan; esto solo da salida a los de la app (tareas periódicas…)
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s")
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -44,6 +51,27 @@ app.include_router(share.router)
 app.mount("/static", StaticFiles(directory="uploads"), name="static")
 
 
+@app.on_event("startup")
+async def start_background_sync():
+    # Se guarda la referencia para que el recolector no cancele la tarea a medias
+    if scheduler.enabled():
+        app.state.background_sync = asyncio.create_task(scheduler.run_forever())
+    else:
+        app.state.background_sync = asyncio.create_task(season_sync_in_background())
+
+
+@app.on_event("shutdown")
+async def stop_background_sync():
+    task = getattr(app.state, "background_sync", None)
+    if task is None:
+        return
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -61,3 +89,5 @@ app.include_router(wiki.router)
 app.include_router(hero.router)
 app.include_router(bios.router)
 app.include_router(image_requests.router)
+app.include_router(seasons.router)
+app.include_router(points.router)

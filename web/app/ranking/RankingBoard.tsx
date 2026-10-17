@@ -16,6 +16,8 @@ export type RankEntry = {
   position: number;
   username: string;
   discord_id: string;
+  /** Puntos por los que se ordena: los de la temporada en curso (o el total si no hay temporada). */
+  points: number;
   total_points: number;
   avatar_url: string | null;
   guild_title: string;
@@ -24,7 +26,7 @@ export type RankEntry = {
 
 export type RankGroup = {
   position: number;
-  total_points: number;
+  points: number;
   entries: RankEntry[];
 };
 
@@ -39,7 +41,7 @@ export default function RankingBoard({ groups }: { groups: RankGroup[] }) {
     <ol className="space-y-3 sm:space-y-4">
       {groups.map((group) => (
         <li
-          key={`${group.position}-${group.total_points}`}
+          key={`${group.position}-${group.points}`}
           className="flex items-center gap-1.5 sm:gap-2"
         >
           <span className="shrink-0 w-[3.25rem] sm:w-[4rem] flex items-center justify-start font-quest-display font-bold text-yellow-400/90 leading-none text-[clamp(1.85rem,8vw,2.75rem)] tabular-nums pl-1 sm:pl-2">
@@ -134,11 +136,16 @@ function RankCard({
           >
             <div className="overflow-hidden">
               <p className="text-yellow-400 font-bold text-sm sm:text-base tabular-nums whitespace-nowrap">
-                {entry.total_points.toLocaleString()}{" "}
+                {entry.points.toLocaleString()}{" "}
                 <span className="text-[11px] sm:text-xs font-semibold text-yellow-400/85">
                   ptos
                 </span>
               </p>
+              {entry.points !== entry.total_points && (
+                <p className="text-[11px] text-gray-500 tabular-nums whitespace-nowrap">
+                  {entry.total_points.toLocaleString()} en total
+                </p>
+              )}
             </div>
           </div>
         </div>

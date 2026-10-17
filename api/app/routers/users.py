@@ -1,16 +1,21 @@
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, Query, HTTPException
+from sqlalchemy import func as sqlfunc
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime, timezone
 from app.dependencies import get_current_user, require_admin
 from app.database import get_db
-from app.models.user import User
+from app.models.user import User, UserPath
+from app.models.user_season_path import UserSeasonPath
 from app.models.character import Character
 from app.models.point_transaction import PointTransaction
 from app.routers.auth import fetch_guild_nick, fetch_guild_nicks
+from app.services import points as points_service
+from app.services import seasons as season_service
 from app.urls import static_url
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -33,6 +38,9 @@ async def get_me(
             expires = expires.replace(tzinfo=timezone.utc)
         token_expired = expires <= datetime.now(timezone.utc)
 
+    season = season_service.current_season(db)
+    choice = season_service.season_path(db, current_user.id, season.id) if season else None
+
     return {
         "id": str(current_user.id),
         "username": current_user.display_name or current_user.username,
@@ -41,9 +49,22 @@ async def get_me(
         "discord_id": current_user.discord_id,
         "guild_title": current_user.guild_title,
         "total_points": current_user.total_points,
+        "season_points": (
+            points_service.season_points(db, season, [current_user.id]).get(current_user.id, 0)
+            if season
+            else 0
+        ),
         "avatar_url": current_user.avatar_url,
         "role": current_user.role.value,
-        "path": current_user.path.value,
+        "path": choice.path.value if choice else None,
+        "points_cap": (
+            points_service.cap_status(
+                db, current_user.id, season, choice.path, datetime.now(timezone.utc)
+            )
+            if season and choice
+            else None
+        ),
+        "season": season_service.serialize(season) if season else None,
         "blizzard_battletag": current_user.blizzard_battletag,
         "has_blizzard": current_user.blizzard_access_token is not None,
         "blizzard_token_expired": token_expired,
@@ -136,8 +157,11 @@ def get_my_transactions(
     """Devuelve el historial de puntos del usuario autenticado."""
     transactions = (
         db.query(PointTransaction)
-        .filter(PointTransaction.user_id == current_user.id)
-        .order_by(PointTransaction.created_at.desc())
+        .filter(PointTransaction.user_id == current_user.id, PointTransaction.active.is_(True))
+        .order_by(
+            sqlfunc.coalesce(PointTransaction.occurred_at, PointTransaction.created_at).desc(),
+            PointTransaction.created_at.desc(),
+        )
         .limit(limit)
         .all()
     )
@@ -146,7 +170,12 @@ def get_my_transactions(
             "amount": t.amount,
             "reason": t.reason,
             "event_category": t.event_category.value if t.event_category else None,
+            "bucket": points_service.bucket(t.event_category),
             "created_at": t.created_at.isoformat(),
+            "occurred_at": (t.occurred_at or t.created_at).isoformat(),
+            "week_start": t.week_start.isoformat() if t.week_start else None,
+            "weekly_capped": t.weekly_capped,
+            "counted_amount": points_service.effective_amount(t),
         }
         for t in transactions
     ]
@@ -158,18 +187,26 @@ def set_my_path(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Actualiza el itinerario del usuario.
-    En producción estará bloqueado durante la season activa.
-    """
-    from app.models.user import UserPath
-    path_value = data.get("path", "").upper()
+    """Elige el itinerario de la temporada en curso. Solo una vez por temporada."""
+    path_value = str(data.get("path", "")).upper()
     try:
-        current_user.path = UserPath[path_value]
+        path = UserPath[path_value]
     except KeyError:
         raise HTTPException(status_code=400, detail=f"Itinerario '{path_value}' no válido")
-    db.commit()
-    return {"path": current_user.path.value}
+
+    season = season_service.current_season(db)
+    if not season:
+        raise HTTPException(409, "Todavía no hay una temporada en curso")
+    if season_service.season_path(db, current_user.id, season.id):
+        raise HTTPException(409, f"Ya elegiste itinerario para «{season.name}»")
+
+    db.add(UserSeasonPath(user_id=current_user.id, season_id=season.id, path=path))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, f"Ya elegiste itinerario para «{season.name}»")
+    return {"path": path.value, "season": season_service.serialize(season)}
 
 
 @router.get("/admin/players")
@@ -256,17 +293,18 @@ def get_ranking(
 ):
     """
     Ranking público — no requiere autenticación.
-    Posición por puntos con empates (mismo score → misma posición; ranking
-    tipo competición: 1, 2, 2, 4…).
+    Posición por puntos de la temporada en curso con empates (mismo score → misma
+    posición; ranking tipo competición: 1, 2, 2, 4…). Sin temporada, por el total.
     Nombre visible: display_name (admin) o username Discord.
     """
-    users = (
-        db.query(User)
-        .filter(User.deleted_at.is_(None))
-        .order_by(User.total_points.desc(), User.username.asc())
-        .limit(limit)
-        .all()
-    )
+    season = season_service.current_season(db)
+    candidates = db.query(User).filter(User.deleted_at.is_(None)).all()
+    scores = points_service.season_points(db, season) if season else {}
+
+    def score(u: User) -> int:
+        return scores.get(u.id, 0) if season else u.total_points
+
+    users = sorted(candidates, key=lambda u: (-score(u), -u.total_points, u.username.lower()))[:limit]
     if not users:
         return []
 
@@ -286,9 +324,9 @@ def get_ranking(
     last_points: int | None = None
     position = 0
     for index, user in enumerate(users):
-        if last_points is None or user.total_points != last_points:
+        if last_points is None or score(user) != last_points:
             position = index + 1
-            last_points = user.total_points
+            last_points = score(user)
 
         roster = sorted(
             by_user.get(user.id, []),
@@ -316,6 +354,7 @@ def get_ranking(
                 "display_name": user.display_name,
                 "discord_username": user.username,
                 "discord_id": user.discord_id,
+                "season_points": scores.get(user.id, 0),
                 "total_points": user.total_points,
                 "avatar_url": user.avatar_url,
                 "guild_title": user.guild_title,

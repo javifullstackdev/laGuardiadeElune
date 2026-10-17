@@ -184,6 +184,48 @@ async def get_title(title_id: int) -> dict | None:
     }
 
 
+def guild_realm() -> str:
+    return os.getenv("GUILD_REALM", "dun-modr")
+
+
+def guild_slug() -> str:
+    return os.getenv("GUILD_SLUG", "la-guardia-de-elune")
+
+
+def character_key(name: str, realm: str) -> tuple[str, str]:
+    """Clave para comparar personajes entre Blizzard, Raider.io y la BD."""
+    return name.strip().casefold(), realm_slug(realm)
+
+
+async def get_guild_roster_keys() -> set[tuple[str, str]]:
+    """Personajes de la hermandad según Blizzard, como claves de character_key."""
+    data = await _get_json(
+        f"/data/wow/guild/{quote(guild_realm())}/{quote(guild_slug())}/roster",
+        f"profile-{_region()}",
+    )
+    if not data or not data.get("members"):
+        raise BlizzardError("Blizzard no devolvió el roster de la hermandad")
+    return {
+        character_key(m["character"]["name"], m["character"]["realm"]["slug"])
+        for m in data["members"]
+    }
+
+
+async def get_current_mythic_season_id() -> int:
+    data = await _get_json("/data/wow/mythic-keystone/season/index", f"dynamic-{_region()}")
+    current = (data or {}).get("current_season") or {}
+    if current.get("id") is None:
+        raise BlizzardError("Blizzard no devolvió la temporada de míticas+ actual")
+    return current["id"]
+
+
+async def get_mythic_season(season_id: int) -> dict | None:
+    """Fechas en milisegundos UTC; end_timestamp falta mientras la temporada sigue abierta."""
+    return await _get_json(
+        f"/data/wow/mythic-keystone/season/{season_id}", f"dynamic-{_region()}", locale=LOCALE
+    )
+
+
 async def get_character_title_ids(realm: str, name: str) -> set[int]:
     """IDs de los títulos que el personaje tiene desbloqueados en el juego."""
     path = (
