@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, ForeignKey, DateTime, func, Index, Integer, String, Boolean, Enum, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, DateTime, func, Index, Integer, Text, Boolean, Enum, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 from app.models.enums import EventCategory
@@ -16,7 +16,7 @@ class PointTransaction(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     character_id = Column(UUID(as_uuid=True), ForeignKey("characters.id"), nullable=True)
     amount = Column(Integer, nullable=False)
-    reason = Column(String(255), nullable=False)
+    reason = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     # server_default="true" → PostgreSQL lo rellena automáticamente, incluso con SQL raw
     active = Column(Boolean, server_default="true", nullable=False)

@@ -922,6 +922,9 @@ function TransactionRow({ t }: { t: Transaction }) {
     : partial
     ? `Cuenta ${counted} de ${t.amount}: se agotó el margen`
     : null;
+  const split = t.reason.indexOf(" — ");
+  const title = split === -1 ? t.reason : t.reason.slice(0, split);
+  const detail = split === -1 ? null : t.reason.slice(split + 3);
 
   return (
     <li className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-900 border border-gray-800/50 ${counted === 0 && t.amount > 0 ? "opacity-60" : ""}`}>
@@ -933,8 +936,9 @@ function TransactionRow({ t }: { t: Transaction }) {
         {counted === 0 ? `+${t.amount}` : `${counted > 0 ? "+" : ""}${counted}`}
       </span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-200 truncate">{t.reason}</p>
-        <p className="text-xs text-gray-500 truncate">
+        <p className="text-sm text-gray-200">{title}</p>
+        {detail && <p className="text-xs text-gray-400 mt-0.5">{detail}</p>}
+        <p className="text-xs text-gray-500">
           {t.event_category ? CATEGORY_LABEL[t.event_category] ?? t.event_category : null}
           {note && <span className={t.weekly_capped ? "text-amber-400/80" : ""}>{t.event_category ? " · " : ""}{note}</span>}
         </p>

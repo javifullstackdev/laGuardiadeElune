@@ -13,6 +13,7 @@ from app.models.user import User, UserPath
 from app.models.user_season_path import UserSeasonPath
 from app.models.character import Character
 from app.models.point_transaction import PointTransaction
+from app.models.processed_run import ProcessedRun
 from app.routers.auth import fetch_guild_nick, fetch_guild_nicks
 from app.services import points as points_service
 from app.services import seasons as season_service
@@ -165,10 +166,23 @@ def get_my_transactions(
         .limit(limit)
         .all()
     )
+    run_ids = [t.processed_run_id for t in transactions if t.processed_run_id]
+    runs = {
+        row.id: row
+        for row in db.query(ProcessedRun).filter(ProcessedRun.id.in_(run_ids)).all()
+    } if run_ids else {}
+
+    def display_reason(t: PointTransaction) -> str:
+        reason = t.reason or ""
+        names = (runs.get(t.processed_run_id).guild_character_names or "").strip() if t.processed_run_id and t.processed_run_id in runs else ""
+        if names and names not in reason:
+            return f"{reason} — {names}"
+        return reason
+
     return [
         {
             "amount": t.amount,
-            "reason": t.reason,
+            "reason": display_reason(t),
             "event_category": t.event_category.value if t.event_category else None,
             "bucket": points_service.bucket(t.event_category),
             "created_at": t.created_at.isoformat(),
@@ -294,7 +308,7 @@ def get_ranking(
     """
     Ranking público — no requiere autenticación.
     Posición por puntos de la temporada en curso con empates (mismo score → misma
-    posición; ranking tipo competición: 1, 2, 2, 4…). Sin temporada, por el total.
+    posición; ranking denso: 1, 1, 2…). Sin temporada, por el total.
     Nombre visible: display_name (admin) o username Discord.
     """
     season = season_service.current_season(db)
@@ -323,9 +337,9 @@ def get_ranking(
     result = []
     last_points: int | None = None
     position = 0
-    for index, user in enumerate(users):
+    for user in users:
         if last_points is None or score(user) != last_points:
-            position = index + 1
+            position += 1
             last_points = score(user)
 
         roster = sorted(

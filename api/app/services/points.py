@@ -100,7 +100,7 @@ def record_capped_event(
         user_id=user_id,
         character_id=character_id,
         amount=amount,
-        reason=reason[:255],
+        reason=reason,
         event_category=category,
         occurred_at=occurred_at,
         week_start=week_start(occurred_at),
