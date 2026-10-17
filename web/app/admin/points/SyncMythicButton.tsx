@@ -35,7 +35,9 @@ function apiDetail(data: unknown, fallback: string): string {
   return fallback;
 }
 
-const STATS: { key: keyof Report; label: string }[] = [
+type StatKey = "characters" | "runs_seen" | "runs_new" | "runs_scored" | "transactions";
+
+const STATS: { key: StatKey; label: string }[] = [
   { key: "characters", label: "Personajes verificados" },
   { key: "runs_seen", label: "Partidas vistas" },
   { key: "runs_new", label: "Partidas nuevas" },
