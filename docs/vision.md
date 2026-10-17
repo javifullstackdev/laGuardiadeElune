@@ -27,6 +27,7 @@ Al menos 3 de los 5 personajes del grupo tienen que ser miembros de la hermandad
 +16: 120 puntos
 +17: 140 puntos
 +18: 160 puntos
++19 en adelante: +20 por nivel (+19: 180, +20: 200…)
 ## 3. ¿Bonus por timed en M+?
 No exactamente, ya que los puntos que aparecen en la tabla anterior corresponden a M+ timed. En caso de que el grupo haya conseguido terminar la mítica pero lo haya hecho fuera del tiempo, los miembros obtendrán la mitad de puntos
 ## 4. ¿Sólo míticas al principio, o también raids?
@@ -61,18 +62,19 @@ Cuando la House API vuelva (o con permisos in-game), sincronizar a la ficha. Has
 Cada temporada dura unos 3 meses aproximadamente. Al comenzar la temporada los puntos de season_points deberían reiniciarse, pero total_points no.
 ## 9. ¿Cuál es la fuente de verdad?
 Los puntos registrados en base de datos.
-## 10. Límite semanal de eventos puntuables
-- Máximo de 8 eventos por jugador por semana
-- Solo cuentan los 8 con mayor puntuación de esa semana
-- Semana = reset WoW EU (miércoles 08:00 UTC+1)
-- Desempate: el usuario elige desde su perfil que run mantener; si no resuelve antes del siguiente reset, el más antiguo mantiene su slot automáticamente
-- Eventos que no entran en el top 8 se guardan como counted = false (visibles en perfil)
+## 10. Tope semanal de puntos
+- Tope de **500 puntos por jugador y semana**, repartido según el itinerario (regla 11). Se cambió de «8 eventos» a tope de puntos porque en campaña no hay eventos medibles como en competitivo (comercio, banco, logros raros…)
+- **Acumulativo:** el tope no usado se arrastra. En la semana N caben N × 500 menos lo ya contado (quien no juega las semanas 1 y 2 puede hacer 1500 en la 3). Lo que pasa del tope **no** se arrastra: se pierde. `/users/me` devuelve `points_cap` (acumulado, usado y disponible por tipo)
+- **Desde cuándo:** la semana 1 es la de `seasons.points_start_at`, el momento en que la web importó la temporada (o su inicio, si se importó antes). Temporada 2 de Midnight: desde la activación en producción, no desde el 12/08, para que nadie empiece con 5000 de margen. Las siguientes se importan en sus primeras horas y acumulan desde su inicio. Nada anterior a `points_start_at` puntúa
+- Se llena por orden cronológico (cuándo ocurrió cada cosa, no cuándo se registró). El evento que cruza el tope cuenta en parte (`counted_amount`); lo que sobra se guarda y es visible en el perfil
+- Semana = reset WoW EU: miércoles 04:00 UTC (06:00 en España en verano, 05:00 en invierno). Código: `api/app/services/weeks.py`
+- Lo que da o quita un admin (web o Bubu) queda fuera del tope: siempre cuenta y no lo consume (`weekly_capped = false`). Las actividades de campaña validadas por un oficial (banco, comercio) **sí** van con tope
 ## 11. Itinerarios
-Tres itinerarios, un único ranking:
-- Competitivo: M+ y raids. Top 8 competitivos/semana
-- Campaña e historia: eventos de rol, lore, logros. Top 8 campaña/semana
-- Híbrido (Todo en todas partes): 4 mejores competitivos + 4 mejores campaña/semana
-Bloqueado al inicio de cada temporada
+Tres itinerarios, un único ranking. Separan a quien juega contenido competitivo (PvE y JcJ) de quien disfruta el juego de forma relajada:
+- Competitivo: M+, raids y JcJ. Hasta 500 puntos competitivos/semana
+- Campaña e historia: eventos de rol, lore, logros (monturas, mascotas, transfiguraciones), paseo en el tiempo, profundidades (delves), reputaciones, housing, farmeo, profesiones, comercio y banco de hermandad. Hasta 500 puntos de campaña/semana
+- Híbrido (Todo en todas partes): para quien juega relajado pero hace M+, raid o JcJ de vez en cuando. Hasta 250 competitivos + 250 de campaña/semana
+Se elige una vez por temporada. Si el jugador no ha elegido cuando le llega su primer evento automático, queda fijado en Híbrido (así nadie espera a ver qué itinerario le da más puntos)
 Criterio de balance: un evento de campaña bien ejecutado debe equipararse en puntos a 3-4 míticas de nivel medio/alto
 ## 12. Premios de fin de season
 - Automáticos por sistema: Mejor [rol] de M+ (calculado por season_points filtrado por character.role_function en itinerario competitivo)
@@ -138,7 +140,8 @@ Ramas, archivos y commits en inglés: [conventions.md](conventions.md).
 | `achievements` | Catálogo (`account_wide`, `character_specific`) |
 | `user_achievements` | Logros ganados (user_id, character_id opcional) |
 | `posts` | Publicaciones: título, subtítulo, cover_url, categoría, contenido |
-| `seasons` | Temporadas con fechas y estado activo |
+| `seasons` | Temporadas de M+ sincronizadas desde Blizzard (`blizzard_season_id`); la activa se deduce de las fechas |
+| `user_season_paths` | Itinerario elegido por cada jugador en cada temporada (una vez) |
 
 ## Fase 0 — Planificación y setup ✅
 - Visión, user stories, reglas de negocio y entidades definidas
@@ -299,10 +302,23 @@ Objetivo: que un personaje reciba en la web los títulos y antetítulos que ya d
 - SEO fino: alts en portadas/carrusel/fichas/ranking; `BreadcrumbList` JSON-LD en `Breadcrumb`
 - Pendiente: dictamen jurídico profesional si se quiere formalizar
 
+## Puntos automáticos de M+ — en curso (2026-10-17)
+Decisiones: «miembro de la hermandad» = estar en el roster de Blizzard (aunque no tenga cuenta en la web; solo puntúan quienes sí la tienen). No se puntúan las míticas anteriores a la activación.
+
+- **Temporadas desde Blizzard ✅:** las fechas las marca Blizzard, no el admin. `seasons.blizzard_season_id` enlaza con `/data/wow/mythic-keystone/season/{id}` (`dynamic-eu`). La API sincroniza al arrancar (en segundo plano) y con `POST /seasons/sync` (admin): importa la temporada actual y pone fecha de fin a las abiertas cuando Blizzard la publica. Midnight T2 = id 18, desde 2026-08-12 04:00 UTC, sin fin. Raider.io la data una semana después (19-08); manda Blizzard.
+- **Itinerario por temporada ✅:** tabla `user_season_paths` (única por usuario y temporada, migración `d2f6b8a3c915`). La temporada en curso se deduce de las fechas (`services/seasons.py`, `GET /seasons/current`). `PATCH /users/me/path` responde 409 si no hay temporada o ya eligió. El onboarding pide confirmar porque es irreversible. `users.path` queda como columna heredada sin uso en la API.
+- **Prueba de Raider.io ✅** (`api/scripts/spike_raiderio.py`): la hermandad es la de Dun Modr (137 personajes en 14 reinos conectados), no la homónima de C'Thun. `characters/profile?fields=mythic_plus_recent_runs` da las **10 últimas** partidas por personaje (`keystone_run_id`, nivel, `num_keystone_upgrades` > 0 = a tiempo, `url` con la temporada, p. ej. `season-mn-2`). `mythic-plus/run-details?season=&id=` da los 5 integrantes; el id solo es único dentro de su temporada. Un jugador activo hace ~10 partidas en 2 días: con sondeo cada 6 h no se pierden. Atajo: si el mismo `keystone_run_id` aparece en las partidas de 3 miembros del roster, la partida puntúa sin pedir el detalle. En la muestra ninguna llegó a 3 miembros.
+- **Motor de puntos ✅** (`api/app/services/points.py`, migración `e7a4c2f9b318`): `point_transactions` gana `occurred_at`, `weekly_capped`, `counted_amount` y `processed_run_id` (único por usuario y partida). `record_capped_event` guarda el evento con su semana y temporada y reparte de nuevo el tope de esa semana; `total_points` se ajusta con la diferencia. `season_points` suma lo que cuenta dentro de las fechas de la temporada (incluidos los ajustes de admin). Bubu no cambia: sus inserciones caen fuera del tope por defecto. `/users/me` devuelve `season_points` y `/users/me/transactions` devuelve `counted_amount`, `weekly_capped`, `week_start` y `occurred_at`.
+- **Campaña, fuentes previstas:** automático desde la Profile API (logros y su rareza, monturas, mascotas, transfiguraciones, nivel de profesiones; diferencia semanal). Manual con validación de oficial: banco de hermandad y comercio (la API no los expone).
+- **Ingesta de M+ ✅** (`api/app/services/mplus_sync.py`, `raiderio.py`; `POST /points/sync-mythic-plus`, admin): roster de Blizzard (`/data/wow/guild/{GUILD_REALM}/{GUILD_SLUG}/roster`, 148 personajes) define quién es de la hermandad. Se consultan las partidas recientes solo de los personajes **Retail verificados** de usuarios de la web (para que nadie se lleve puntos añadiendo el personaje de otro). Cada partida nueva desde `points_start_at` se guarda en `processed_runs` (puntúe o no) con su nº de miembros de la hermandad; si son ≥ 3, cada usuario de la web del grupo recibe un evento de M+ con tope. A tiempo = `num_chests > 0`. El personaje del usuario no tiene que estar en el roster, pero solo los del roster cuentan para los 3. Probado con datos reales: idempotente (segunda pasada, 0 nuevas).
+- **Límite conocido:** si una partida ya se procesó y después un jugador verifica el personaje que estaba en ella, no recibe esos puntos con carácter retroactivo.
+- **Job cada 6 h ✅** (`api/app/services/scheduler.py`): al arrancar, si `ENV=production` (o `SCHEDULER_ENABLED=1`), corre temporadas → M+ → títulos y se duerme `SYNC_INTERVAL_HOURS` (6). En local, con `--reload`, solo sincroniza temporadas una vez al arrancar para no duplicar el job. Admin puede forzar M+ con `POST /points/sync-mythic-plus`.
+- **Pestaña Puntos y ranking ✅:** `/users/me` devuelve `season_points`, `points_cap` y `path`. El historial muestra cuánto ha contado cada evento. `/ranking` ordena por puntos de la temporada (el total histórico queda como dato secundario).
+- **Pendiente:** fuentes de campaña (profundidades, reputaciones, profesiones, banco).
+
 ## Próxima sesión — por dónde seguir
-1. Job periódico (cada 6 h) que llame a `sync_all_characters` para que los títulos nuevos del juego lleguen sin pulsar el botón.
-2. Bubu `--profile bot` o Fase 5 auto-sync M+.
-3. Dashboard de visitas (aparcado, ver abajo).
+1. Fuentes de campaña (profundidades, reputaciones, profesiones; banco y comercio con validación de oficial).
+2. Dashboard de visitas (aparcado, ver abajo).
 
 Housing en ficha: aparcado (regla 7d) hasta que Blizzard reactive la House API.
 

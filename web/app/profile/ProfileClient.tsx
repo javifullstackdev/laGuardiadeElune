@@ -14,6 +14,10 @@ import { getEntitlements } from "@/lib/entitlements";
 import { classLabel, raceLabel, factionLabel, factionColor, classColor, realmLabel, genderLabel } from "@/lib/wow";
 
 import { publicApiUrl } from "@/lib/api";
+import {
+  BUCKET_LABEL, CATEGORY_LABEL, PATH_LABEL,
+  type Bucket, type CapStatus, type Season, type Transaction,
+} from "@/lib/points";
 // ── Tipos ──────────────────────────────────────────────────────────────────
 
 type TitleData = {
@@ -24,13 +28,11 @@ type TitleData = {
   description?: string | null;
 };
 
-type User = {
+type User = PointsSummary & {
   username: string;
   guild_title: string;
-  total_points: number;
   avatar_url: string | null;
   role: string;
-  path: string;
   blizzard_battletag: string | null;
   has_blizzard: boolean;
   birthday: string | null;
@@ -77,11 +79,12 @@ type Character = {
   public_fields: PublicFields;
 };
 
-type Transaction = {
-  amount: number;
-  reason: string;
-  event_category: string | null;
-  created_at: string;
+type PointsSummary = {
+  total_points: number;
+  season_points: number;
+  season: Season | null;
+  path: string | null;
+  points_cap: CapStatus | null;
 };
 
 type RelationData = {
@@ -326,7 +329,7 @@ export default function ProfileClient({
             <CharacterDetail
               char={selected}
               transactions={transactions}
-              totalPoints={user.total_points}
+              points={user}
               onSetMain={() => handleSetMain(selected)}
               isPending={isPending}
               onFavoriteTitleChange={(t) => handleFavoriteTitleChange(selected, t)}
@@ -424,8 +427,8 @@ export default function ProfileClient({
           )}
 
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-yellow-300 font-bold text-lg">{user.total_points.toLocaleString()}</span>
-            <span className="text-gray-400 text-sm">puntos</span>
+            <span className="text-yellow-300 font-bold text-lg">{user.season_points.toLocaleString()}</span>
+            <span className="text-gray-400 text-sm">puntos esta temporada</span>
           </div>
         </div>
 
@@ -460,12 +463,12 @@ export default function ProfileClient({
 type DetailTab = "bio" | "details" | "points" | "achievements" | "titles" | "stories" | "relations" | "professions";
 
 function CharacterDetail({
-  char, transactions, totalPoints, onSetMain, isPending, onFavoriteTitleChange, onFavoritePrefixChange, onDetailsPatch,
+  char, transactions, points, onSetMain, isPending, onFavoriteTitleChange, onFavoritePrefixChange, onDetailsPatch,
   onOpenCharacters,
 }: {
   char: Character;
   transactions: Transaction[];
-  totalPoints: number;
+  points: PointsSummary;
   onSetMain: () => void;
   isPending: boolean;
   onFavoriteTitleChange: (t: TitleData | null) => void;
@@ -720,7 +723,7 @@ function CharacterDetail({
                       />
                     )}
                     {t.key === "points" && (
-                      <PointsTab transactions={transactions} totalPoints={totalPoints} />
+                      <PointsTab transactions={transactions} points={points} />
                     )}
                     {t.key === "achievements" && <AchievementsTab char={char} />}
                     {t.key === "titles" && (
@@ -826,13 +829,73 @@ function AchievementGroup({
 
 // ── Tab: Puntos ───────────────────────────────────────────────────────────
 
-function PointsTab({ transactions, totalPoints }: { transactions: Transaction[]; totalPoints: number }) {
+function PointsTab({ transactions, points }: { transactions: Transaction[]; points: PointsSummary }) {
+  const { season, path, points_cap: cap } = points;
+  const buckets = (cap ? (Object.keys(cap) as Bucket[]) : []).filter((b) => cap![b].accrued > 0);
+
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-gray-800 bg-gray-900/40 px-4 py-3">
-        <p className="text-xs uppercase tracking-wider text-gray-500">Total de la cuenta</p>
-        <p className="text-2xl font-bold text-yellow-400 mt-1">{totalPoints}</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-gray-800 bg-gray-900/40 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-gray-500 truncate">
+            {season ? season.name : "Temporada"}
+          </p>
+          <p className="text-2xl font-bold text-yellow-400 mt-1">{points.season_points.toLocaleString()}</p>
+        </div>
+        <div className="rounded-xl border border-gray-800 bg-gray-900/40 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-gray-500">Total histórico</p>
+          <p className="text-2xl font-bold text-gray-200 mt-1">{points.total_points.toLocaleString()}</p>
+        </div>
       </div>
+
+      {season && (
+        <section className="rounded-xl border border-gray-800 bg-gray-900/40 px-4 py-3 space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-xs text-gray-500 uppercase tracking-wider">Itinerario</h2>
+            {path ? (
+              <span className="text-sm font-semibold text-gray-200">{PATH_LABEL[path] ?? path}</span>
+            ) : (
+              <Link href="/onboarding" className="text-sm text-blue-400 hover:text-blue-300 underline">
+                Elegir itinerario
+              </Link>
+            )}
+          </div>
+          {!path && (
+            <p className="text-xs text-gray-500">
+              Si no eliges, con tu primera actividad puntuable se te fijará Híbrido para toda la temporada.
+            </p>
+          )}
+          {buckets.map((b) => {
+            const { accrued, used, available } = cap![b];
+            return (
+              <div key={b}>
+                <div className="flex items-baseline justify-between text-xs mb-1">
+                  <span className="text-gray-400">{BUCKET_LABEL[b]}</span>
+                  <span className="text-gray-300">
+                    Te quedan <span className="font-bold text-yellow-400">{available.toLocaleString()}</span> puntos
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                  <div
+                    className="h-full bg-yellow-500/80"
+                    style={{ width: `${Math.min(100, (used / accrued) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-600 mt-1">
+                  {used.toLocaleString()} de {accrued.toLocaleString()} acumulados esta temporada
+                </p>
+              </div>
+            );
+          })}
+          {buckets.length > 0 && (
+            <p className="text-[11px] text-gray-600">
+              Cada semana (miércoles, reset de WoW) suma margen nuevo y lo que no uses se acumula.
+              Lo que pase del margen no cuenta.
+            </p>
+          )}
+        </section>
+      )}
+
       <section>
         <h2 className="text-xs text-gray-500 uppercase tracking-wider mb-4">Historial</h2>
         {transactions.length === 0 ? (
@@ -840,23 +903,46 @@ function PointsTab({ transactions, totalPoints }: { transactions: Transaction[];
         ) : (
           <ul className="space-y-2">
             {transactions.map((t, i) => (
-              <li key={`${t.created_at}-${i}`} className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-900 border border-gray-800/50">
-                <span className={`text-sm font-bold w-14 text-right shrink-0 ${t.amount > 0 ? "text-green-400" : "text-red-400"}`}>
-                  {t.amount > 0 ? "+" : ""}{t.amount}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-200 truncate">{t.reason}</p>
-                  {t.event_category && <p className="text-xs text-gray-500">{t.event_category}</p>}
-                </div>
-                <span className="text-xs text-gray-600 shrink-0">
-                  {new Date(t.created_at).toLocaleDateString("es-ES")}
-                </span>
-              </li>
+              <TransactionRow key={`${t.occurred_at}-${i}`} t={t} />
             ))}
           </ul>
         )}
       </section>
     </div>
+  );
+}
+
+function TransactionRow({ t }: { t: Transaction }) {
+  const partial = t.weekly_capped && t.counted_amount < t.amount;
+  const counted = t.weekly_capped ? t.counted_amount : t.amount;
+  const note = !t.weekly_capped
+    ? "Ajuste de admin"
+    : counted === 0
+    ? "No cuenta: sin margen de " + BUCKET_LABEL[t.bucket].toLowerCase()
+    : partial
+    ? `Cuenta ${counted} de ${t.amount}: se agotó el margen`
+    : null;
+
+  return (
+    <li className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-900 border border-gray-800/50 ${counted === 0 && t.amount > 0 ? "opacity-60" : ""}`}>
+      <span
+        className={`text-sm font-bold w-14 text-right shrink-0 ${
+          counted > 0 ? "text-green-400" : counted < 0 ? "text-red-400" : "text-gray-500 line-through"
+        }`}
+      >
+        {counted === 0 ? `+${t.amount}` : `${counted > 0 ? "+" : ""}${counted}`}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-gray-200 truncate">{t.reason}</p>
+        <p className="text-xs text-gray-500 truncate">
+          {t.event_category ? CATEGORY_LABEL[t.event_category] ?? t.event_category : null}
+          {note && <span className={t.weekly_capped ? "text-amber-400/80" : ""}>{t.event_category ? " · " : ""}{note}</span>}
+        </p>
+      </div>
+      <span className="text-xs text-gray-600 shrink-0">
+        {new Date(t.occurred_at).toLocaleDateString("es-ES")}
+      </span>
+    </li>
   );
 }
 

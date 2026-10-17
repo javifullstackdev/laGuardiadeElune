@@ -47,3 +47,5 @@ class EventCategory(enum.Enum):
     PVP = "pvp"
     FARMING = "farming"
     PROFESSION = "profession"
+    DELVES = "delves"
+    REPUTATION = "reputation"

@@ -26,7 +26,7 @@ export default async function BienvenidaPage() {
   const step1Done = true;
   const step2Done = user.has_blizzard;
   const step3Done = step2Done && hasMain;
-  const step4Done = step3Done;
+  const step4Done = step3Done && (!user.season || user.path !== null);
   const allDone   = step1Done && step2Done && step3Done && step4Done;
 
   return (
@@ -142,20 +142,19 @@ export default async function BienvenidaPage() {
             number={4}
             title="Elige tu itinerario"
             done={step4Done}
-            active={step3Done}
+            active={step3Done && !step4Done}
             locked={!step3Done}
           >
             {!step3Done ? (
               <p className="text-sm text-gray-600 mt-2">
                 Disponible tras elegir tu personaje principal
               </p>
+            ) : !user.season ? (
+              <p className="text-sm text-gray-500 mt-2">
+                Todavía no hay una temporada en curso. Podrás elegir itinerario cuando empiece.
+              </p>
             ) : (
-              <div>
-                <p className="text-xs text-gray-500 mt-2 mb-1">
-                  Bloqueado al inicio de cada temporada · Puedes cambiarlo ahora
-                </p>
-                <PathPicker currentPath={user.path} />
-              </div>
+              <PathPicker currentPath={user.path} seasonName={user.season.name} />
             )}
           </StepCard>
 

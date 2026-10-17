@@ -37,39 +37,53 @@ const PATHS = [
   },
 ];
 
-export default function PathPicker({ currentPath }: { currentPath: string }) {
+export default function PathPicker({
+  currentPath,
+  seasonName,
+}: {
+  currentPath: string | null;
+  seasonName: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [selected, setSelected] = useState(currentPath.toUpperCase());
+  const locked = currentPath !== null;
+  const [selected, setSelected] = useState(currentPath?.toUpperCase() ?? null);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSelect(value: string) {
-    if (value === selected || isPending) return;
-    setSelected(value);
+  function handleConfirm() {
+    if (!selected || locked || isPending) return;
+    setError(null);
 
     startTransition(async () => {
-      await fetch("/api/users/set-path", {
+      const res = await fetch("/api/users/set-path", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: value }),
+        body: JSON.stringify({ path: selected }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setError(body?.detail ?? "No se pudo guardar el itinerario");
+      }
       router.refresh();
     });
   }
 
+  const visible = locked ? PATHS.filter((p) => p.value === selected) : PATHS;
+
   return (
     <div className="mt-3 space-y-2">
-      {PATHS.map((p) => {
+      {visible.map((p) => {
         const isSelected = selected === p.value;
         return (
           <button
             key={p.value}
-            onClick={() => handleSelect(p.value)}
-            disabled={isPending}
+            onClick={() => setSelected(p.value)}
+            disabled={isPending || locked}
             className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center gap-4 ${
               isSelected
                 ? `${p.activeBorder} ${p.glow}`
                 : `${p.border} hover:border-gray-500 bg-gray-900/40`
-            }`}
+            } ${locked ? "cursor-default" : ""}`}
           >
             {/* Texto */}
             <div className="flex-1">
@@ -77,7 +91,7 @@ export default function PathPicker({ currentPath }: { currentPath: string }) {
                 <p className={`font-semibold text-sm ${isSelected ? p.textColor : "text-gray-200"}`}>
                   {p.name}
                 </p>
-                {p.recommended && (
+                {p.recommended && !locked && (
                   <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
                     Recomendado
                   </span>
@@ -103,9 +117,26 @@ export default function PathPicker({ currentPath }: { currentPath: string }) {
         );
       })}
 
-      {isPending && (
-        <p className="text-xs text-gray-500 text-center">Guardando...</p>
+      {locked ? (
+        <p className="text-xs text-gray-500">
+          Itinerario fijado para {seasonName}. Podrás elegir otro cuando empiece la siguiente temporada.
+        </p>
+      ) : (
+        <div className="pt-1 space-y-2">
+          <p className="text-xs text-gray-500">
+            Solo puedes elegir una vez por temporada: no se podrá cambiar hasta que termine {seasonName}.
+          </p>
+          <button
+            onClick={handleConfirm}
+            disabled={!selected || isPending}
+            className="w-full px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 disabled:bg-gray-800 disabled:text-gray-500 text-black text-sm font-bold transition-colors"
+          >
+            {isPending ? "Guardando..." : "Confirmar itinerario"}
+          </button>
+        </div>
       )}
+
+      {error && <p className="text-xs text-red-400">{error}</p>}
     </div>
   );
 }
