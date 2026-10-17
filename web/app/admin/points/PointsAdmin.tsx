@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import DungeonCovers from "./DungeonCovers";
 import PointsHistory, { type HistoryTx } from "./PointsHistory";
 import SyncMythicButton from "./SyncMythicButton";
 
@@ -65,6 +66,8 @@ export default function PointsAdmin({
           }}
         />
       </div>
+
+      <DungeonCovers onUploaded={() => load(query)} />
 
       <PointsHistory
         rows={rows}

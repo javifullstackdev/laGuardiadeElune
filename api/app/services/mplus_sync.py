@@ -22,7 +22,7 @@ from app.models.enums import EventCategory
 from app.models.point_transaction import PointTransaction
 from app.models.processed_run import ProcessedRun
 from app.models.user import User
-from app.services import blizzard, raiderio
+from app.services import blizzard, dungeons, raiderio
 from app.services import points as points_service
 from app.services import seasons as season_service
 
@@ -145,13 +145,18 @@ async def sync_mythic_plus(db: Session) -> dict:
         timed = (details.get("num_chests") or 0) > 0
         level = details["mythic_level"]
         completed_at = _parse_time(details["completed_at"])
-        dungeon = (details.get("dungeon") or {}).get("name") or run.get("dungeon") or "?"
+        info = dungeons.resolve(details.get("dungeon") or run.get("dungeon"))
+        dungeon = (info["name_es"] if info else None) or (
+            (details.get("dungeon") or {}).get("name") if isinstance(details.get("dungeon"), dict) else None
+        ) or run.get("dungeon") or "?"
+        dungeon_slug = info["slug"] if info else None
         reason = _run_reason(dungeon, level, timed, guild_names, len(members))
 
         processed = ProcessedRun(
             source=SOURCE,
             external_id=external_id,
             dungeon=dungeon,
+            dungeon_slug=dungeon_slug,
             mythic_level=level,
             timed=timed,
             completed_at=completed_at,
@@ -192,6 +197,7 @@ async def sync_mythic_plus(db: Session) -> dict:
         report["runs"].append(
             {
                 "dungeon": dungeon,
+                "dungeon_slug": dungeon_slug,
                 "level": level,
                 "timed": timed,
                 "guild_characters": guild_names,
