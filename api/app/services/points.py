@@ -77,9 +77,14 @@ def season_itinerary(db: Session, user_id, at: datetime | None = None) -> UserPa
     return choice.path if choice else None
 
 
+def scores_campaign(path: UserPath | None) -> bool:
+    """Campaña e híbrido puntúan banco y artesanía. Competitivo, no."""
+    return path in (UserPath.CAMPAIGN, UserPath.HYBRID)
+
+
 def scores_guild_bank(path: UserPath | None) -> bool:
     """Solo Campaña e Híbrido puntúan por meter materiales al banco. Competitivo, no."""
-    return path in (UserPath.CAMPAIGN, UserPath.HYBRID)
+    return scores_campaign(path)
 
 
 def record_capped_event(

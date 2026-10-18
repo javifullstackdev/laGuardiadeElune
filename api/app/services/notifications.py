@@ -48,6 +48,7 @@ def notify_points(
     titles = {
         "points_mythic": f"+{counted} puntos de mítica",
         "points_bank": f"+{counted} puntos del banco",
+        "points_craft": f"+{counted} puntos de artesanía",
     }
     body = reason
     if counted < amount:

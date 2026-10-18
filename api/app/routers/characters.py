@@ -31,6 +31,7 @@ from app.schemas.character import (
     AchievementOut, merge_public_fields,
 )
 from app.services import blizzard, title_sync
+from app.services.professions import store_profession_snapshot
 from app.services.bio_questions import answers_complete, normalize_answers
 from app.urls import static_url
 
@@ -1298,7 +1299,7 @@ async def get_character_professions(
             "total_recipes":      sum(len(t.get("known_recipes", [])) for t in tiers),
         }
 
-    return {
-        "primaries":   [_parse(p) for p in raw.get("primaries",   [])],
-        "secondaries": [_parse(s) for s in raw.get("secondaries", [])],
-    }
+    primaries = [_parse(p) for p in raw.get("primaries", [])]
+    secondaries = [_parse(s) for s in raw.get("secondaries", [])]
+    store_profession_snapshot(db, char.id, primaries + secondaries)
+    return {"primaries": primaries, "secondaries": secondaries}
