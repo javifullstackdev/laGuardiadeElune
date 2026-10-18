@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { qualityClass } from "@/lib/bank";
@@ -89,6 +90,7 @@ export default function PedidosClient({
   blizzardLinked: boolean;
   blizzardExpired: boolean;
 }) {
+  const router = useRouter();
   const [orders, setOrders] = useState(initialOrders);
   const [professionId, setProfessionId] = useState(professions[0]?.id ?? 164);
   const [picked, setPicked] = useState<CraftHit | null>(null);
@@ -143,8 +145,9 @@ export default function PedidosClient({
     setPicked(null);
     setQuantity("1");
     setNote("");
-    setOk("Pedido publicado.");
+    setOk("Pedido publicado. Lo tienes en el buzón.");
     await reload();
+    router.refresh();
   }
 
   async function act(id: string, action: string, body?: object) {
