@@ -4,6 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+type CraftCharacter = { name: string; realm: string; skill_points: number };
+
 type Notice = {
   id: string;
   kind: string;
@@ -12,6 +14,9 @@ type Notice = {
   href: string | null;
   claim_id: string | null;
   claim_status: string | null;
+  craft_order_id: string | null;
+  craft_status: string | null;
+  characters: CraftCharacter[];
   read: boolean;
   created_at: string;
 };
@@ -27,6 +32,7 @@ const KIND_LABEL: Record<string, string> = {
   points_craft: "Artesanía",
   craft_claimed: "Pedido",
   craft_done: "Pedido",
+  craft_offer: "Pedido",
   eremita_story: "Eremita",
   eremita_bio: "Eremita",
   relation_claim: "Mención",
@@ -51,6 +57,8 @@ export default function Mailbox({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<Notice[]>([]);
   const [highlight, setHighlight] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
+  const [crafter, setCrafter] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/notifications")
@@ -75,6 +83,46 @@ export default function Mailbox({ children }: { children: ReactNode }) {
     setUnread(data.unread ?? 0);
     setItems(data.items ?? []);
     router.refresh();
+  }
+
+  async function refresh() {
+    const fresh = await fetch("/api/notifications");
+    if (!fresh.ok) return;
+    const data: Payload = await fresh.json();
+    setUnread(data.unread ?? 0);
+    setItems(data.items ?? []);
+    router.refresh();
+  }
+
+  async function acceptOrder(item: Notice) {
+    const options = item.characters ?? [];
+    const selected = crafter[item.id] || (options[0] ? `${options[0].name}::${options[0].realm}` : "");
+    const [character_name, character_realm] = selected.split("::");
+    if (!item.craft_order_id || !character_name || !character_realm) return;
+    setBusy(item.id);
+    setError(null);
+    const res = await fetch(`/api/pedidos/${item.craft_order_id}/claim`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ character_name, character_realm }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const detail = data && typeof data.detail === "string" ? data.detail : "No se pudo coger el pedido";
+      setError(detail);
+      setBusy(null);
+      return;
+    }
+    await refresh();
+    setBusy(null);
+  }
+
+  async function declineOrder(id: string) {
+    setBusy(id);
+    setError(null);
+    await fetch(`/api/notifications/${id}/read`, { method: "POST" });
+    await refresh();
+    setBusy(null);
   }
 
   async function resolve(claimId: string, action: "confirm" | "reject") {
@@ -120,16 +168,21 @@ export default function Mailbox({ children }: { children: ReactNode }) {
         <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2">
           {items.length === 0 && (
             <p className="text-sm text-gray-500 px-1">
-              Cuando sumes puntos, el Eremita responda o te nombren en una historia, aparecerá aquí.
+              Cuando sumes puntos, entre un pedido de tu profesión, el Eremita responda o te nombren en una historia, aparecerá aquí.
             </p>
           )}
+          {error && <p className="text-xs text-red-400 px-1">{error}</p>}
           {items.map((item) => {
             const pending = item.kind === "relation_claim" && item.claim_status === "pending" && item.claim_id;
+            const offer = item.kind === "craft_offer" && item.craft_status === "open" && item.craft_order_id;
+            const options = item.characters ?? [];
+            const selected =
+              crafter[item.id] || (options[0] ? `${options[0].name}::${options[0].realm}` : "");
             return (
               <article
                 key={item.id}
                 className={`rounded-lg border px-3 py-2.5 space-y-1 ${
-                  pending
+                  pending || offer
                     ? "border-amber-500/30 bg-amber-500/5"
                     : !item.read || highlight.has(item.id)
                       ? "border-yellow-500/30 bg-yellow-500/5"
@@ -148,6 +201,39 @@ export default function Mailbox({ children }: { children: ReactNode }) {
                   <Link href={item.href} className="inline-block text-xs text-yellow-400 hover:text-yellow-300">
                     Ver
                   </Link>
+                )}
+                {offer && (
+                  <div className="flex flex-wrap gap-2 pt-1 items-end">
+                    {options.length > 1 && (
+                      <select
+                        value={selected}
+                        onChange={(e) => setCrafter((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                        className="elune-select bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-white"
+                      >
+                        {options.map((opt) => (
+                          <option key={`${opt.name}-${opt.realm}`} value={`${opt.name}::${opt.realm}`}>
+                            {opt.name}-{opt.realm}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <button
+                      type="button"
+                      disabled={!!busy || options.length === 0}
+                      onClick={() => acceptOrder(item)}
+                      className="px-2.5 py-1 rounded-md text-xs bg-yellow-500/90 hover:bg-yellow-400 text-black disabled:opacity-50"
+                    >
+                      Lo fabrico
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!!busy}
+                      onClick={() => declineOrder(item.id)}
+                      className="px-2.5 py-1 rounded-md text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 disabled:opacity-50"
+                    >
+                      Ahora no
+                    </button>
+                  </div>
                 )}
                 {pending && (
                   <div className="flex gap-2 pt-1">

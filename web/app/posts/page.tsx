@@ -3,6 +3,7 @@ import Link from "next/link";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import PostTile from "../components/PostTile";
 import { CATEGORIES, getCategoryStyle, type Post } from "@/lib/posts";
+import { boardToPost, type CraftBoardCard } from "@/lib/craft-board";
 
 import { apiUrl } from "@/lib/api";
 
@@ -18,11 +19,22 @@ export default async function PostsPage({
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category } = await searchParams;
-  const res = await fetch(apiUrl("/posts/"), { cache: "no-store" });
+  const [res, boardRes] = await Promise.all([
+    fetch(apiUrl("/posts/"), { cache: "no-store" }),
+    fetch(apiUrl("/craft-orders/board"), { cache: "no-store" }),
+  ]);
   const posts: Post[] = res.ok ? await res.json() : [];
-  const filtered = category
-    ? posts.filter((p) => p.category?.toLowerCase() === category.toLowerCase())
-    : posts;
+  const board: CraftBoardCard[] = boardRes.ok ? await boardRes.json() : [];
+  const orders = category && category !== "pedidos" ? [] : Array.isArray(board) ? board : [];
+  const filtered = category === "pedidos"
+    ? []
+    : category
+      ? posts.filter((p) => p.category?.toLowerCase() === category.toLowerCase())
+      : posts;
+  const cards = [
+    ...orders.map((card) => ({ post: boardToPost(card), href: "/pedidos" as const })),
+    ...filtered.map((post) => ({ post, href: undefined })),
+  ];
   const active = category ? getCategoryStyle(category) : null;
 
   return (
@@ -65,15 +77,15 @@ export default async function PostsPage({
           ))}
         </div>
 
-        {filtered.length === 0 ? (
+        {cards.length === 0 ? (
           <p className="text-gray-500 py-16 text-center">
             Aún no hay publicaciones en esta sección.
           </p>
         ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {filtered.map((post) => (
-              <li key={post.id}>
-                <PostTile post={post} />
+            {cards.map((card) => (
+              <li key={card.post.id}>
+                <PostTile post={card.post} href={card.href} />
               </li>
             ))}
           </ul>
