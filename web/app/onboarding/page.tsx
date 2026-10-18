@@ -174,6 +174,13 @@ export default async function BienvenidaPage() {
                 Ver mi perfil →
               </Link>
             </div>
+          ) : step3Done && user.season && user.path == null ? (
+            <Link
+              href="/profile"
+              className="text-sm text-gray-300 hover:text-white transition-colors"
+            >
+              Elegir itinerario en el perfil →
+            </Link>
           ) : (
             <Link
               href="/profile"

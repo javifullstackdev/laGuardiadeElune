@@ -14,6 +14,7 @@ type Player = {
   avatar_url: string | null;
   birthday: string | null;
   character_count: number;
+  path: string | null;
 };
 
 const ROLE_BADGE: Record<string, string> = {
@@ -184,6 +185,58 @@ function BirthdayCell({ player }: { player: Player }) {
   );
 }
 
+const PATH_OPTIONS = [
+  { value: "competitive", label: "Competitivo" },
+  { value: "campaign", label: "Campaña" },
+  { value: "hybrid", label: "Híbrido" },
+];
+
+function PathCell({ player }: { player: Player }) {
+  const [path, setPath] = useState(player.path);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleChange(next: string) {
+    if (!next || next === path) return;
+    const previous = path;
+    setPath(next);
+    setError(null);
+    startTransition(async () => {
+      const res = await fetch(`/api/admin/players/${player.id}/path`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setPath(previous);
+        setError(data.detail ?? data.error ?? "No se pudo cambiar");
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <select
+        value={path ?? ""}
+        disabled={isPending}
+        onChange={(e) => handleChange(e.target.value)}
+        className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs focus:outline-none disabled:opacity-50"
+      >
+        <option value="" disabled>
+          Sin elegir
+        </option>
+        {PATH_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {error && <span className="text-xs text-red-400">{String(error)}</span>}
+    </div>
+  );
+}
+
 export default function PlayersTable({ players }: { players: Player[] }) {
   const [search, setSearch] = useState("");
 
@@ -257,6 +310,10 @@ export default function PlayersTable({ players }: { players: Player[] }) {
                 <div className="flex items-start gap-2">
                   <span className="text-xs text-gray-500 w-24 shrink-0">Apodo ranking</span>
                   <DisplayNameCell player={player} />
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-xs text-gray-500 w-24 shrink-0">Itinerario</span>
+                  <PathCell player={player} />
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-xs text-gray-500 w-24 shrink-0">Cumpleaños</span>

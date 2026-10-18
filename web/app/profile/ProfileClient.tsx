@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWatermarkBox } from "../components/HomeLogo";
+import PathPicker from "../onboarding/PathPicker";
 import PublishStoryPanel from "./PublishStoryPanel";
 import FichaPreview from "./FichaPreview";
 import ClaimsInbox from "./ClaimsInbox";
@@ -311,6 +312,24 @@ export default function ProfileClient({
       root.removeEventListener("touchcancel", end);
     };
   }, [sidebarOpen]);
+
+  const mustPickPath = Boolean(
+    user.season && !user.path && characters.some((c) => c.is_main)
+  );
+  if (mustPickPath) {
+    return (
+      <div className="min-h-[calc(100vh-3rem)] flex items-center justify-center px-4 py-16 text-white">
+        <div className="w-full max-w-lg">
+          <h1 className="text-2xl font-bold text-center">Elige tu itinerario</h1>
+          <p className="text-sm text-gray-400 text-center mt-2 mb-6">
+            Ya tienes personaje principal. Para {user.season?.name} hay que elegir itinerario
+            antes de usar el perfil. Solo se puede cambiar cuando empiece la siguiente temporada.
+          </p>
+          <PathPicker currentPath={null} seasonName={user.season?.name ?? ""} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex text-white relative">
@@ -862,7 +881,7 @@ function PointsTab({ transactions, points }: { transactions: Transaction[]; poin
           </div>
           {!path && (
             <p className="text-xs text-gray-500">
-              Si no eliges, con tu primera actividad puntuable se te fijará Híbrido para toda la temporada.
+              Cuando marques un personaje principal, tendrás que elegir itinerario para que cuenten los puntos.
             </p>
           )}
           {buckets.map((b) => {

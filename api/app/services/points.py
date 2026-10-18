@@ -10,6 +10,8 @@ Motor de puntos. Las funciones no hacen commit: lo hace quien las llama.
   Los puntos que pasan del tope no se acumulan: se pierden.
 - Se llena por orden cronológico; el evento que cruza el tope cuenta en parte.
 - Lo que da o quita un admin (weekly_capped = false) siempre cuenta y no consume tope.
+- Sin itinerario elegido no cuenta ningún evento con tope. El jugador lo fija
+  al tener main; un admin puede corregirlo y se recalcula la temporada.
 """
 
 from datetime import datetime, timedelta
@@ -21,7 +23,6 @@ from app.models.enums import EventCategory
 from app.models.point_transaction import PointTransaction
 from app.models.season import Season
 from app.models.user import User, UserPath
-from app.models.user_season_path import UserSeasonPath
 from app.services import seasons as season_service
 from app.services.weeks import week_start
 
@@ -61,17 +62,10 @@ def effective_amount(tx: PointTransaction) -> int:
     return (tx.counted_amount or 0) if tx.weekly_capped else tx.amount
 
 
-def season_path_or_default(db: Session, user_id, season: Season) -> UserPath:
-    """
-    Itinerario del jugador en la temporada. Si aún no eligió, el primer evento
-    automático le fija Híbrido: así nadie espera a ver qué itinerario le conviene más.
-    """
+def chosen_path(db: Session, user_id, season: Season) -> UserPath | None:
+    """Itinerario ya guardado. None si el jugador todavía no lo ha elegido."""
     choice = season_service.season_path(db, user_id, season.id)
-    if choice is None:
-        choice = UserSeasonPath(user_id=user_id, season_id=season.id, path=UserPath.HYBRID)
-        db.add(choice)
-        db.flush()
-    return choice.path
+    return choice.path if choice else None
 
 
 def season_itinerary(db: Session, user_id, at: datetime | None = None) -> UserPath | None:
@@ -108,7 +102,6 @@ def record_capped_event(
     season = season_service.current_season(db, at=occurred_at)
     if season is None or occurred_at < points_start(season):
         return None
-    season_path_or_default(db, user_id, season)
 
     tx = PointTransaction(
         user_id=user_id,
@@ -163,7 +156,20 @@ def recalculate_season(db: Session, user_id, season: Season) -> None:
     if not rows:
         return
 
-    caps = WEEKLY_CAPS[season_path_or_default(db, user_id, season)]
+    path = chosen_path(db, user_id, season)
+    if path is None:
+        delta = 0
+        for t in rows:
+            delta += 0 - (t.counted_amount or 0)
+            t.counted_amount = 0
+        if delta:
+            db.query(User).filter(User.id == user_id).update(
+                {User.total_points: User.total_points + delta}, synchronize_session="fetch"
+            )
+        db.flush()
+        return
+
+    caps = WEEKLY_CAPS[path]
     used = {name: 0 for name in caps}
 
     delta = 0
