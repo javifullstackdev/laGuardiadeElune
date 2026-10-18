@@ -110,11 +110,16 @@ def _list(db: Session, user: User) -> NotificationList:
                 created_at=note.created_at,
             )
         )
-    items.sort(
-        key=lambda item: (
-            item.claim_status != "pending" and not (item.kind == "craft_offer" and item.craft_status == "open"),
-        )
-    )
+    def _needs_answer(item: NotificationOut) -> bool:
+        if item.claim_status == "pending":
+            return True
+        if item.kind == "craft_offer" and item.craft_status == "open":
+            return True
+        if item.kind == "craft_accepted" and item.craft_status == "claimed":
+            return True
+        return item.kind == "craft_ready" and item.craft_status == "completed"
+
+    items.sort(key=lambda item: (not _needs_answer(item),))
     return NotificationList(unread=unread, items=items)
 
 

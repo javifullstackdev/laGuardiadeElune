@@ -43,7 +43,7 @@ class CraftOrder(Base):
     item_detail = Column(String(160), nullable=True)
     quantity = Column(Integer, nullable=False, server_default="1")
     note = Column(Text, nullable=True)
-    # open | claimed | completed | cancelled
+    # open | claimed | completed | collected | cancelled
     status = Column(String(16), nullable=False, server_default="open")
     crafter_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     crafter_character_name = Column(String(24), nullable=True)
