@@ -202,6 +202,35 @@ def get_my_transactions(
     ]
 
 
+def _parse_path(raw: str) -> UserPath:
+    try:
+        return UserPath[str(raw).upper()]
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"Itinerario '{raw}' no válido")
+
+
+def _save_season_path(db: Session, user: User, path: UserPath, *, overwrite: bool) -> dict:
+    """Guarda el itinerario de la temporada en curso y recalcula los topes."""
+    season = season_service.current_season(db)
+    if not season:
+        raise HTTPException(409, "Todavía no hay una temporada en curso")
+    choice = season_service.season_path(db, user.id, season.id)
+    if choice and not overwrite:
+        raise HTTPException(409, f"Ya elegiste itinerario para «{season.name}»")
+    if choice:
+        choice.path = path
+    else:
+        db.add(UserSeasonPath(user_id=user.id, season_id=season.id, path=path))
+    try:
+        db.flush()
+        points_service.recalculate_season(db, user.id, season)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, f"Ya elegiste itinerario para «{season.name}»")
+    return {"path": path.value, "season": season_service.serialize(season)}
+
+
 @router.patch("/me/path")
 def set_my_path(
     data: dict,
@@ -209,25 +238,26 @@ def set_my_path(
     db: Session = Depends(get_db),
 ):
     """Elige el itinerario de la temporada en curso. Solo una vez por temporada."""
-    path_value = str(data.get("path", "")).upper()
-    try:
-        path = UserPath[path_value]
-    except KeyError:
-        raise HTTPException(status_code=400, detail=f"Itinerario '{path_value}' no válido")
+    return _save_season_path(db, current_user, _parse_path(data.get("path", "")), overwrite=False)
 
-    season = season_service.current_season(db)
-    if not season:
-        raise HTTPException(409, "Todavía no hay una temporada en curso")
-    if season_service.season_path(db, current_user.id, season.id):
-        raise HTTPException(409, f"Ya elegiste itinerario para «{season.name}»")
 
-    db.add(UserSeasonPath(user_id=current_user.id, season_id=season.id, path=path))
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(409, f"Ya elegiste itinerario para «{season.name}»")
-    return {"path": path.value, "season": season_service.serialize(season)}
+class SeasonPathInput(BaseModel):
+    path: str
+
+
+@router.patch("/{user_id}/path")
+def admin_set_path(
+    user_id: str,
+    data: SeasonPathInput,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: corrige el itinerario de la temporada en curso y recalcula los puntos."""
+    from uuid import UUID
+    user = db.query(User).filter(User.id == UUID(user_id), User.deleted_at.is_(None)).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return _save_season_path(db, user, _parse_path(data.path), overwrite=True)
 
 
 @router.get("/admin/players")
@@ -263,6 +293,12 @@ async def list_players(
         if dirty:
             db.commit()
 
+    season = season_service.current_season(db)
+    path_by_user = {}
+    if season:
+        for choice in db.query(UserSeasonPath).filter(UserSeasonPath.season_id == season.id).all():
+            path_by_user[choice.user_id] = choice.path.value
+
     rows = (
         db.query(
             User,
@@ -291,6 +327,7 @@ async def list_players(
             "avatar_url":      u.avatar_url,
             "birthday":        u.birthday.isoformat() if u.birthday else None,
             "character_count": count,
+            "path":            path_by_user.get(u.id),
         }
         for u, count in rows
     ]
