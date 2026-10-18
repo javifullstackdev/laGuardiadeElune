@@ -255,6 +255,26 @@ def _crafting_label(preview: dict) -> str | None:
     return None
 
 
+async def get_craft_tooltip(item_id: int) -> dict:
+    """Texto de tooltip: sabor, o el efecto de equipar si el objeto no tiene descripción."""
+    data = await _get_json(f"/data/wow/item/{item_id}", f"static-{_region()}", locale=LOCALE)
+    if not data:
+        return {"description": None, "detail": None}
+    preview = data.get("preview_item") or {}
+    description = (data.get("description") or preview.get("description") or "").strip() or None
+    if not description:
+        for spell in preview.get("spells") or []:
+            text = (spell.get("description") or "").strip()
+            if text:
+                description = text
+                break
+    if description and len(description) > 600:
+        description = description[:597] + "…"
+    slot = (preview.get("inventory_type") or data.get("inventory_type") or {}).get("name")
+    detail = slot.strip() if isinstance(slot, str) and slot.strip() else None
+    return {"description": description, "detail": detail}
+
+
 async def get_item_details(item_id: int) -> dict:
     """Tooltip público: descripción y etiqueta de componente de profesión."""
     data = await _get_json(f"/data/wow/item/{item_id}", f"static-{_region()}", locale=LOCALE)
@@ -333,6 +353,150 @@ async def get_mythic_season(season_id: int) -> dict | None:
     return await _get_json(
         f"/data/wow/mythic-keystone/season/{season_id}", f"dynamic-{_region()}", locale=LOCALE
     )
+
+
+_recipe_cache: dict[int, tuple[float, list[dict]]] = {}
+_recipe_lock = asyncio.Lock()
+
+
+def _recipe_icon(media: dict | None) -> str | None:
+    for asset in (media or {}).get("assets") or []:
+        if asset.get("key") == "icon" and asset.get("value"):
+            return asset["value"]
+    return None
+
+
+async def _profession_recipe_index(profession_id: int) -> list[dict]:
+    """Recetas de una profesión, de la expansión más nueva a la más antigua."""
+    cached = _recipe_cache.get(profession_id)
+    if cached and time.time() < cached[0]:
+        return cached[1]
+
+    async with _recipe_lock:
+        cached = _recipe_cache.get(profession_id)
+        if cached and time.time() < cached[0]:
+            return cached[1]
+
+        prof = await _get_json(
+            f"/data/wow/profession/{profession_id}", f"static-{_region()}", locale=LOCALE
+        )
+        tiers = list((prof or {}).get("skill_tiers") or [])
+        if not tiers:
+            raise BlizzardError("Blizzard no devolvió las recetas de esa profesión")
+
+        async def _tier(tier: dict) -> list[dict]:
+            data = await _get_json(
+                f"/data/wow/profession/{profession_id}/skill-tier/{tier['id']}",
+                f"static-{_region()}",
+                locale=LOCALE,
+            )
+            rows = []
+            for category in (data or {}).get("categories") or []:
+                if normalize(category.get("name") or "") == "refabricacion":
+                    continue
+                for recipe in category.get("recipes") or []:
+                    name = (recipe.get("name") or "").strip()
+                    if recipe.get("id") and name:
+                        rows.append({"id": recipe["id"], "name": name})
+            return rows
+
+        # El índice viene de más antiguo a más nuevo: invertimos para priorizar Midnight.
+        grouped = await asyncio.gather(*(_tier(tier) for tier in reversed(tiers)))
+        seen: set[str] = set()
+        index: list[dict] = []
+        for rows in grouped:
+            for row in rows:
+                key = normalize(row["name"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                index.append(row)
+        _recipe_cache[profession_id] = (time.time() + INDEX_TTL_SECONDS, index)
+        return index
+
+
+async def _item_by_exact_name(name: str) -> dict | None:
+    needle = normalize(name)
+    for field in ("name.es_ES", "name.en_US"):
+        data = await _get_json(
+            "/data/wow/search/item",
+            f"static-{_region()}",
+            locale=LOCALE,
+            extra={field: name, "_page": 1, "_pageSize": 8},
+        )
+        for row in (data or {}).get("results") or []:
+            payload = row.get("data") or {}
+            item_name = _localized_name(payload.get("name"))
+            if payload.get("id") and normalize(item_name) == needle:
+                return payload
+    return None
+
+
+async def search_profession_crafts(profession_id: int, query: str, limit: int = 10) -> list[dict]:
+    """Recetas de esa profesión cuyo nombre contiene la búsqueda, con icono y descripción."""
+    needle = normalize(query).strip()
+    if len(needle) < 2:
+        return []
+    index = await _profession_recipe_index(profession_id)
+    matches = [row for row in index if needle in normalize(row["name"])][: max(1, min(limit, 12))]
+
+    async def _enrich(recipe: dict) -> dict:
+        media, item = await asyncio.gather(
+            _get_json(f"/data/wow/media/recipe/{recipe['id']}", f"static-{_region()}"),
+            _item_by_exact_name(recipe["name"]),
+            return_exceptions=True,
+        )
+        icon = _recipe_icon(media) if isinstance(media, dict) else None
+        description = None
+        quality = None
+        item_id = None
+        detail_label = None
+        if isinstance(item, dict):
+            item_id = item.get("id")
+            quality = ((item.get("quality") or {}).get("type") or "").lower() or None
+            item_icon, details = await asyncio.gather(
+                get_item_icon(item_id),
+                get_craft_tooltip(item_id),
+                return_exceptions=True,
+            )
+            if isinstance(item_icon, str):
+                icon = item_icon
+            if isinstance(details, dict):
+                description = details.get("description")
+                detail_label = details.get("detail")
+        return {
+            "recipe_id": recipe["id"],
+            "id": item_id,
+            "name": recipe["name"],
+            "quality": quality,
+            "icon_url": icon,
+            "description": description,
+            "detail": detail_label,
+        }
+
+    return list(await asyncio.gather(*(_enrich(row) for row in matches)))
+
+
+async def get_profile_professions(token: str, realm: str, name: str) -> dict | None:
+    """Profesiones de un personaje con el token de su dueño. None si Blizzard no autoriza la lectura."""
+    slug = realm.strip().lower().replace(" ", "-")
+    url = (
+        f"https://{_region()}.api.blizzard.com/profile/wow/character/"
+        f"{quote(slug)}/{quote(name.strip().lower())}/professions"
+    )
+    try:
+        res = await _http().get(
+            url,
+            params={"namespace": f"profile-{_region()}", "locale": LOCALE},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    except httpx.HTTPError as exc:
+        raise BlizzardError("No se pudo leer las profesiones del personaje") from exc
+    if res.status_code in (401, 403, 404):
+        return None
+    if res.status_code != 200:
+        return None
+    return res.json()
 
 
 async def get_character_title_ids(realm: str, name: str) -> set[int]:

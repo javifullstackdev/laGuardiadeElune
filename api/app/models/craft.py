@@ -36,6 +36,11 @@ class CraftOrder(Base):
     profession_id = Column(Integer, nullable=False)
     profession_name = Column(String(120), nullable=False)
     item_name = Column(String(255), nullable=False)
+    blizzard_item_id = Column(Integer, nullable=True)
+    item_quality = Column(String(32), nullable=True)
+    item_icon_url = Column(String(500), nullable=True)
+    item_description = Column(Text, nullable=True)
+    item_detail = Column(String(160), nullable=True)
     quantity = Column(Integer, nullable=False, server_default="1")
     note = Column(Text, nullable=True)
     # open | claimed | completed | cancelled
