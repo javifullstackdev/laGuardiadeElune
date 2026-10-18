@@ -578,99 +578,46 @@ html[data-elune-intro="playing"] nav {
   --sheet-chrome: 8rem !important;
 }
 
-.mailbox-icon .flap,
-.mailbox-icon .letter,
-.mailbox-icon .seal {
-  transform-box: fill-box;
-  transform-origin: center;
+.mailbox-bell {
+  transform-origin: top center;
 }
 
-.mailbox-icon .flap {
-  transform-origin: center top;
-  transition: transform 0.45s ease;
+.mailbox-bell.is-ringing {
+  animation: mailbox-bell-ring 2.2s ease-in-out infinite;
 }
 
-.mailbox-icon .seal {
-  animation: mailbox-seal-idle 4.8s ease-in-out infinite;
-}
-
-.mailbox-icon.has-unread .letter {
-  animation: mailbox-letter 2.4s ease-in-out infinite;
-}
-
-.mailbox-icon.has-unread .flap {
-  animation: mailbox-flap 2.4s ease-in-out infinite;
-}
-
-.mailbox-icon.has-unread .seal {
-  animation: mailbox-seal 2.4s ease-in-out infinite;
-}
-
-.mailbox-icon.is-open .letter {
-  animation: none;
-  transform: translateY(-3px);
-}
-
-.mailbox-icon.is-open .flap {
-  animation: none;
-  transform: scaleY(0.22);
-}
-
-.mailbox-icon.is-open .seal {
-  animation: none;
-  opacity: 0.35;
-}
-
-@keyframes mailbox-letter {
+@keyframes mailbox-bell-ring {
   0%,
+  55%,
   100% {
-    transform: translateY(3px);
+    transform: rotate(0deg);
+    filter: drop-shadow(0 0 1px rgba(255, 244, 200, 0.35));
   }
 
-  45% {
-    transform: translateY(-3px);
-  }
-}
-
-@keyframes mailbox-flap {
-  0%,
-  100% {
-    transform: rotateX(0deg);
+  62% {
+    transform: rotate(14deg);
+    filter: drop-shadow(0 0 7px rgba(246, 231, 168, 0.95));
   }
 
-  45% {
-    transform: scaleY(0.28);
-  }
-}
-
-@keyframes mailbox-seal {
-  0%,
-  100% {
-    opacity: 0.8;
-    filter: drop-shadow(0 0 0 #f6e7a8);
+  70% {
+    transform: rotate(-12deg);
+    filter: drop-shadow(0 0 8px rgba(255, 248, 220, 1));
   }
 
-  45% {
-    opacity: 1;
-    filter: drop-shadow(0 0 3px #f6e7a8);
-  }
-}
-
-@keyframes mailbox-seal-idle {
-  0%,
-  100% {
-    opacity: 0.72;
+  78% {
+    transform: rotate(8deg);
+    filter: drop-shadow(0 0 6px rgba(246, 231, 168, 0.9));
   }
 
-  50% {
-    opacity: 1;
+  86% {
+    transform: rotate(-4deg);
+    filter: drop-shadow(0 0 4px rgba(246, 231, 168, 0.7));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mailbox-icon .letter,
-  .mailbox-icon .flap,
-  .mailbox-icon .seal {
+  .mailbox-bell.is-ringing {
     animation: none;
+    filter: drop-shadow(0 0 6px rgba(246, 231, 168, 0.9));
   }
 }
