@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import {
   apiDetail,
+  isCraftingGrade,
   qualityClass,
   rateLabel,
   type BankHit,
@@ -179,7 +180,7 @@ export default function ItemPicker({
                       <span className={`text-xs truncate min-w-0 flex-1 ${qualityClass(item.quality)}`}>
                         {item.name}
                       </span>
-                      {item.material_grade !== "none" ? (
+                      {isCraftingGrade(item.material_grade) ? (
                         <QualityGem grade={item.material_grade} size={14} />
                       ) : null}
                       <span className="ml-auto text-[11px] text-yellow-400/90 shrink-0">
