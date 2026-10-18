@@ -69,15 +69,18 @@ def notify_points(
 def mark_passive_read(db: Session, user_id) -> None:
     """Marca como leídos los avisos que no piden una respuesta.
 
-    Siguen sin leer las menciones pendientes y los pedidos que el artesano aún puede coger.
+    Siguen sin leer las menciones pendientes, la oferta mientras el pedido está libre,
+    el aviso del artesano hasta que lo marca fabricado y el del solicitante hasta que lo recoge.
     """
     pending_ids = [
         row[0]
         for row in db.query(RelationClaim.id).filter(RelationClaim.status == "pending").all()
     ]
-    open_order_ids = [
-        row[0] for row in db.query(CraftOrder.id).filter(CraftOrder.status == "open").all()
-    ]
+    waiting: dict[str, list] = {"open": [], "claimed": [], "completed": []}
+    for order_id, status in db.query(CraftOrder.id, CraftOrder.status).filter(
+        CraftOrder.status.in_(("open", "claimed", "completed"))
+    ):
+        waiting[status].append(order_id)
     now = datetime.now(timezone.utc)
     filters = [
         Notification.user_id == user_id,
@@ -87,13 +90,27 @@ def mark_passive_read(db: Session, user_id) -> None:
         filters.append(
             or_(Notification.claim_id.is_(None), Notification.claim_id.notin_(pending_ids))
         )
-    if open_order_ids:
-        filters.append(
-            ~and_(
-                Notification.kind == "craft_offer",
-                Notification.craft_order_id.in_(open_order_ids),
+    still_open = []
+    if waiting["open"]:
+        still_open.append(
+            and_(Notification.kind == "craft_offer", Notification.craft_order_id.in_(waiting["open"]))
+        )
+    if waiting["claimed"]:
+        still_open.append(
+            and_(
+                Notification.kind == "craft_accepted",
+                Notification.craft_order_id.in_(waiting["claimed"]),
             )
         )
+    if waiting["completed"]:
+        still_open.append(
+            and_(
+                Notification.kind == "craft_ready",
+                Notification.craft_order_id.in_(waiting["completed"]),
+            )
+        )
+    if still_open:
+        filters.append(~or_(*still_open))
     db.query(Notification).filter(*filters).update(
         {Notification.read_at: now},
         synchronize_session=False,

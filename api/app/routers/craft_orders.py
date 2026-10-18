@@ -11,6 +11,7 @@ from app.dependencies import get_current_user, require_admin
 from app.models.character import Character
 from app.models.craft import CharacterProfessionSkill, CraftOrder
 from app.models.enums import EventCategory
+from app.models.relation_claim import Notification
 from app.models.user import User
 from app.services import blizzard, points as points_service
 from app.services.blizzard import BlizzardError
@@ -330,38 +331,35 @@ def claim_order(
     row.crafter_character_name = char.name
     row.crafter_character_realm = char.realm
     row.claimed_at = datetime.now(timezone.utc)
+    who = _visible_name(current_user)
     notify(
         db,
         user_id=row.requester_id,
         kind="craft_claimed",
-        title="Alguien ha cogido tu pedido",
-        body=f"{_visible_name(current_user)} fabrica {row.quantity}× {row.item_name} con {char.name}.",
+        title="Han aceptado tu pedido",
+        body=f"{who} ({char.name}-{char.realm}) va a fabricar {row.quantity}× {row.item_name}.",
         href="/pedidos",
+        craft_order_id=row.id,
+    )
+    notify(
+        db,
+        user_id=current_user.id,
+        kind="craft_accepted",
+        title="Has aceptado el pedido",
+        body=f"Cuando fabriques {row.quantity}× {row.item_name} en el juego, márcalo como completado.",
+        href="/pedidos",
+        craft_order_id=row.id,
     )
     db.commit()
     db.refresh(row)
     return _order_out(row)
 
 
-@router.post("/{order_id}/release")
-def release_order(
-    order_id: UUID,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
+def _load_order(db: Session, order_id: UUID) -> CraftOrder:
     row = db.query(CraftOrder).filter(CraftOrder.id == order_id).first()
     if not row:
         raise HTTPException(404, "Pedido no encontrado")
-    if row.status != "claimed" or row.crafter_user_id != current_user.id:
-        raise HTTPException(400, "Solo quien lo ha cogido puede soltarlo")
-    row.status = "open"
-    row.crafter_user_id = None
-    row.crafter_character_name = None
-    row.crafter_character_realm = None
-    row.claimed_at = None
-    db.commit()
-    db.refresh(row)
-    return _order_out(row)
+    return row
 
 
 @router.post("/{order_id}/cancel")
@@ -370,17 +368,116 @@ def cancel_order(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    row = db.query(CraftOrder).filter(CraftOrder.id == order_id).first()
-    if not row:
-        raise HTTPException(404, "Pedido no encontrado")
-    if row.status not in ("open", "claimed"):
-        raise HTTPException(400, "Este pedido ya se cerró")
-    staff = current_user.role.value in ("admin", "officer")
-    if row.requester_id != current_user.id and not staff:
-        raise HTTPException(403, "Solo quien lo pidió puede cancelarlo")
+    row = _load_order(db, order_id)
+    now = datetime.now(timezone.utc)
+    if row.status == "open":
+        staff = current_user.role.value in ("admin", "officer")
+        if row.requester_id != current_user.id and not staff:
+            raise HTTPException(403, "Solo quien lo pidió puede cancelarlo")
+        if row.requester_id != current_user.id:
+            notify(
+                db,
+                user_id=row.requester_id,
+                kind="craft_cancelled",
+                title="Tu pedido se ha cancelado",
+                body=f"{row.quantity}× {row.item_name}.",
+                href="/pedidos",
+                craft_order_id=row.id,
+            )
+        told = {
+            user_id
+            for (user_id,) in db.query(Notification.user_id)
+            .filter(
+                Notification.craft_order_id == row.id,
+                Notification.kind == "craft_offer",
+                Notification.user_id != current_user.id,
+            )
+            .distinct()
+        }
+        for user_id in told:
+            notify(
+                db,
+                user_id=user_id,
+                kind="craft_cancelled",
+                title="El pedido se ha cancelado",
+                body=f"{row.quantity}× {row.item_name} ({row.profession_name}) ya no está en el tablón.",
+                href="/pedidos",
+                craft_order_id=row.id,
+            )
+    elif row.status == "claimed":
+        if row.crafter_user_id != current_user.id:
+            raise HTTPException(403, "Solo el artesano que lo ha aceptado puede cancelarlo")
+        notify(
+            db,
+            user_id=row.requester_id,
+            kind="craft_cancelled",
+            title="El artesano ha cancelado tu pedido",
+            body=(
+                f"{_visible_name(current_user)} ya no fabrica "
+                f"{row.quantity}× {row.item_name}."
+            ),
+            href="/pedidos",
+            craft_order_id=row.id,
+        )
+    else:
+        raise HTTPException(400, "Este pedido ya no se puede cancelar")
     row.status = "cancelled"
     row.resolved_by = current_user.id
+    row.resolved_at = now
+    db.commit()
+    db.refresh(row)
+    return _order_out(row)
+
+
+@router.post("/{order_id}/finish")
+def finish_order(
+    order_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    row = _load_order(db, order_id)
+    if row.status != "claimed" or row.crafter_user_id != current_user.id:
+        raise HTTPException(403, "Solo el artesano que lo ha aceptado puede marcarlo como fabricado")
+    row.status = "completed"
+    notify(
+        db,
+        user_id=row.requester_id,
+        kind="craft_ready",
+        title="Tu pedido ya está fabricado",
+        body=(
+            f"{_visible_name(current_user)} ha fabricado {row.quantity}× {row.item_name}. "
+            "Cuando lo recojas en el juego, márcalo como recogido."
+        ),
+        href="/pedidos",
+        craft_order_id=row.id,
+    )
+    db.commit()
+    db.refresh(row)
+    return _order_out(row)
+
+
+@router.post("/{order_id}/collect")
+def collect_order(
+    order_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    row = _load_order(db, order_id)
+    if row.status != "completed" or row.requester_id != current_user.id:
+        raise HTTPException(403, "Solo quien lo pidió puede marcarlo como recogido")
+    row.status = "collected"
+    row.resolved_by = current_user.id
     row.resolved_at = datetime.now(timezone.utc)
+    if row.crafter_user_id:
+        notify(
+            db,
+            user_id=row.crafter_user_id,
+            kind="craft_collected",
+            title="Han recogido tu pedido",
+            body=f"{_visible_name(current_user)} ha recogido {row.quantity}× {row.item_name}.",
+            href="/pedidos",
+            craft_order_id=row.id,
+        )
     db.commit()
     db.refresh(row)
     return _order_out(row)
@@ -390,14 +487,14 @@ def cancel_order(
 def complete_order(
     order_id: UUID,
     body: CompleteIn,
-    admin: User = Depends(require_admin),
+    _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    row = db.query(CraftOrder).filter(CraftOrder.id == order_id).first()
-    if not row:
-        raise HTTPException(404, "Pedido no encontrado")
-    if row.status != "claimed" or not row.crafter_user_id:
-        raise HTTPException(400, "El pedido tiene que estar cogido por un artesano")
+    row = _load_order(db, order_id)
+    if row.status != "collected" or not row.crafter_user_id:
+        raise HTTPException(400, "El pedido tiene que estar recogido antes de anotar puntos")
+    if row.awarded_points is not None:
+        raise HTTPException(400, "Este pedido ya tiene puntos")
 
     path = points_service.season_itinerary(db, row.crafter_user_id)
     eligible = points_service.scores_campaign(path)
@@ -434,20 +531,9 @@ def complete_order(
                 href="/pedidos",
             )
 
-    row.status = "completed"
     row.awarded_points = (tx.counted_amount or 0) if tx else 0
     row.point_transaction_id = tx.id if tx else None
     row.admin_note = note
-    row.resolved_by = admin.id
-    row.resolved_at = now
-    notify(
-        db,
-        user_id=row.requester_id,
-        kind="craft_done",
-        title="Tu pedido se ha entregado",
-        body=f"{row.quantity}× {row.item_name} ({row.profession_name}).",
-        href="/pedidos",
-    )
     db.commit()
     db.refresh(row)
     return _order_out(row)

@@ -17,7 +17,7 @@ export type CraftOrder = {
   item_detail: string | null;
   quantity: number;
   note: string | null;
-  status: "open" | "claimed" | "completed" | "cancelled";
+  status: "open" | "claimed" | "completed" | "collected" | "cancelled";
   requester_id: string;
   requester_name: string;
   crafter_user_id: string | null;
@@ -47,9 +47,10 @@ export type Crafter = {
 export type MyCharacter = { name: string; realm: string; is_main: boolean };
 
 const STATUS: Record<CraftOrder["status"], string> = {
-  open: "Abierto",
-  claimed: "En fabricación",
-  completed: "Entregado",
+  open: "En el tablón",
+  claimed: "Aceptado",
+  completed: "Fabricado",
+  collected: "Recogido",
   cancelled: "Cancelado",
 };
 
@@ -166,10 +167,11 @@ export default function PedidosClient({
       return;
     }
     await reload();
+    router.refresh();
   }
 
-  const open = orders.filter((row) => row.status === "open" || row.status === "claimed");
-  const closed = orders.filter((row) => row.status === "completed" || row.status === "cancelled");
+  const open = orders.filter((row) => row.status === "open" || row.status === "claimed" || row.status === "completed");
+  const closed = orders.filter((row) => row.status === "collected" || row.status === "cancelled");
 
   return (
     <div className="space-y-10">
@@ -282,7 +284,7 @@ export default function PedidosClient({
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">Pedidos en curso</h2>
-        {open.length === 0 && <p className="text-sm text-gray-400">No hay pedidos abiertos.</p>}
+        {open.length === 0 && <p className="text-sm text-gray-400">No hay pedidos en curso.</p>}
         {open.map((row) => {
           const options = mineFor(row.profession_id);
           const selected =
@@ -318,9 +320,10 @@ export default function PedidosClient({
                 {row.created_at ? ` · ${when(row.created_at)}` : ""}
               </p>
               {row.note && <p className="text-sm text-gray-300">{row.note}</p>}
-              {row.status === "claimed" && (
+              {(row.status === "claimed" || row.status === "completed") && (
                 <p className="text-sm text-gray-300">
-                  Lo fabrica {row.crafter_character_name}
+                  {row.status === "completed" ? "Fabricado por " : "Lo fabrica "}
+                  {row.crafter_character_name}
                   {row.crafter_character_realm ? `-${row.crafter_character_realm}` : ""}
                   {row.crafter_name ? ` (${row.crafter_name})` : ""}
                 </p>
@@ -370,13 +373,24 @@ export default function PedidosClient({
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => void act(row.id, "release")}
-                    className="px-3 py-2 rounded-lg border border-white/15 text-sm text-gray-200"
+                    onClick={() => void act(row.id, "finish")}
+                    className="px-3 py-2 rounded-lg bg-yellow-500/90 hover:bg-yellow-400 text-black text-sm font-medium disabled:opacity-50"
                   >
-                    Soltar pedido
+                    Lo he fabricado
                   </button>
                 )}
-                {(row.requester_id === userId || isStaff) && (
+                {row.status === "completed" && row.requester_id === userId && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void act(row.id, "collect")}
+                    className="px-3 py-2 rounded-lg bg-yellow-500/90 hover:bg-yellow-400 text-black text-sm font-medium disabled:opacity-50"
+                  >
+                    Pedido recogido
+                  </button>
+                )}
+                {((row.status === "open" && (row.requester_id === userId || isStaff)) ||
+                  (row.status === "claimed" && row.crafter_user_id === userId)) && (
                   <button
                     type="button"
                     disabled={busy}
@@ -387,8 +401,25 @@ export default function PedidosClient({
                   </button>
                 )}
               </div>
-              {isStaff && row.status === "claimed" && (
-                <div className="grid sm:grid-cols-[8rem_1fr_auto] gap-2 items-end pt-1">
+            </article>
+          );
+        })}
+      </section>
+
+      {closed.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-lg font-semibold">Cerrados</h2>
+          {closed.slice(0, 20).map((row) => (
+            <div key={row.id} className="space-y-2">
+              <p className="text-sm text-gray-400">
+                {STATUS[row.status]} · {row.quantity}× {row.item_name} ({row.profession_name})
+                {row.awarded_points != null && row.status === "collected"
+                  ? ` · ${row.awarded_points} pts`
+                  : ""}
+                {row.admin_note ? ` · ${row.admin_note}` : ""}
+              </p>
+              {isStaff && row.status === "collected" && row.awarded_points == null && (
+                <div className="grid sm:grid-cols-[8rem_1fr_auto] gap-2 items-end">
                   <label className="text-sm text-gray-400">
                     Puntos
                     <input
@@ -401,7 +432,7 @@ export default function PedidosClient({
                     />
                   </label>
                   <label className="text-sm text-gray-400">
-                    Nota de entrega
+                    Nota
                     <input
                       value={staffNote[row.id] ?? ""}
                       onChange={(e) => setStaffNote((prev) => ({ ...prev, [row.id]: e.target.value }))}
@@ -419,26 +450,11 @@ export default function PedidosClient({
                     }
                     className="px-3 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-400 text-black text-sm font-medium disabled:opacity-50"
                   >
-                    Entregar
+                    Anotar puntos
                   </button>
                 </div>
               )}
-            </article>
-          );
-        })}
-      </section>
-
-      {closed.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-lg font-semibold">Cerrados</h2>
-          {closed.slice(0, 20).map((row) => (
-            <p key={row.id} className="text-sm text-gray-400">
-              {STATUS[row.status]} · {row.quantity}× {row.item_name} ({row.profession_name})
-              {row.awarded_points != null && row.status === "completed"
-                ? ` · ${row.awarded_points} pts`
-                : ""}
-              {row.admin_note ? ` · ${row.admin_note}` : ""}
-            </p>
+            </div>
           ))}
         </section>
       )}

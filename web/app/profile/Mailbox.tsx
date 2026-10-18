@@ -34,6 +34,10 @@ const KIND_LABEL: Record<string, string> = {
   craft_done: "Pedido",
   craft_offer: "Pedido",
   craft_published: "Pedido",
+  craft_accepted: "Pedido",
+  craft_ready: "Pedido",
+  craft_collected: "Pedido",
+  craft_cancelled: "Pedido",
   eremita_story: "Eremita",
   eremita_bio: "Eremita",
   relation_claim: "Mención",
@@ -118,6 +122,26 @@ export default function Mailbox({ children }: { children: ReactNode }) {
     setBusy(null);
   }
 
+  async function orderAction(item: Notice, action: "finish" | "collect" | "cancel") {
+    if (!item.craft_order_id) return;
+    setBusy(`${item.id}-${action}`);
+    setError(null);
+    const res = await fetch(`/api/pedidos/${item.craft_order_id}/${action}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const detail = data && typeof data.detail === "string" ? data.detail : "No se pudo actualizar el pedido";
+      setError(detail);
+      setBusy(null);
+      return;
+    }
+    await refresh();
+    setBusy(null);
+  }
+
   async function declineOrder(id: string) {
     setBusy(id);
     setError(null);
@@ -176,6 +200,8 @@ export default function Mailbox({ children }: { children: ReactNode }) {
           {items.map((item) => {
             const pending = item.kind === "relation_claim" && item.claim_status === "pending" && item.claim_id;
             const offer = item.kind === "craft_offer" && item.craft_status === "open" && item.craft_order_id;
+            const crafting = item.kind === "craft_accepted" && item.craft_status === "claimed" && item.craft_order_id;
+            const ready = item.kind === "craft_ready" && item.craft_status === "completed" && item.craft_order_id;
             const options = item.characters ?? [];
             const selected =
               crafter[item.id] || (options[0] ? `${options[0].name}::${options[0].realm}` : "");
@@ -183,7 +209,7 @@ export default function Mailbox({ children }: { children: ReactNode }) {
               <article
                 key={item.id}
                 className={`rounded-lg border px-3 py-2.5 space-y-1 ${
-                  pending || offer
+                  pending || offer || crafting || ready
                     ? "border-amber-500/30 bg-amber-500/5"
                     : !item.read || highlight.has(item.id)
                       ? "border-yellow-500/30 bg-yellow-500/5"
@@ -233,6 +259,38 @@ export default function Mailbox({ children }: { children: ReactNode }) {
                       className="px-2.5 py-1 rounded-md text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 disabled:opacity-50"
                     >
                       Ahora no
+                    </button>
+                  </div>
+                )}
+                {crafting && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={!!busy}
+                      onClick={() => orderAction(item, "finish")}
+                      className="px-2.5 py-1 rounded-md text-xs bg-yellow-500/90 hover:bg-yellow-400 text-black disabled:opacity-50"
+                    >
+                      Lo he fabricado
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!!busy}
+                      onClick={() => orderAction(item, "cancel")}
+                      className="px-2.5 py-1 rounded-md text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 disabled:opacity-50"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                )}
+                {ready && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      disabled={!!busy}
+                      onClick={() => orderAction(item, "collect")}
+                      className="px-2.5 py-1 rounded-md text-xs bg-yellow-500/90 hover:bg-yellow-400 text-black disabled:opacity-50"
+                    >
+                      Pedido recogido
                     </button>
                   </div>
                 )}

@@ -1,6 +1,6 @@
 import { proxyApi } from "@/lib/proxy-api";
 
-const ACTIONS = new Set(["claim", "release", "cancel", "complete"]);
+const ACTIONS = new Set(["claim", "cancel", "finish", "collect", "complete"]);
 
 export async function POST(
   req: Request,
