@@ -20,7 +20,11 @@ class BankItem(Base):
     # none | bronze | silver | gold — rango de profesión (TWW/Midnight)
     material_grade = Column(String(16), nullable=False, server_default="none")
     icon_url = Column(String(500), nullable=True)
+    description = Column(Text, nullable=True)
+    crafting_label = Column(String(120), nullable=True)
+    # Puntos por lote: 1 = unidad, 10 o 100 para mats baratos
     points = Column(Integer, nullable=False, server_default="0")
+    lot_size = Column(Integer, nullable=False, server_default="1")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
@@ -47,6 +51,8 @@ class BankRequest(Base):
     item_quality = Column(String(32), nullable=True)
     material_grade = Column(String(16), nullable=False, server_default="none")
     item_icon_url = Column(String(500), nullable=True)
+    item_description = Column(Text, nullable=True)
+    crafting_label = Column(String(120), nullable=True)
     quantity = Column(Integer, nullable=False)
     note = Column(Text, nullable=True)
     estimated_points = Column(Integer, nullable=True)

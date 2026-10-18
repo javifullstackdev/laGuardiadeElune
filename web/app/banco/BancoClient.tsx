@@ -5,16 +5,20 @@ import { useMemo, useState, type FormEvent } from "react";
 import {
   apiDetail,
   catalogMatch,
-  gradeLabel,
   KIND_LABEL,
+  pointsForQuantity,
   qualityClass,
+  rateLabel,
   STATUS_LABEL,
   type BankItem,
   type BankRequest,
   type MaterialGrade,
 } from "@/lib/bank";
 import GradeSelect from "./GradeSelect";
+import ItemFlavor from "./ItemFlavor";
 import ItemPicker, { type PickedItem } from "./ItemPicker";
+import NumberField from "./NumberField";
+import { GradeBadge } from "./QualityGem";
 
 type CharacterOpt = { name: string; realm: string; is_main: boolean };
 type Tab = "deposit" | "withdrawal" | "history";
@@ -58,7 +62,9 @@ export default function BancoClient({
 
   const qty = Math.max(1, Number(quantity) || 1);
   const catalogHit = picked ? catalogMatch(items, picked.blizzard_item_id, materialGrade) : undefined;
-  const estimate = catalogHit ? catalogHit.points * qty : null;
+  const lotSize = catalogHit?.lot_size ?? 1;
+  const estimate = catalogHit ? pointsForQuantity(catalogHit.points, qty, lotSize) : null;
+  const leftover = catalogHit && lotSize > 1 ? qty % lotSize : 0;
 
   async function reload() {
     const [catRes, reqRes] = await Promise.all([
@@ -92,6 +98,8 @@ export default function BancoClient({
         quality: picked.quality,
         material_grade: materialGrade,
         icon_url: picked.icon_url,
+        description: picked.description,
+        crafting_label: picked.crafting_label,
         quantity: qty,
         note: note.trim() || null,
         character_name: character_name || null,
@@ -165,20 +173,14 @@ export default function BancoClient({
             onChange={(item) => {
               setPicked(item);
               if (item?.material_grade) setMaterialGrade(item.material_grade);
+              else if (item?.crafting_label) setMaterialGrade("bronze");
             }}
           />
           <div className="grid grid-cols-2 gap-3">
             <GradeSelect value={materialGrade} onChange={setMaterialGrade} />
             <label className="block text-sm text-gray-400">
               Cantidad
-              <input
-                type="number"
-                min={1}
-                max={5000}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gray-500"
-              />
+              <NumberField min={1} max={5000} value={quantity} onChange={setQuantity} />
             </label>
             {characters.length > 0 && (
               <label className="block text-sm text-gray-400">
@@ -186,7 +188,7 @@ export default function BancoClient({
                 <select
                   value={character}
                   onChange={(e) => setCharacter(e.target.value)}
-                  className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gray-500"
+                  className="elune-select mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gray-500"
                 >
                   <option value="">—</option>
                   {characters.map((c) => (
@@ -213,8 +215,10 @@ export default function BancoClient({
                 "Solo Campaña e Híbrido suman puntos por ingresos. Competitivo puede aportar, sin puntos."
               ) : estimate != null ? (
                 <>
-                  Estimado: <span className="text-yellow-400 font-medium">{estimate} pts</span> (puede
-                  cambiar al validar).
+                  Estimado: <span className="text-yellow-400 font-medium">{estimate} pts</span>
+                  {lotSize > 1 ? ` · ${rateLabel(catalogHit!.points, lotSize)}` : ""}
+                  {leftover ? ` (${leftover} no llegan a lote)` : ""}
+                  . Puede cambiar al validar.
                 </>
               ) : (
                 "Este objeto aún no tiene puntos en el catálogo; el admin los fijará al validar."
@@ -249,10 +253,14 @@ export default function BancoClient({
               <div className="min-w-0 flex-1">
                 <p className={`font-medium ${qualityClass(row.item_quality)}`}>
                   {row.quantity}× {row.item_name}
-                  {gradeLabel(row.material_grade) && row.material_grade !== "none"
-                    ? ` · ${gradeLabel(row.material_grade)}`
-                    : ""}
+                  {row.material_grade && row.material_grade !== "none" ? (
+                    <>
+                      {" · "}
+                      <GradeBadge grade={row.material_grade} />
+                    </>
+                  ) : null}
                 </p>
+                <ItemFlavor craftingLabel={row.crafting_label} description={row.item_description} />
                 <p className="text-xs text-gray-400 mt-0.5">
                   {KIND_LABEL[row.kind]} · {STATUS_LABEL[row.status]} · {fmtWhen(row.created_at)}
                   {row.character_name ? ` · ${row.character_name}` : ""}
@@ -260,7 +268,9 @@ export default function BancoClient({
                 {row.kind === "deposit" && row.status === "pending" && (
                   <p className="text-xs text-gray-500 mt-1">
                     {row.scores_points
-                      ? `Estimado ${row.current_points ?? row.estimated_points ?? 0} pts`
+                      ? `Estimado ${row.current_points ?? row.estimated_points ?? 0} pts${
+                          row.lot_size > 1 ? ` · lotes de ${row.lot_size}` : ""
+                        }`
                       : "Sin puntos de campaña"}
                   </p>
                 )}

@@ -5,15 +5,22 @@ import { useState } from "react";
 import { PATH_LABEL } from "@/lib/points";
 import {
   apiDetail,
-  gradeLabel,
+  asLotSize,
+  catalogMatch,
   KIND_LABEL,
   qualityClass,
+  rateLabel,
   type BankItem,
   type BankRequest,
+  type LotSize,
   type MaterialGrade,
 } from "@/lib/bank";
 import GradeSelect from "@/app/banco/GradeSelect";
+import ItemFlavor from "@/app/banco/ItemFlavor";
+import LotSelect from "@/app/banco/LotSelect";
+import NumberField from "@/app/banco/NumberField";
 import ItemPicker, { type PickedItem } from "@/app/banco/ItemPicker";
+import { GradeBadge } from "@/app/banco/QualityGem";
 
 type Tab = "queue" | "catalog";
 
@@ -39,13 +46,17 @@ export default function BankAdmin({
   const [items, setItems] = useState(catalog);
   const [picked, setPicked] = useState<PickedItem | null>(null);
   const [materialGrade, setMaterialGrade] = useState<MaterialGrade>("bronze");
-  const [newPoints, setNewPoints] = useState("10");
+  const [newPoints, setNewPoints] = useState("1");
+  const [newLot, setNewLot] = useState<LotSize>(1);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [rates, setRates] = useState<Record<string, string>>(
     Object.fromEntries(catalog.map((item) => [item.id, String(item.points)])),
+  );
+  const [lots, setLots] = useState<Record<string, LotSize>>(
+    Object.fromEntries(catalog.map((item) => [item.id, asLotSize(item.lot_size)])),
   );
 
   async function reload() {
@@ -59,6 +70,7 @@ export default function BankAdmin({
     if (cRes.ok && Array.isArray(c)) {
       setItems(c);
       setRates(Object.fromEntries(c.map((item: BankItem) => [item.id, String(item.points)])));
+      setLots(Object.fromEntries(c.map((item: BankItem) => [item.id, asLotSize(item.lot_size)])));
     }
   }
 
@@ -89,7 +101,7 @@ export default function BankAdmin({
     const res = await fetch(`/api/bank/admin/items/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ points }),
+      body: JSON.stringify({ points, lot_size: asLotSize(lots[id]) }),
     });
     setBusy(null);
     if (res.ok) await reload();
@@ -108,7 +120,10 @@ export default function BankAdmin({
         quality: picked.quality,
         material_grade: materialGrade,
         icon_url: picked.icon_url,
+        description: picked.description,
+        crafting_label: picked.crafting_label,
         points: Number(newPoints) || 0,
+        lot_size: newLot,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -118,7 +133,8 @@ export default function BankAdmin({
       return;
     }
     setPicked(null);
-    setNewPoints("10");
+    setNewPoints("1");
+    setNewLot(1);
     await reload();
   }
 
@@ -163,10 +179,14 @@ export default function BankAdmin({
                     </p>
                     <p className={`text-lg font-medium ${qualityClass(row.item_quality)}`}>
                       {row.quantity}× {row.item_name}
-                      {row.material_grade && row.material_grade !== "none"
-                        ? ` · ${gradeLabel(row.material_grade)}`
-                        : ""}
+                      {row.material_grade && row.material_grade !== "none" ? (
+                        <>
+                          {" · "}
+                          <GradeBadge grade={row.material_grade} />
+                        </>
+                      ) : null}
                     </p>
+                    <ItemFlavor craftingLabel={row.crafting_label} description={row.item_description} />
                     {row.character_name && (
                       <p className="text-xs text-gray-400">
                         {row.character_name}
@@ -179,14 +199,19 @@ export default function BankAdmin({
                 {row.kind === "deposit" && row.scores_points && (
                   <label className="block text-sm text-gray-400">
                     Puntos a otorgar
-                    <input
-                      type="number"
-                      min={0}
-                      value={amounts[row.id] ?? String(suggested)}
-                      onChange={(e) => setAmounts((prev) => ({ ...prev, [row.id]: e.target.value }))}
-                      className="mt-1 w-40 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
-                    />
-                    <span className="ml-2 text-xs text-gray-500">sugerido {suggested}</span>
+                    <span className="mt-1 flex items-center gap-2">
+                      <NumberField
+                        compact
+                        min={0}
+                        className="w-40"
+                        value={amounts[row.id] ?? String(suggested)}
+                        onChange={(v) => setAmounts((prev) => ({ ...prev, [row.id]: v }))}
+                      />
+                      <span className="text-xs text-gray-500">
+                        sugerido {suggested}
+                        {row.lot_size > 1 ? ` · lotes de ${row.lot_size}` : ""}
+                      </span>
+                    </span>
                   </label>
                 )}
                 {row.kind === "deposit" && !row.scores_points && (
@@ -245,27 +270,32 @@ export default function BankAdmin({
           <section className="rounded-xl border border-gray-800 bg-gray-900 p-5 space-y-4 max-w-xl">
             <h2 className="font-semibold">Añadir o actualizar objeto</h2>
             <p className="text-sm text-gray-400">
-              El valor es por unidad y se puede cambiar cuando sobre o falte material.
+              El valor puede ser por unidad, por 10 o por 100. El resto que no complete lote no
+              suma. Cámbialo cuando sobre o falte material.
             </p>
             <ItemPicker
               catalog={items}
               value={picked}
               onChange={(item) => {
                 setPicked(item);
+                const grade = item?.material_grade ?? (item?.crafting_label ? "bronze" : materialGrade);
                 if (item?.material_grade) setMaterialGrade(item.material_grade);
+                else if (item?.crafting_label) setMaterialGrade("bronze");
+                const hit = item ? catalogMatch(items, item.blizzard_item_id, grade) : undefined;
+                if (hit) {
+                  setNewPoints(String(hit.points));
+                  setNewLot(asLotSize(hit.lot_size));
+                }
               }}
             />
             <GradeSelect value={materialGrade} onChange={setMaterialGrade} />
-            <label className="block text-sm text-gray-400">
-              Puntos por unidad
-              <input
-                type="number"
-                min={0}
-                value={newPoints}
-                onChange={(e) => setNewPoints(e.target.value)}
-                className="mt-1 w-40 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
-              />
-            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm text-gray-400">
+                Puntos
+                <NumberField min={0} value={newPoints} onChange={setNewPoints} />
+              </label>
+              <LotSelect value={newLot} onChange={setNewLot} />
+            </div>
             <button
               type="button"
               disabled={!picked || busy === "add"}
@@ -291,18 +321,29 @@ export default function BankAdmin({
                 <div className="min-w-0 flex-1">
                   <p className={`text-sm font-medium truncate ${qualityClass(item.quality)}`}>
                     {item.name}
-                    {item.material_grade !== "none" ? ` · ${gradeLabel(item.material_grade)}` : ""}
+                    {item.material_grade !== "none" ? (
+                      <>
+                        {" · "}
+                        <GradeBadge grade={item.material_grade} />
+                      </>
+                    ) : null}
                   </p>
                   <p className="text-[11px] text-gray-500">
-                    Oferta {item.pending_deposits} · Demanda {item.pending_withdrawals}
+                    {rateLabel(item.points, item.lot_size)} · Oferta {item.pending_deposits} · Demanda{" "}
+                    {item.pending_withdrawals}
                   </p>
                 </div>
-                <input
-                  type="number"
+                <NumberField
+                  compact
                   min={0}
+                  className="w-24"
                   value={rates[item.id] ?? String(item.points)}
-                  onChange={(e) => setRates((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                  className="w-24 bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-sm text-white"
+                  onChange={(v) => setRates((prev) => ({ ...prev, [item.id]: v }))}
+                />
+                <LotSelect
+                  compact
+                  value={asLotSize(lots[item.id] ?? item.lot_size)}
+                  onChange={(lot) => setLots((prev) => ({ ...prev, [item.id]: lot }))}
                 />
                 <button
                   type="button"

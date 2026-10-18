@@ -1,5 +1,7 @@
 export type MaterialGrade = "none" | "bronze" | "silver" | "gold";
 
+export type LotSize = 1 | 10 | 100;
+
 export type BankItem = {
   id: string;
   blizzard_item_id: number;
@@ -7,7 +9,10 @@ export type BankItem = {
   quality: string | null;
   material_grade: MaterialGrade;
   icon_url: string | null;
+  description: string | null;
+  crafting_label: string | null;
   points: number;
+  lot_size: LotSize;
   pending_deposits: number;
   pending_withdrawals: number;
 };
@@ -17,6 +22,8 @@ export type BankHit = {
   name: string;
   quality: string | null;
   icon_url: string | null;
+  description: string | null;
+  crafting_label: string | null;
   in_catalog: boolean;
 };
 
@@ -29,12 +36,15 @@ export type BankRequest = {
   item_quality: string | null;
   material_grade: MaterialGrade;
   item_icon_url: string | null;
+  item_description: string | null;
+  crafting_label: string | null;
   quantity: number;
   note: string | null;
   character_name: string | null;
   character_realm: string | null;
   estimated_points: number | null;
   current_points: number | null;
+  lot_size: LotSize;
   awarded_points: number | null;
   admin_note: string | null;
   username: string;
@@ -68,6 +78,27 @@ export function catalogMatch(
   grade: MaterialGrade,
 ): BankItem | undefined {
   return items.find((item) => item.blizzard_item_id === blizzardItemId && item.material_grade === grade);
+}
+
+export const LOT_SIZES: { id: LotSize; label: string }[] = [
+  { id: 1, label: "Unidad" },
+  { id: 10, label: "Lote de 10" },
+  { id: 100, label: "Lote de 100" },
+];
+
+export function asLotSize(raw: number | null | undefined): LotSize {
+  return raw === 10 || raw === 100 ? raw : 1;
+}
+
+export function pointsForQuantity(points: number, quantity: number, lotSize: number = 1): number {
+  const lot = asLotSize(lotSize);
+  return points * Math.floor(quantity / lot);
+}
+
+export function rateLabel(points: number, lotSize: number = 1): string {
+  const lot = asLotSize(lotSize);
+  const unit = points === 1 ? "pt" : "pts";
+  return lot === 1 ? `${points} ${unit}/ud` : `${points} ${unit} / ${lot}`;
 }
 
 export const KIND_LABEL = {

@@ -37,7 +37,7 @@ export default async function AdminBancoPage() {
         </div>
         <p className="text-sm text-gray-400 mb-8 max-w-2xl">
           Valida ingresos (puntos de campaña con tope), marca retiradas entregadas y ajusta el valor
-          de cada objeto según oferta y demanda.
+          de cada objeto — por unidad, por 10 o por 100 — según oferta y demanda.
         </p>
         <BankAdmin
           queue={Array.isArray(queue) ? queue : []}
