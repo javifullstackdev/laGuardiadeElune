@@ -24,6 +24,9 @@ type Payload = {
 const KIND_LABEL: Record<string, string> = {
   points_mythic: "Mítica",
   points_bank: "Banco",
+  points_craft: "Artesanía",
+  craft_claimed: "Pedido",
+  craft_done: "Pedido",
   eremita_story: "Eremita",
   eremita_bio: "Eremita",
   relation_claim: "Mención",
