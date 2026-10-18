@@ -22,6 +22,7 @@ CATEGORIAS = [
     app_commands.Choice(name="Profesión",      value="PROFESSION"),
     app_commands.Choice(name="Profundidades",  value="DELVES"),
     app_commands.Choice(name="Reputación",     value="REPUTATION"),
+    app_commands.Choice(name="Banco de hermandad", value="GUILD_BANK"),
 ]
 
 

@@ -91,11 +91,18 @@ async def _get_token(force: bool = False) -> str:
         return _token
 
 
-async def _get_json(path: str, namespace: str, locale: str | None = None) -> dict | None:
+async def _get_json(
+    path: str,
+    namespace: str,
+    locale: str | None = None,
+    extra: dict | None = None,
+) -> dict | None:
     """GET autenticado. Devuelve None si Blizzard responde 404."""
     params = {"namespace": namespace}
     if locale:
         params["locale"] = locale
+    if extra:
+        params.update(extra)
     url = f"https://{_region()}.api.blizzard.com{path}"
 
     force_token = False
@@ -217,6 +224,73 @@ async def get_current_mythic_season_id() -> int:
     if current.get("id") is None:
         raise BlizzardError("Blizzard no devolvió la temporada de míticas+ actual")
     return current["id"]
+
+
+def _localized_name(raw) -> str:
+    if isinstance(raw, dict):
+        return (
+            raw.get("es_ES")
+            or raw.get("en_US")
+            or next((v for v in raw.values() if isinstance(v, str) and v.strip()), "")
+        )
+    return str(raw or "").strip()
+
+
+async def get_item_icon(item_id: int) -> str | None:
+    data = await _get_json(f"/data/wow/media/item/{item_id}", f"static-{_region()}")
+    for asset in (data or {}).get("assets") or []:
+        if asset.get("key") == "icon" and asset.get("value"):
+            return asset["value"]
+    return None
+
+
+async def search_items(query: str, limit: int = 12) -> list[dict]:
+    """Busca objetos en el Game Data Search API (nombre en español, o inglés si no hay)."""
+    needle = query.strip()
+    if len(needle) < 2:
+        return []
+    page_size = max(1, min(limit, 20))
+    data = await _get_json(
+        "/data/wow/search/item",
+        f"static-{_region()}",
+        locale=LOCALE,
+        extra={"name.es_ES": needle, "_page": 1, "_pageSize": page_size},
+    )
+    if not (data or {}).get("results"):
+        data = await _get_json(
+            "/data/wow/search/item",
+            f"static-{_region()}",
+            locale=LOCALE,
+            extra={"name.en_US": needle, "_page": 1, "_pageSize": page_size},
+        )
+    rows = []
+    seen: set[int] = set()
+    for row in (data or {}).get("results") or []:
+        payload = row.get("data") or {}
+        item_id = payload.get("id")
+        name = _localized_name(payload.get("name"))
+        if not item_id or not name or item_id in seen:
+            continue
+        seen.add(item_id)
+        quality = payload.get("quality") or {}
+        rows.append(
+            {
+                "id": item_id,
+                "name": name,
+                "quality": (quality.get("type") or "").lower() or None,
+                "icon_url": None,
+            }
+        )
+        if len(rows) >= page_size:
+            break
+    icons = await asyncio.gather(
+        *(get_item_icon(item["id"]) for item in rows),
+        return_exceptions=True,
+    )
+    for item, icon in zip(rows, icons):
+        if isinstance(icon, str):
+            item["icon_url"] = icon
+    return rows
 
 
 async def get_mythic_season(season_id: int) -> dict | None:

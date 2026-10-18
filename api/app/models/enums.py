@@ -49,3 +49,4 @@ class EventCategory(enum.Enum):
     PROFESSION = "profession"
     DELVES = "delves"
     REPUTATION = "reputation"
+    GUILD_BANK = "guild_bank"

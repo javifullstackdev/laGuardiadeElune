@@ -63,3 +63,13 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
             detail="No tienes permisos para realizar esta acción"
         )
     return current_user
+
+
+def require_guild_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Solo el rol admin (no oficiales): validar banco y tabla de puntos."""
+    if current_user.role.value != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Solo el administrador puede validar el banco",
+        )
+    return current_user
