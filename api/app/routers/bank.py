@@ -16,6 +16,7 @@ from app.models.user_season_path import UserSeasonPath
 from app.services import blizzard, points as points_service
 from app.services import seasons as season_service
 from app.services.blizzard import BlizzardError
+from app.services.notifications import notify_points
 
 router = APIRouter(prefix="/bank", tags=["bank"])
 
@@ -490,6 +491,16 @@ def approve_deposit(
     row.resolved_by = admin.id
     row.resolved_at = now
     row.point_transaction_id = tx.id if tx else None
+    if tx is not None:
+        notify_points(
+            db,
+            user_id=row.user_id,
+            kind="points_bank",
+            counted=tx.counted_amount or 0,
+            amount=amount,
+            reason=f"Ingreso aceptado: {row.quantity}× {row.item_name}",
+            href="/banco",
+        )
     db.commit()
     db.refresh(row)
     return _dump_requests(db, [row])[0]

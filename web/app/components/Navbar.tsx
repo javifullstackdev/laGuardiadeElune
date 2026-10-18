@@ -18,6 +18,7 @@ export default async function Navbar() {
   }
 
   const isAdmin = user?.role === "admin" || user?.role === "officer";
+  const unread = Number(user?.unread_notifications ?? 0);
 
   const items = [
     { href: "/", label: "Inicio" },
@@ -28,7 +29,7 @@ export default async function Navbar() {
       ? [
           { href: "/ranking", label: "Ranking" },
           { href: "/banco", label: "Banco" },
-          { href: "/profile", label: "Perfil" },
+          { href: "/profile", label: "Perfil", badge: unread },
           ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
           { href: "/api/auth/logout", label: "Salir" },
         ]
@@ -55,7 +56,8 @@ export default async function Navbar() {
           : href.includes("/auth/discord")
             ? ("login" as const)
             : ("default" as const);
-    return { href, label: item.label, style, external };
+    const badge = "badge" in item ? Number(item.badge ?? 0) : 0;
+    return { href, label: item.label, style, external, badge };
   });
 
   return (

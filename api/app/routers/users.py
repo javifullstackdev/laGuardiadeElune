@@ -9,6 +9,7 @@ from typing import Optional
 from datetime import date, datetime, timezone
 from app.dependencies import get_current_user, require_admin
 from app.database import get_db
+from app.models.relation_claim import Notification
 from app.models.user import User, UserPath
 from app.models.user_season_path import UserSeasonPath
 from app.models.character import Character
@@ -70,6 +71,12 @@ async def get_me(
         "has_blizzard": current_user.blizzard_access_token is not None,
         "blizzard_token_expired": token_expired,
         "birthday": current_user.birthday.isoformat() if current_user.birthday else None,
+        "unread_notifications": (
+            db.query(sqlfunc.count(Notification.id))
+            .filter(Notification.user_id == current_user.id, Notification.read_at.is_(None))
+            .scalar()
+            or 0
+        ),
     }
 
 

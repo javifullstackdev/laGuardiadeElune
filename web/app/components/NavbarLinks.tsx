@@ -7,6 +7,7 @@ type Item = {
   href: string;
   label: string;
   external?: boolean;
+  badge?: number;
 };
 
 export default function NavbarLinks({ items }: { items: Item[] }) {
@@ -44,6 +45,11 @@ export default function NavbarLinks({ items }: { items: Item[] }) {
         return (
           <Link key={item.href} href={item.href} className={className}>
             {item.label}
+            {(item.badge ?? 0) > 0 && (
+              <span className="ml-1.5 min-w-[1.1rem] h-4 px-1 rounded-full bg-yellow-500/20 text-yellow-300 text-[10px] leading-4 text-center">
+                {item.badge! > 9 ? "9+" : item.badge}
+              </span>
+            )}
             {underline}
           </Link>
         );

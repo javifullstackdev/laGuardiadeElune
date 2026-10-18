@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios, image_requests, share, seasons, points, bank
+from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios, image_requests, share, seasons, points, bank, notifications
 from app.services import scheduler
 from app.services.seasons import sync_in_background as season_sync_in_background
 
@@ -85,6 +85,7 @@ app.include_router(titles.router)
 app.include_router(stories.router)
 app.include_router(likes.router)
 app.include_router(claims.router)
+app.include_router(notifications.router)
 app.include_router(wiki.router)
 app.include_router(hero.router)
 app.include_router(bios.router)
