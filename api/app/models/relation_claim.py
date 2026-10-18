@@ -30,6 +30,7 @@ class Notification(Base):
     kind = Column(String(50), nullable=False)
     title = Column(String(255), nullable=False)
     body = Column(Text, nullable=True)
+    href = Column(String(500), nullable=True)
     claim_id = Column(UUID(as_uuid=True), ForeignKey("relation_claims.id", ondelete="CASCADE"), nullable=True)
     read_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

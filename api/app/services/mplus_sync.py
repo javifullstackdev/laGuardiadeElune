@@ -25,6 +25,7 @@ from app.models.user import User
 from app.services import blizzard, dungeons, raiderio
 from app.services import points as points_service
 from app.services import seasons as season_service
+from app.services.notifications import notify_points
 
 log = logging.getLogger(__name__)
 
@@ -185,6 +186,15 @@ async def sync_mythic_plus(db: Session) -> dict:
                         character_id=char.id,
                         processed_run_id=processed.id,
                     )
+                    if tx is not None:
+                        notify_points(
+                            db,
+                            user_id=char.user_id,
+                            kind="points_mythic",
+                            counted=tx.counted_amount or 0,
+                            amount=amount,
+                            reason=reason,
+                        )
                     created += tx is not None
             db.commit()
         except IntegrityError:

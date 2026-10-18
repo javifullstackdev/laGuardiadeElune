@@ -5,6 +5,7 @@ from app.models.character import Character
 from app.models.character_relation import CharacterRelation, RELATION_TYPES
 from app.models.character_story import CharacterStory
 from app.models.relation_claim import RelationClaim, Notification
+from app.services.notifications import notify
 from app.models.user import User
 from app.schemas.story import StoryRelationOut
 
@@ -88,14 +89,14 @@ def replace_claims(db: Session, story: CharacterStory, author: User, from_char: 
         db.add(claim)
         db.flush()
         if target.user_id != author.id:
-            db.add(Notification(
-                id=uuid.uuid4(),
+            notify(
+                db,
                 user_id=target.user_id,
                 kind="relation_claim",
                 title=f"{from_char.name} te ha nombrado",
                 body=f"{author.username} menciona a {target.name} en «{story.title}» y propone una relación.",
                 claim_id=claim.id,
-            ))
+            )
         else:
             # Mismo jugador, otro personaje: auto-confirmar
             claim.status = "confirmed"

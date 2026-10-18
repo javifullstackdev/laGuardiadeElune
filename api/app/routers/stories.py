@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 import json
 import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
@@ -17,6 +18,7 @@ from app.schemas.story import (
 from app.services.claims import (
     awaiting_relations, claims_out, replace_claims,
 )
+from app.services.notifications import notify
 from app.services.slugs import is_uuid, unique_slug
 from app.urls import static_url
 
@@ -303,6 +305,14 @@ def approve_story(
     story.reviewer_id = current_user.id
     story.published_at = now
     story.eremita_override = override
+    notify(
+        db,
+        user_id=author.id,
+        kind="eremita_story",
+        title="El Eremita ha publicado tu historia",
+        body=f"«{story.title}» ya está en la web.",
+        href=f"/lore/{quote(story.slug or str(story.id), safe='')}",
+    )
     db.commit()
     return StoryPending(
         id=story.id,
@@ -342,6 +352,17 @@ def reject_story(
     story.reviewed_at = datetime.now(timezone.utc)
     story.reviewer_id = current_user.id
     story.published_at = None
+    reason = story.rejection_reason
+    message = f"«{story.title}» necesita cambios."
+    if reason:
+        message = f"{message} {reason}"
+    notify(
+        db,
+        user_id=author.id,
+        kind="eremita_story",
+        title="El Eremita ha respondido a tu historia",
+        body=message,
+    )
     db.commit()
     return StoryPending(
         id=story.id,

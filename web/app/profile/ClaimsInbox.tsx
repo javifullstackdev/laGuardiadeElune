@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { relationLabel, type RelationClaim } from "@/lib/relations";
 
 export default function ClaimsInbox() {
+  const router = useRouter();
   const [items, setItems] = useState<RelationClaim[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -16,7 +18,10 @@ export default function ClaimsInbox() {
   async function resolve(id: string, action: "confirm" | "reject") {
     setBusy(`${id}-${action}`);
     const res = await fetch(`/api/claims/${id}/${action}`, { method: "POST" });
-    if (res.ok) setItems((prev) => prev.filter((i) => i.id !== id));
+    if (res.ok) {
+      setItems((prev) => prev.filter((i) => i.id !== id));
+      router.refresh();
+    }
     setBusy(null);
   }
 

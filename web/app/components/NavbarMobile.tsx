@@ -9,7 +9,21 @@ type NavLink = {
   label: string;
   style?: "admin" | "logout" | "login" | "default";
   external?: boolean;
+  badge?: number;
 };
+
+function Label({ link }: { link: NavLink }) {
+  return (
+    <>
+      {link.label}
+      {(link.badge ?? 0) > 0 && (
+        <span className="ml-2 min-w-[1.1rem] h-4 px-1 rounded-full bg-yellow-500/20 text-yellow-300 text-[10px] leading-4 text-center">
+          {link.badge! > 9 ? "9+" : link.badge}
+        </span>
+      )}
+    </>
+  );
+}
 
 export default function NavbarMobile({
   links,
@@ -91,7 +105,7 @@ export default function NavbarMobile({
                       href={link.href}
                       className={`${base} bg-yellow-500/15 text-yellow-400 border border-yellow-500/25 hover:bg-yellow-500/25`}
                     >
-                      {link.label}
+                      <Label link={link} />
                     </Link>
                   );
                 }
@@ -134,7 +148,7 @@ export default function NavbarMobile({
                     href={link.href}
                     className={`${base} text-gray-300 hover:text-white hover:bg-gray-800`}
                   >
-                    {link.label}
+                    <Label link={link} />
                   </Link>
                 );
               })}

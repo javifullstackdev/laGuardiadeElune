@@ -7,6 +7,7 @@ import { useWatermarkBox } from "../components/HomeLogo";
 import PublishStoryPanel from "./PublishStoryPanel";
 import FichaPreview from "./FichaPreview";
 import ClaimsInbox from "./ClaimsInbox";
+import Mailbox from "./Mailbox";
 import ImageRequestModal from "./ImageRequestModal";
 import { mergePublicFields, PUBLIC_FIELD_LABELS, type PublicFields, type WikiCharacter } from "@/lib/wiki";
 import { type BioAnswers } from "@/lib/bio";
@@ -432,21 +433,20 @@ export default function ProfileClient({
           </div>
         </div>
 
-        {/* Cumpleaños */}
-        <BirthdaySection birthday={user.birthday} isAdmin={user.role === "admin" || user.role === "officer"} />
-
-        {/* Lista de personajes — agrupada por juego */}
-        <div className="flex-1 overflow-y-auto scrollbar-none p-3">
-          {characters.length === 0 ? (
-            <p className="text-gray-500 text-sm px-2">Sin personajes</p>
-          ) : (
-            <CharacterList
-              characters={characters}
-              selected={selected}
-              onSelect={handleSelect}
-            />
-          )}
-        </div>
+        <Mailbox>
+          <BirthdaySection birthday={user.birthday} isAdmin={user.role === "admin" || user.role === "officer"} />
+          <div className="flex-1 overflow-y-auto scrollbar-none p-3">
+            {characters.length === 0 ? (
+              <p className="text-gray-500 text-sm px-2">Sin personajes</p>
+            ) : (
+              <CharacterList
+                characters={characters}
+                selected={selected}
+                onSelect={handleSelect}
+              />
+            )}
+          </div>
+        </Mailbox>
 
         <div className="p-3 border-t border-gray-800">
           <Link href="/characters" className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 transition-colors">

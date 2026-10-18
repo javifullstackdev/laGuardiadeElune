@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,7 @@ from app.schemas.bio import (
     BioRejectIn,
 )
 from app.services.bio_questions import QUESTIONS, formatted_answers, has_public_sheet
+from app.services.notifications import notify
 from app.urls import static_url
 
 router = APIRouter(prefix="/bios", tags=["bios"])
@@ -90,6 +91,14 @@ def publish_bio(
     char.bio_status = "published"
     char.bio_answers_pending = False
     char.bio_rejection_reason = None
+    notify(
+        db,
+        user_id=author.id,
+        kind="eremita_bio",
+        title="El Eremita ha publicado tu ficha",
+        body=f"La biografía de {char.name} ya es pública.",
+        href=f"/personajes/{quote(char.realm, safe='')}/{quote(char.name, safe='')}",
+    )
     db.commit()
     db.refresh(char)
     return _pending_out(char, author)
@@ -117,6 +126,22 @@ def reject_bio(
     char.bio_rejection_reason = (body.reason or "").strip() or None
     if not has_public_sheet(char):
         char.bio_status = "draft"
+    reason = char.bio_rejection_reason
+    if char.bio_status == "published":
+        title = "El Eremita ha respondido a tu ficha"
+        body = f"No ha incorporado los cambios de {char.name}."
+    else:
+        title = "El Eremita ha devuelto tu ficha"
+        body = f"El cuestionario de {char.name} vuelve a borrador."
+    if reason:
+        body = f"{body} {reason}"
+    notify(
+        db,
+        user_id=author.id,
+        kind="eremita_bio",
+        title=title,
+        body=body,
+    )
     db.commit()
     db.refresh(char)
     return _pending_out(char, author)
