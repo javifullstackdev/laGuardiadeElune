@@ -43,6 +43,42 @@ const KIND_LABEL: Record<string, string> = {
   relation_claim: "Mención",
 };
 
+function MailboxIcon({ unread, open }: { unread: boolean; open: boolean }) {
+  const state = `${unread ? "has-unread" : ""} ${open ? "is-open" : ""}`.trim();
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      className={`mailbox-icon w-5 h-5 shrink-0 overflow-visible ${state}`}
+      aria-hidden="true"
+    >
+      <g className="letter">
+        <rect x="9" y="9" width="14" height="9" rx="1" fill="#f3e2a4" />
+        <path d="M10 11.2h8M10 13.4h5" stroke="#8a7040" strokeWidth="0.7" strokeLinecap="round" />
+      </g>
+      <path
+        d="M6.5 13.5h19v11.2a1.6 1.6 0 0 1-1.6 1.6H8.1a1.6 1.6 0 0 1-1.6-1.6V13.5z"
+        fill="#14120c"
+        stroke="#e4c56a"
+        strokeWidth="1.2"
+      />
+      <path d="M7 14.2 L16 21.2 L25 14.2" fill="none" stroke="#e4c56a" strokeWidth="0.8" opacity="0.55" />
+      <path
+        className="flap"
+        d="M6.5 13.6 L16 21.4 L25.5 13.6"
+        fill="#1c1810"
+        stroke="#e4c56a"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path
+        className="seal"
+        d="M16 16.2a2.5 2.5 0 1 0 0 5 2.1 2.1 0 1 1 0-5z"
+        fill="#f6e7a8"
+      />
+    </svg>
+  );
+}
+
 function formatWhen(iso: string) {
   const date = new Date(iso);
   const minutes = Math.round((Date.now() - date.getTime()) / 60000);
@@ -180,7 +216,10 @@ export default function Mailbox({ children }: { children: ReactNode }) {
           }}
           className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-gray-800 bg-gray-950/60 text-sm text-gray-200 hover:border-gray-600 transition-colors"
         >
-          <span>{open ? "Cerrar buzón" : "Buzón"}</span>
+          <span className="inline-flex items-center gap-2">
+            <MailboxIcon unread={unread > 0} open={open} />
+            {open ? "Cerrar buzón" : "Buzón"}
+          </span>
           {unread > 0 && (
             <span className="min-w-[1.25rem] h-5 px-1.5 rounded-full bg-yellow-500/20 text-yellow-300 text-xs font-semibold inline-flex items-center justify-center">
               {unread > 9 ? "9+" : unread}

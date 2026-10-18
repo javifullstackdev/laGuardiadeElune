@@ -577,3 +577,100 @@ html[data-elune-intro="playing"] nav {
 .story-large-parchment .quest-parchment {
   --sheet-chrome: 8rem !important;
 }
+
+.mailbox-icon .flap,
+.mailbox-icon .letter,
+.mailbox-icon .seal {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.mailbox-icon .flap {
+  transform-origin: center top;
+  transition: transform 0.45s ease;
+}
+
+.mailbox-icon .seal {
+  animation: mailbox-seal-idle 4.8s ease-in-out infinite;
+}
+
+.mailbox-icon.has-unread .letter {
+  animation: mailbox-letter 2.4s ease-in-out infinite;
+}
+
+.mailbox-icon.has-unread .flap {
+  animation: mailbox-flap 2.4s ease-in-out infinite;
+}
+
+.mailbox-icon.has-unread .seal {
+  animation: mailbox-seal 2.4s ease-in-out infinite;
+}
+
+.mailbox-icon.is-open .letter {
+  animation: none;
+  transform: translateY(-3px);
+}
+
+.mailbox-icon.is-open .flap {
+  animation: none;
+  transform: scaleY(0.22);
+}
+
+.mailbox-icon.is-open .seal {
+  animation: none;
+  opacity: 0.35;
+}
+
+@keyframes mailbox-letter {
+  0%,
+  100% {
+    transform: translateY(3px);
+  }
+
+  45% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes mailbox-flap {
+  0%,
+  100% {
+    transform: rotateX(0deg);
+  }
+
+  45% {
+    transform: scaleY(0.28);
+  }
+}
+
+@keyframes mailbox-seal {
+  0%,
+  100% {
+    opacity: 0.8;
+    filter: drop-shadow(0 0 0 #f6e7a8);
+  }
+
+  45% {
+    opacity: 1;
+    filter: drop-shadow(0 0 3px #f6e7a8);
+  }
+}
+
+@keyframes mailbox-seal-idle {
+  0%,
+  100% {
+    opacity: 0.72;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mailbox-icon .letter,
+  .mailbox-icon .flap,
+  .mailbox-icon .seal {
+    animation: none;
+  }
+}
