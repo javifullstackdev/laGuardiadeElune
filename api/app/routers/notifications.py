@@ -141,6 +141,23 @@ def mark_seen(
     return _list(db, current_user)
 
 
+@router.delete("/{notification_id}", status_code=204)
+def delete_notification(
+    notification_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    note = (
+        db.query(Notification)
+        .filter(Notification.id == notification_id, Notification.user_id == current_user.id)
+        .first()
+    )
+    if note is None:
+        raise HTTPException(404, "Aviso no encontrado")
+    db.delete(note)
+    db.commit()
+
+
 @router.post("/{notification_id}/read", response_model=NotificationOut)
 def mark_one_read(
     notification_id: UUID,

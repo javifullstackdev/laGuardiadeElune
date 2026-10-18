@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BellRing } from "lucide-react";
 
 type CraftCharacter = { name: string; realm: string; skill_points: number };
 
@@ -43,42 +44,6 @@ const KIND_LABEL: Record<string, string> = {
   relation_claim: "Mención",
 };
 
-function MailboxIcon({ unread, open }: { unread: boolean; open: boolean }) {
-  const state = `${unread ? "has-unread" : ""} ${open ? "is-open" : ""}`.trim();
-  return (
-    <svg
-      viewBox="0 0 32 32"
-      className={`mailbox-icon w-5 h-5 shrink-0 overflow-visible ${state}`}
-      aria-hidden="true"
-    >
-      <g className="letter">
-        <rect x="9" y="9" width="14" height="9" rx="1" fill="#f3e2a4" />
-        <path d="M10 11.2h8M10 13.4h5" stroke="#8a7040" strokeWidth="0.7" strokeLinecap="round" />
-      </g>
-      <path
-        d="M6.5 13.5h19v11.2a1.6 1.6 0 0 1-1.6 1.6H8.1a1.6 1.6 0 0 1-1.6-1.6V13.5z"
-        fill="#14120c"
-        stroke="#e4c56a"
-        strokeWidth="1.2"
-      />
-      <path d="M7 14.2 L16 21.2 L25 14.2" fill="none" stroke="#e4c56a" strokeWidth="0.8" opacity="0.55" />
-      <path
-        className="flap"
-        d="M6.5 13.6 L16 21.4 L25.5 13.6"
-        fill="#1c1810"
-        stroke="#e4c56a"
-        strokeWidth="1.2"
-        strokeLinejoin="round"
-      />
-      <path
-        className="seal"
-        d="M16 16.2a2.5 2.5 0 1 0 0 5 2.1 2.1 0 1 1 0-5z"
-        fill="#f6e7a8"
-      />
-    </svg>
-  );
-}
-
 function formatWhen(iso: string) {
   const date = new Date(iso);
   const minutes = Math.round((Date.now() - date.getTime()) / 60000);
@@ -96,42 +61,84 @@ export default function Mailbox({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<Notice[]>([]);
-  const [highlight, setHighlight] = useState<Set<string>>(new Set());
+  const [unseen, setUnseen] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
+  const glancing = useRef(new Set<string>());
   const [crafter, setCrafter] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+
+  function apply(data: Payload) {
+    const fresh = (data.items ?? []).map((item) =>
+      glancing.current.has(item.id) ? { ...item, read: true } : item,
+    );
+    const glancedStillUnread = (data.items ?? []).filter(
+      (item) => glancing.current.has(item.id) && !item.read,
+    ).length;
+    setUnread(Math.max(0, (data.unread ?? 0) - glancedStillUnread));
+    setItems(fresh);
+    setUnseen(new Set(fresh.filter((item) => !item.read).map((item) => item.id)));
+  }
 
   useEffect(() => {
     fetch("/api/notifications")
       .then((res) => (res.ok ? res.json() : { unread: 0, items: [] }))
-      .then((data: Payload) => {
-        setUnread(data.unread ?? 0);
-        setItems(data.items ?? []);
-      })
+      .then((data: Payload) => apply(data))
       .catch(() => {});
   }, []);
 
   async function openBox() {
     setOpen(true);
     const current = await fetch("/api/notifications");
-    const before: Payload = current.ok ? await current.json() : { unread: 0, items: [] };
-    const fresh = before.items ?? [];
-    setItems(fresh);
-    setHighlight(new Set(fresh.filter((item) => !item.read).map((item) => item.id)));
-    const res = await fetch("/api/notifications/seen", { method: "POST" });
-    if (!res.ok) return;
-    const data: Payload = await res.json();
-    setUnread(data.unread ?? 0);
-    setItems(data.items ?? []);
-    router.refresh();
+    const data: Payload = current.ok ? await current.json() : { unread: 0, items: [] };
+    apply(data);
   }
 
   async function refresh() {
     const fresh = await fetch("/api/notifications");
     if (!fresh.ok) return;
     const data: Payload = await fresh.json();
-    setUnread(data.unread ?? 0);
-    setItems(data.items ?? []);
+    apply(data);
+    router.refresh();
+  }
+
+  async function glance(item: Notice) {
+    if (item.read || glancing.current.has(item.id)) return;
+    glancing.current.add(item.id);
+    const res = await fetch(`/api/notifications/${item.id}/read`, { method: "POST" });
+    if (!res.ok) {
+      glancing.current.delete(item.id);
+      return;
+    }
+    setItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, read: true } : row)));
+    setUnseen((prev) => {
+      if (!prev.has(item.id)) return prev;
+      const next = new Set(prev);
+      next.delete(item.id);
+      return next;
+    });
+    setUnread((count) => Math.max(0, count - 1));
+    router.refresh();
+  }
+
+  async function removeNotice(item: Notice) {
+    setBusy(`delete-${item.id}`);
+    setError(null);
+    const res = await fetch(`/api/notifications/${item.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      setError("No se pudo eliminar el aviso");
+      setBusy(null);
+      return;
+    }
+    glancing.current.add(item.id);
+    setItems((prev) => prev.filter((row) => row.id !== item.id));
+    setUnseen((prev) => {
+      if (!prev.has(item.id)) return prev;
+      const next = new Set(prev);
+      next.delete(item.id);
+      return next;
+    });
+    if (!item.read) setUnread((count) => Math.max(0, count - 1));
+    setBusy(null);
     router.refresh();
   }
 
@@ -209,7 +216,6 @@ export default function Mailbox({ children }: { children: ReactNode }) {
           onClick={() => {
             if (open) {
               setOpen(false);
-              setHighlight(new Set());
               return;
             }
             openBox();
@@ -217,7 +223,13 @@ export default function Mailbox({ children }: { children: ReactNode }) {
           className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-gray-800 bg-gray-950/60 text-sm text-gray-200 hover:border-gray-600 transition-colors"
         >
           <span className="inline-flex items-center gap-2">
-            <MailboxIcon unread={unread > 0} open={open} />
+            <BellRing
+              color="#ffffff"
+              strokeWidth={2}
+              size={20}
+              aria-hidden
+              className={unseen.size > 0 ? "mailbox-bell is-ringing shrink-0" : "mailbox-bell shrink-0"}
+            />
             {open ? "Cerrar buzón" : "Buzón"}
           </span>
           {unread > 0 && (
@@ -247,10 +259,11 @@ export default function Mailbox({ children }: { children: ReactNode }) {
             return (
               <article
                 key={item.id}
+                onPointerEnter={() => glance(item)}
                 className={`rounded-lg border px-3 py-2.5 space-y-1 ${
                   pending || offer || crafting || ready
                     ? "border-amber-500/30 bg-amber-500/5"
-                    : !item.read || highlight.has(item.id)
+                    : !item.read
                       ? "border-yellow-500/30 bg-yellow-500/5"
                       : "border-gray-800 bg-gray-950/40"
                 }`}
@@ -259,7 +272,17 @@ export default function Mailbox({ children }: { children: ReactNode }) {
                   <p className="text-[10px] uppercase tracking-wider text-gray-500">
                     {KIND_LABEL[item.kind] ?? "Aviso"}
                   </p>
-                  <p className="text-[10px] text-gray-600 shrink-0">{formatWhen(item.created_at)}</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <p className="text-[10px] text-gray-600">{formatWhen(item.created_at)}</p>
+                    <button
+                      type="button"
+                      disabled={busy === `delete-${item.id}`}
+                      onClick={() => removeNotice(item)}
+                      className="text-[10px] uppercase tracking-wider text-gray-500 hover:text-red-300 disabled:opacity-50"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
                 <p className="text-sm text-white leading-snug">{item.title}</p>
                 {item.body && <p className="text-xs text-gray-400 leading-relaxed">{item.body}</p>}
