@@ -1,9 +1,6 @@
-import { gradeLabel, type MaterialGrade } from "@/lib/bank";
+import { gradeLabel, isCraftingGrade, type CraftingGrade } from "@/lib/bank";
 
-const GEM: Record<
-  Exclude<MaterialGrade, "none">,
-  { rim: string; fill: string; shine: string; core: string }
-> = {
+const GEM: Record<CraftingGrade, { rim: string; fill: string; shine: string; core: string }> = {
   bronze: { rim: "#f0d48a", fill: "#b56a28", shine: "#f4c989", core: "#7a3d12" },
   silver: { rim: "#f3f6fb", fill: "#b7c2d0", shine: "#ffffff", core: "#6d7888" },
   gold: { rim: "#ffe9a0", fill: "#e0b33a", shine: "#fff4c2", core: "#8a6a10" },
@@ -13,7 +10,7 @@ export default function QualityGem({
   grade,
   size = 28,
 }: {
-  grade: Exclude<MaterialGrade, "none">;
+  grade: CraftingGrade;
   size?: number;
 }) {
   const { rim, fill, shine, core } = GEM[grade];
@@ -28,8 +25,7 @@ export default function QualityGem({
 }
 
 export function GradeBadge({ grade }: { grade: string | null | undefined }) {
-  if (!grade || grade === "none") return null;
-  if (grade !== "bronze" && grade !== "silver" && grade !== "gold") return null;
+  if (!isCraftingGrade(grade)) return null;
   return (
     <span className="inline-flex items-center gap-1 align-middle">
       <QualityGem grade={grade} size={16} />

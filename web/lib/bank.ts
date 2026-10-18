@@ -1,4 +1,5 @@
 export type MaterialGrade = "none" | "bronze" | "silver" | "gold";
+export type CraftingGrade = Exclude<MaterialGrade, "none">;
 
 export type LotSize = 1 | 10 | 100;
 
@@ -54,12 +55,20 @@ export type BankRequest = {
   resolved_at: string | null;
 };
 
-export const MATERIAL_GRADES: { id: MaterialGrade; label: string }[] = [
+export const CRAFTING_GRADES: { id: CraftingGrade; label: string }[] = [
   { id: "bronze", label: "Bronce" },
   { id: "silver", label: "Plata" },
   { id: "gold", label: "Oro" },
+];
+
+export const MATERIAL_GRADES: { id: MaterialGrade; label: string }[] = [
+  ...CRAFTING_GRADES,
   { id: "none", label: "Sin rango" },
 ];
+
+export function isCraftingGrade(grade: string | null | undefined): grade is CraftingGrade {
+  return grade === "bronze" || grade === "silver" || grade === "gold";
+}
 
 export const GRADE_CLASS: Record<MaterialGrade, string> = {
   none: "text-gray-400",

@@ -1,6 +1,6 @@
 "use client";
 
-import { MATERIAL_GRADES, type MaterialGrade } from "@/lib/bank";
+import { CRAFTING_GRADES, type MaterialGrade } from "@/lib/bank";
 import QualityGem from "./QualityGem";
 
 export default function GradeSelect({
@@ -14,7 +14,7 @@ export default function GradeSelect({
     <fieldset>
       <legend className="text-sm text-gray-400 mb-1.5">Calidad del material</legend>
       <div className="flex items-center gap-2">
-        {MATERIAL_GRADES.filter((grade) => grade.id !== "none").map((grade) => {
+        {CRAFTING_GRADES.map((grade) => {
           const selected = value === grade.id;
           return (
             <button
