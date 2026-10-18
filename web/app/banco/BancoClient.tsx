@@ -4,12 +4,16 @@ import { useMemo, useState, type FormEvent } from "react";
 
 import {
   apiDetail,
+  catalogMatch,
+  gradeLabel,
   KIND_LABEL,
   qualityClass,
   STATUS_LABEL,
   type BankItem,
   type BankRequest,
+  type MaterialGrade,
 } from "@/lib/bank";
+import GradeSelect from "./GradeSelect";
 import ItemPicker, { type PickedItem } from "./ItemPicker";
 
 type CharacterOpt = { name: string; realm: string; is_main: boolean };
@@ -40,6 +44,7 @@ export default function BancoClient({
   const [items, setItems] = useState(catalog);
   const [rows, setRows] = useState(initialRequests);
   const [picked, setPicked] = useState<PickedItem | null>(null);
+  const [materialGrade, setMaterialGrade] = useState<MaterialGrade>("bronze");
   const [quantity, setQuantity] = useState("1");
   const [note, setNote] = useState("");
   const [character, setCharacter] = useState(
@@ -52,7 +57,8 @@ export default function BancoClient({
   const [ok, setOk] = useState<string | null>(null);
 
   const qty = Math.max(1, Number(quantity) || 1);
-  const estimate = picked?.in_catalog && picked.points != null ? picked.points * qty : null;
+  const catalogHit = picked ? catalogMatch(items, picked.blizzard_item_id, materialGrade) : undefined;
+  const estimate = catalogHit ? catalogHit.points * qty : null;
 
   async function reload() {
     const [catRes, reqRes] = await Promise.all([
@@ -84,6 +90,7 @@ export default function BancoClient({
         blizzard_item_id: picked.blizzard_item_id,
         name: picked.name,
         quality: picked.quality,
+        material_grade: materialGrade,
         icon_url: picked.icon_url,
         quantity: qty,
         note: note.trim() || null,
@@ -152,8 +159,16 @@ export default function BancoClient({
 
       {tab !== "history" && (
         <form onSubmit={onSubmit(tab)} className="max-w-xl space-y-4">
-          <ItemPicker catalog={items} value={picked} onChange={setPicked} />
+          <ItemPicker
+            catalog={items}
+            value={picked}
+            onChange={(item) => {
+              setPicked(item);
+              if (item?.material_grade) setMaterialGrade(item.material_grade);
+            }}
+          />
           <div className="grid grid-cols-2 gap-3">
+            <GradeSelect value={materialGrade} onChange={setMaterialGrade} />
             <label className="block text-sm text-gray-400">
               Cantidad
               <input
@@ -234,6 +249,9 @@ export default function BancoClient({
               <div className="min-w-0 flex-1">
                 <p className={`font-medium ${qualityClass(row.item_quality)}`}>
                   {row.quantity}× {row.item_name}
+                  {gradeLabel(row.material_grade) && row.material_grade !== "none"
+                    ? ` · ${gradeLabel(row.material_grade)}`
+                    : ""}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {KIND_LABEL[row.kind]} · {STATUS_LABEL[row.status]} · {fmtWhen(row.created_at)}

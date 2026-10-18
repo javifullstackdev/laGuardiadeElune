@@ -5,11 +5,14 @@ import { useState } from "react";
 import { PATH_LABEL } from "@/lib/points";
 import {
   apiDetail,
+  gradeLabel,
   KIND_LABEL,
   qualityClass,
   type BankItem,
   type BankRequest,
+  type MaterialGrade,
 } from "@/lib/bank";
+import GradeSelect from "@/app/banco/GradeSelect";
 import ItemPicker, { type PickedItem } from "@/app/banco/ItemPicker";
 
 type Tab = "queue" | "catalog";
@@ -35,6 +38,7 @@ export default function BankAdmin({
   const [pending, setPending] = useState(queue);
   const [items, setItems] = useState(catalog);
   const [picked, setPicked] = useState<PickedItem | null>(null);
+  const [materialGrade, setMaterialGrade] = useState<MaterialGrade>("bronze");
   const [newPoints, setNewPoints] = useState("10");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +106,7 @@ export default function BankAdmin({
         blizzard_item_id: picked.blizzard_item_id,
         name: picked.name,
         quality: picked.quality,
+        material_grade: materialGrade,
         icon_url: picked.icon_url,
         points: Number(newPoints) || 0,
       }),
@@ -158,6 +163,9 @@ export default function BankAdmin({
                     </p>
                     <p className={`text-lg font-medium ${qualityClass(row.item_quality)}`}>
                       {row.quantity}× {row.item_name}
+                      {row.material_grade && row.material_grade !== "none"
+                        ? ` · ${gradeLabel(row.material_grade)}`
+                        : ""}
                     </p>
                     {row.character_name && (
                       <p className="text-xs text-gray-400">
@@ -239,7 +247,15 @@ export default function BankAdmin({
             <p className="text-sm text-gray-400">
               El valor es por unidad y se puede cambiar cuando sobre o falte material.
             </p>
-            <ItemPicker catalog={items} value={picked} onChange={setPicked} />
+            <ItemPicker
+              catalog={items}
+              value={picked}
+              onChange={(item) => {
+                setPicked(item);
+                if (item?.material_grade) setMaterialGrade(item.material_grade);
+              }}
+            />
+            <GradeSelect value={materialGrade} onChange={setMaterialGrade} />
             <label className="block text-sm text-gray-400">
               Puntos por unidad
               <input
@@ -273,7 +289,10 @@ export default function BankAdmin({
                   <div className="w-9 h-9 rounded bg-gray-800" />
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium truncate ${qualityClass(item.quality)}`}>{item.name}</p>
+                  <p className={`text-sm font-medium truncate ${qualityClass(item.quality)}`}>
+                    {item.name}
+                    {item.material_grade !== "none" ? ` · ${gradeLabel(item.material_grade)}` : ""}
+                  </p>
                   <p className="text-[11px] text-gray-500">
                     Oferta {item.pending_deposits} · Demanda {item.pending_withdrawals}
                   </p>

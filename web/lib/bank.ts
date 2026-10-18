@@ -1,8 +1,11 @@
+export type MaterialGrade = "none" | "bronze" | "silver" | "gold";
+
 export type BankItem = {
   id: string;
   blizzard_item_id: number;
   name: string;
   quality: string | null;
+  material_grade: MaterialGrade;
   icon_url: string | null;
   points: number;
   pending_deposits: number;
@@ -14,7 +17,6 @@ export type BankHit = {
   name: string;
   quality: string | null;
   icon_url: string | null;
-  points: number | null;
   in_catalog: boolean;
 };
 
@@ -25,6 +27,7 @@ export type BankRequest = {
   blizzard_item_id: number;
   item_name: string;
   item_quality: string | null;
+  material_grade: MaterialGrade;
   item_icon_url: string | null;
   quantity: number;
   note: string | null;
@@ -40,6 +43,32 @@ export type BankRequest = {
   created_at: string | null;
   resolved_at: string | null;
 };
+
+export const MATERIAL_GRADES: { id: MaterialGrade; label: string }[] = [
+  { id: "bronze", label: "Bronce" },
+  { id: "silver", label: "Plata" },
+  { id: "gold", label: "Oro" },
+  { id: "none", label: "Sin rango" },
+];
+
+export const GRADE_CLASS: Record<MaterialGrade, string> = {
+  none: "text-gray-400",
+  bronze: "text-[#cd7f32]",
+  silver: "text-[#c0c0c0]",
+  gold: "text-[#ffd700]",
+};
+
+export function gradeLabel(grade: string | null | undefined): string | null {
+  return MATERIAL_GRADES.find((g) => g.id === grade)?.label ?? null;
+}
+
+export function catalogMatch(
+  items: BankItem[],
+  blizzardItemId: number,
+  grade: MaterialGrade,
+): BankItem | undefined {
+  return items.find((item) => item.blizzard_item_id === blizzardItemId && item.material_grade === grade);
+}
 
 export const KIND_LABEL = {
   deposit: "Ingreso",

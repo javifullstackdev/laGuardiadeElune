@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { apiDetail, qualityClass, type BankHit, type BankItem } from "@/lib/bank";
+import { apiDetail, gradeLabel, qualityClass, type BankHit, type BankItem, type MaterialGrade } from "@/lib/bank";
 
 const SEARCH_DELAY_MS = 350;
 
@@ -11,7 +11,7 @@ export type PickedItem = {
   name: string;
   quality: string | null;
   icon_url: string | null;
-  points: number | null;
+  material_grade?: MaterialGrade;
   in_catalog: boolean;
 };
 
@@ -21,7 +21,6 @@ function toPicked(hit: BankHit): PickedItem {
     name: hit.name,
     quality: hit.quality,
     icon_url: hit.icon_url,
-    points: hit.points,
     in_catalog: hit.in_catalog,
   };
 }
@@ -83,9 +82,9 @@ export default function ItemPicker({
           <div className="min-w-0 flex-1">
             <p className={`text-sm font-medium truncate ${qualityClass(value.quality)}`}>{value.name}</p>
             <p className="text-xs text-gray-500">
-              {value.in_catalog
-                ? `${value.points ?? 0} pts / ud.`
-                : "Sin valor en el catálogo (el admin lo fijará)"}
+              {value.material_grade && value.material_grade !== "none"
+                ? gradeLabel(value.material_grade)
+                : "Elige bronce, plata u oro si es un material"}
             </p>
           </div>
           <button
@@ -126,7 +125,7 @@ export default function ItemPicker({
                     )}
                     <span className={`text-sm truncate ${qualityClass(hit.quality)}`}>{hit.name}</span>
                     {hit.in_catalog && (
-                      <span className="ml-auto text-[11px] text-yellow-400/90 shrink-0">{hit.points} pts</span>
+                      <span className="ml-auto text-[11px] text-yellow-400/90 shrink-0">Catálogo</span>
                     )}
                   </button>
                 </li>
@@ -148,7 +147,7 @@ export default function ItemPicker({
                           name: item.name,
                           quality: item.quality,
                           icon_url: item.icon_url,
-                          points: item.points,
+                          material_grade: item.material_grade,
                           in_catalog: true,
                         })
                       }
@@ -158,7 +157,10 @@ export default function ItemPicker({
                       ) : (
                         <div className="w-7 h-7 rounded bg-gray-800" />
                       )}
-                      <span className={`text-xs truncate ${qualityClass(item.quality)}`}>{item.name}</span>
+                      <span className={`text-xs truncate ${qualityClass(item.quality)}`}>
+                        {item.name}
+                        {item.material_grade !== "none" ? ` · ${gradeLabel(item.material_grade)}` : ""}
+                      </span>
                       <span className="ml-auto text-[11px] text-yellow-400/90 shrink-0">{item.points}</span>
                     </button>
                   </li>
