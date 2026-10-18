@@ -60,3 +60,12 @@ class CraftOrder(Base):
 
     requester = relationship("User", foreign_keys=[requester_id], lazy="joined")
     crafter = relationship("User", foreign_keys=[crafter_user_id], lazy="joined")
+
+
+class CraftReward(Base):
+    """Puntos que el administrador asigna a cada pedido recogido."""
+
+    __tablename__ = "craft_reward"
+
+    id = Column(Integer, primary_key=True)
+    points_per_order = Column(Integer, nullable=False, server_default="50")
