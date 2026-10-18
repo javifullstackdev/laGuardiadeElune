@@ -46,8 +46,8 @@ export default function TerminosPage() {
 
       <h2>4. Áreas públicas y privadas</h2>
       <p>
-        El tablón, fichas publicadas, historias aprobadas y ranking son
-        contenidos pensados para ser visibles. El perfil y el panel de
+        El tablón, fichas publicadas e historias aprobadas son
+        contenidos pensados para ser visibles. El ranking, el banco, el perfil y el panel de
         administración son privados y no deben indexarse.
       </p>
 

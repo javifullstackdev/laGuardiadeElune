@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
 import Breadcrumb from "@/app/components/Breadcrumb";
 import { apiUrl } from "@/lib/api";
 import type { Season } from "@/lib/points";
@@ -39,8 +42,12 @@ type RankingApiRow = Omit<RankEntry, "points"> & {
 };
 
 export default async function RankingPage() {
+  const token = (await cookies()).get("token")?.value;
+  if (!token) redirect("/");
+  const headers = { Authorization: `Bearer ${token}` };
+
   const [res, seasonRes] = await Promise.all([
-    fetch(apiUrl("/users/ranking?limit=50"), { cache: "no-store" }),
+    fetch(apiUrl("/users/ranking?limit=50"), { headers, cache: "no-store" }),
     fetch(apiUrl("/seasons/current"), { cache: "no-store" }),
   ]);
   const ranking: RankingApiRow[] = res.ok ? await res.json() : [];

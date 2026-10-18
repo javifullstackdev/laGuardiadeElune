@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -9,11 +9,16 @@ class BankItem(Base):
     """Objeto del catálogo del banco: valor de puntos actual (oferta/demanda)."""
 
     __tablename__ = "bank_items"
+    __table_args__ = (
+        UniqueConstraint("blizzard_item_id", "material_grade", name="uq_bank_items_blizzard_grade"),
+    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    blizzard_item_id = Column(Integer, nullable=False, unique=True)
+    blizzard_item_id = Column(Integer, nullable=False)
     name = Column(String(255), nullable=False)
     quality = Column(String(32), nullable=True)
+    # none | bronze | silver | gold — rango de profesión (TWW/Midnight)
+    material_grade = Column(String(16), nullable=False, server_default="none")
     icon_url = Column(String(500), nullable=True)
     points = Column(Integer, nullable=False, server_default="0")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -40,6 +45,7 @@ class BankRequest(Base):
     blizzard_item_id = Column(Integer, nullable=False)
     item_name = Column(String(255), nullable=False)
     item_quality = Column(String(32), nullable=True)
+    material_grade = Column(String(16), nullable=False, server_default="none")
     item_icon_url = Column(String(500), nullable=True)
     quantity = Column(Integer, nullable=False)
     note = Column(Text, nullable=True)

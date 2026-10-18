@@ -20,12 +20,32 @@ from app.services.blizzard import BlizzardError
 router = APIRouter(prefix="/bank", tags=["bank"])
 
 MAX_QTY = 5000
+MATERIAL_GRADES = ("none", "bronze", "silver", "gold")
+GRADE_ES = {"none": None, "bronze": "bronce", "silver": "plata", "gold": "oro"}
+GRADE_ALIASES = {
+    "none": "none",
+    "bronze": "bronze",
+    "bronce": "bronze",
+    "silver": "silver",
+    "plata": "silver",
+    "gold": "gold",
+    "oro": "gold",
+}
+
+
+def _grade(raw: str | None) -> str:
+    return GRADE_ALIASES.get((raw or "none").strip().lower(), "none")
+
+
+def _grade_label(raw: str | None) -> str | None:
+    return GRADE_ES.get(_grade(raw))
 
 
 class ItemPick(BaseModel):
     blizzard_item_id: int = Field(ge=1)
     name: str = Field(min_length=1, max_length=255)
     quality: str | None = None
+    material_grade: str = "bronze"
     icon_url: str | None = None
     quantity: int = Field(ge=1, le=MAX_QTY)
     note: str | None = Field(default=None, max_length=500)
@@ -37,6 +57,7 @@ class CatalogWrite(BaseModel):
     blizzard_item_id: int = Field(ge=1)
     name: str = Field(min_length=1, max_length=255)
     quality: str | None = None
+    material_grade: str = "bronze"
     icon_url: str | None = None
     points: int = Field(ge=0, le=5000)
 
@@ -56,23 +77,35 @@ def _username(user: User | None) -> str:
     return user.display_name or user.username
 
 
-def _catalog_map(db: Session, item_ids: list[int]) -> dict[int, BankItem]:
-    if not item_ids:
+def _catalog_lookup(db: Session, item_id: int, grade: str | None) -> BankItem | None:
+    return (
+        db.query(BankItem)
+        .filter(
+            BankItem.blizzard_item_id == item_id,
+            BankItem.material_grade == _grade(grade),
+        )
+        .first()
+    )
+
+
+def _catalog_map(db: Session, keys: list[tuple[int, str]]) -> dict[tuple[int, str], BankItem]:
+    if not keys:
         return {}
-    rows = db.query(BankItem).filter(BankItem.blizzard_item_id.in_(set(item_ids))).all()
-    return {row.blizzard_item_id: row for row in rows}
+    item_ids = {item_id for item_id, _ in keys}
+    rows = db.query(BankItem).filter(BankItem.blizzard_item_id.in_(item_ids)).all()
+    return {(row.blizzard_item_id, row.material_grade): row for row in rows}
 
 
-def _demand(db: Session) -> dict[int, dict[str, int]]:
+def _demand(db: Session) -> dict[tuple[int, str], dict[str, int]]:
     rows = (
-        db.query(BankRequest.blizzard_item_id, BankRequest.kind, func.count())
+        db.query(BankRequest.blizzard_item_id, BankRequest.material_grade, BankRequest.kind, func.count())
         .filter(BankRequest.status == "pending")
-        .group_by(BankRequest.blizzard_item_id, BankRequest.kind)
+        .group_by(BankRequest.blizzard_item_id, BankRequest.material_grade, BankRequest.kind)
         .all()
     )
-    out: dict[int, dict[str, int]] = {}
-    for item_id, kind, count in rows:
-        slot = out.setdefault(item_id, {"deposits": 0, "withdrawals": 0})
+    out: dict[tuple[int, str], dict[str, int]] = {}
+    for item_id, grade, kind, count in rows:
+        slot = out.setdefault((item_id, _grade(grade)), {"deposits": 0, "withdrawals": 0})
         if kind == "deposit":
             slot["deposits"] = count
         elif kind == "withdrawal":
@@ -80,13 +113,17 @@ def _demand(db: Session) -> dict[int, dict[str, int]]:
     return out
 
 
-def serialize_item(item: BankItem, demand: dict[int, dict[str, int]] | None = None) -> dict:
-    stats = (demand or {}).get(item.blizzard_item_id) or {"deposits": 0, "withdrawals": 0}
+def serialize_item(item: BankItem, demand: dict[tuple[int, str], dict[str, int]] | None = None) -> dict:
+    stats = (demand or {}).get((item.blizzard_item_id, item.material_grade)) or {
+        "deposits": 0,
+        "withdrawals": 0,
+    }
     return {
         "id": str(item.id),
         "blizzard_item_id": item.blizzard_item_id,
         "name": item.name,
         "quality": item.quality,
+        "material_grade": item.material_grade,
         "icon_url": item.icon_url,
         "points": item.points,
         "pending_deposits": stats["deposits"],
@@ -124,6 +161,7 @@ def serialize_request(
         "blizzard_item_id": row.blizzard_item_id,
         "item_name": row.item_name,
         "item_quality": row.item_quality,
+        "material_grade": row.material_grade,
         "item_icon_url": row.item_icon_url,
         "quantity": row.quantity,
         "note": row.note,
@@ -142,9 +180,16 @@ def serialize_request(
 
 
 def _dump_requests(db: Session, rows: list[BankRequest]) -> list[dict]:
-    catalog = _catalog_map(db, [row.blizzard_item_id for row in rows])
+    catalog = _catalog_map(db, [(row.blizzard_item_id, _grade(row.material_grade)) for row in rows])
     paths = _paths_for_users(db, [row.user_id for row in rows])
-    return [serialize_request(row, catalog.get(row.blizzard_item_id), paths.get(row.user_id)) for row in rows]
+    return [
+        serialize_request(
+            row,
+            catalog.get((row.blizzard_item_id, _grade(row.material_grade))),
+            paths.get(row.user_id),
+        )
+        for row in rows
+    ]
 
 
 def _own_character(db: Session, user: User, name: str | None, realm: str | None) -> tuple[str | None, str | None]:
@@ -166,7 +211,8 @@ def _own_character(db: Session, user: User, name: str | None, realm: str | None)
 
 
 def _create_request(db: Session, user: User, body: ItemPick, kind: str) -> BankRequest:
-    catalog = db.query(BankItem).filter(BankItem.blizzard_item_id == body.blizzard_item_id).first()
+    grade = _grade(body.material_grade)
+    catalog = _catalog_lookup(db, body.blizzard_item_id, grade)
     char_name, char_realm = _own_character(db, user, body.character_name, body.character_realm)
     eligible = points_service.scores_guild_bank(points_service.season_itinerary(db, user.id))
     estimated = (catalog.points * body.quantity) if catalog and eligible else 0
@@ -179,6 +225,7 @@ def _create_request(db: Session, user: User, body: ItemPick, kind: str) -> BankR
         blizzard_item_id=body.blizzard_item_id,
         item_name=body.name.strip(),
         item_quality=body.quality,
+        material_grade=grade,
         item_icon_url=body.icon_url,
         quantity=body.quantity,
         note=(body.note or "").strip() or None,
@@ -193,7 +240,7 @@ def _create_request(db: Session, user: User, body: ItemPick, kind: str) -> BankR
 @router.get("/items")
 def list_catalog(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     demand = _demand(db)
-    rows = db.query(BankItem).order_by(BankItem.name).all()
+    rows = db.query(BankItem).order_by(BankItem.name, BankItem.material_grade).all()
     return [serialize_item(row, demand) for row in rows]
 
 
@@ -207,15 +254,14 @@ async def search_catalog_items(
         hits = await blizzard.search_items(q)
     except BlizzardError as exc:
         raise HTTPException(502, str(exc)) from exc
-    catalog = _catalog_map(db, [hit["id"] for hit in hits])
-    return [
-        {
-            **hit,
-            "points": catalog[hit["id"]].points if hit["id"] in catalog else None,
-            "in_catalog": hit["id"] in catalog,
-        }
-        for hit in hits
-    ]
+    ids = [hit["id"] for hit in hits]
+    known = {
+        row.blizzard_item_id
+        for row in (
+            db.query(BankItem).filter(BankItem.blizzard_item_id.in_(ids)).all() if ids else []
+        )
+    }
+    return [{**hit, "in_catalog": hit["id"] in known} for hit in hits]
 
 
 @router.get("/me")
@@ -300,7 +346,7 @@ def admin_queue(_: User = Depends(require_guild_admin), db: Session = Depends(ge
 @router.get("/admin/items")
 def admin_items(_: User = Depends(require_guild_admin), db: Session = Depends(get_db)):
     demand = _demand(db)
-    rows = db.query(BankItem).order_by(BankItem.name).all()
+    rows = db.query(BankItem).order_by(BankItem.name, BankItem.material_grade).all()
     return [serialize_item(row, demand) for row in rows]
 
 
@@ -310,12 +356,14 @@ def upsert_item(
     _: User = Depends(require_guild_admin),
     db: Session = Depends(get_db),
 ):
-    item = db.query(BankItem).filter(BankItem.blizzard_item_id == body.blizzard_item_id).first()
+    grade = _grade(body.material_grade)
+    item = _catalog_lookup(db, body.blizzard_item_id, grade)
     if item is None:
-        item = BankItem(blizzard_item_id=body.blizzard_item_id)
+        item = BankItem(blizzard_item_id=body.blizzard_item_id, material_grade=grade)
         db.add(item)
     item.name = body.name.strip()
     item.quality = body.quality
+    item.material_grade = grade
     item.icon_url = body.icon_url
     item.points = body.points
     db.commit()
@@ -354,7 +402,7 @@ def approve_deposit(
     if row.status != "pending":
         raise HTTPException(400, "Esta solicitud ya se resolvió")
 
-    catalog = db.query(BankItem).filter(BankItem.blizzard_item_id == row.blizzard_item_id).first()
+    catalog = _catalog_lookup(db, row.blizzard_item_id, row.material_grade)
     path = points_service.season_itinerary(db, row.user_id)
     eligible = points_service.scores_guild_bank(path)
     suggested = (catalog.points * row.quantity) if catalog else 0
@@ -368,7 +416,8 @@ def approve_deposit(
             db,
             user_id=row.user_id,
             amount=amount,
-            reason=f"Banco: {row.quantity}× {row.item_name}",
+            reason=f"Banco: {row.quantity}× {row.item_name}"
+            + (f" ({_grade_label(row.material_grade)})" if _grade_label(row.material_grade) else ""),
             category=EventCategory.GUILD_BANK,
             occurred_at=now,
         )
@@ -379,6 +428,7 @@ def approve_deposit(
             blizzard_item_id=row.blizzard_item_id,
             name=row.item_name,
             quality=row.item_quality,
+            material_grade=_grade(row.material_grade),
             icon_url=row.item_icon_url,
             points=(amount // row.quantity if eligible and row.quantity else 0),
         )

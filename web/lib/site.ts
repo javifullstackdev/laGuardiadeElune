@@ -8,6 +8,6 @@ export const SITE_URL = (
 export const SITE_NAME = "La Guardia de Elune";
 
 export const SITE_DESCRIPTION =
-  "Web oficial de la hermandad La Guardia de Elune: tablón, fichas de personajes, historias y ranking.";
+  "Web oficial de la hermandad La Guardia de Elune: tablón, fichas de personajes e historias.";
 
 export const CONTACT_EMAIL_PLACEHOLDER = "info@laguardiadeelune.com";

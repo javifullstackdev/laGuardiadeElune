@@ -303,10 +303,11 @@ def _character_avatar(char: Character) -> str | None:
 @router.get("/ranking")
 def get_ranking(
     limit: int = Query(default=20, le=50),
+    _: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Ranking público — no requiere autenticación.
+    Ranking de temporada: solo miembros logueados.
     Posición por puntos de la temporada en curso con empates (mismo score → misma
     posición; ranking denso: 1, 1, 2…). Sin temporada, por el total.
     Nombre visible: display_name (admin) o username Discord.

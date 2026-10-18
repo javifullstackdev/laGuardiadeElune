@@ -28,8 +28,8 @@ export default function AvisoLegalPage() {
       <p>
         El Sitio ofrece información y herramientas para miembros y visitantes de
         la hermandad: tablón de anuncios, fichas públicas de personajes,
-        historias de rol, ranking de puntos y áreas privadas de perfil y
-        administración.
+        historias de rol, y áreas privadas (ranking, banco, perfil y
+        administración).
       </p>
 
       <h2>3. Propiedad intelectual y marcas de terceros</h2>
