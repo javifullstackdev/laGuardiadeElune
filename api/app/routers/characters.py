@@ -31,7 +31,7 @@ from app.schemas.character import (
     AchievementOut, merge_public_fields,
 )
 from app.services import blizzard, title_sync
-from app.services.professions import store_profession_snapshot
+from app.services.professions import store_profession_snapshot, summarize_profession
 from app.services.bio_questions import answers_complete, normalize_answers
 from app.urls import static_url
 
@@ -1274,32 +1274,7 @@ async def get_character_professions(
         return {"primaries": [], "secondaries": []}
 
     raw = res.json()
-
-    def _parse(prof_data: dict) -> dict:
-        tiers = prof_data.get("tiers", [])
-        # Los tiers están ordenados de más antiguo a más nuevo
-        # → el último es la expansión más reciente
-        latest = tiers[-1] if tiers else None
-        return {
-            "name": prof_data.get("profession", {}).get("name", ""),
-            "id":   prof_data.get("profession", {}).get("id", 0),
-            "tiers": [
-                {
-                    "name":            t.get("tier", {}).get("name", ""),
-                    "skill_points":    t.get("skill_points", 0),
-                    "max_skill_points": t.get("max_skill_points", 0),
-                    "recipe_count":    len(t.get("known_recipes", [])),
-                }
-                for t in tiers
-            ],
-            # Resumen rápido del tier más reciente
-            "current_skill":      latest.get("skill_points", 0)     if latest else 0,
-            "current_max":        latest.get("max_skill_points", 0) if latest else 0,
-            "current_tier_name":  latest.get("tier", {}).get("name", "") if latest else "",
-            "total_recipes":      sum(len(t.get("known_recipes", [])) for t in tiers),
-        }
-
-    primaries = [_parse(p) for p in raw.get("primaries", [])]
-    secondaries = [_parse(s) for s in raw.get("secondaries", [])]
+    primaries = [summarize_profession(p) for p in raw.get("primaries", [])]
+    secondaries = [summarize_profession(s) for s in raw.get("secondaries", [])]
     store_profession_snapshot(db, char.id, primaries + secondaries)
     return {"primaries": primaries, "secondaries": secondaries}

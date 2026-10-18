@@ -2,11 +2,18 @@
 
 import { useMemo, useState } from "react";
 
+import { qualityClass } from "@/lib/bank";
+import CraftItemPicker, { type CraftHit } from "./CraftItemPicker";
+
 export type CraftOrder = {
   id: string;
   profession_id: number;
   profession_name: string;
   item_name: string;
+  item_quality: string | null;
+  item_icon_url: string | null;
+  item_description: string | null;
+  item_detail: string | null;
   quantity: number;
   note: string | null;
   status: "open" | "claimed" | "completed" | "cancelled";
@@ -70,6 +77,8 @@ export default function PedidosClient({
   characters,
   userId,
   isStaff,
+  blizzardLinked,
+  blizzardExpired,
 }: {
   professions: { id: number; name: string }[];
   initialOrders: CraftOrder[];
@@ -77,10 +86,12 @@ export default function PedidosClient({
   characters: MyCharacter[];
   userId: string;
   isStaff: boolean;
+  blizzardLinked: boolean;
+  blizzardExpired: boolean;
 }) {
   const [orders, setOrders] = useState(initialOrders);
   const [professionId, setProfessionId] = useState(professions[0]?.id ?? 164);
-  const [itemName, setItemName] = useState("");
+  const [picked, setPicked] = useState<CraftHit | null>(null);
   const [quantity, setQuantity] = useState("1");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -113,7 +124,12 @@ export default function PedidosClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         profession_id: professionId,
-        item_name: itemName.trim(),
+        item_name: picked?.name ?? "",
+        blizzard_item_id: picked?.id ?? null,
+        item_quality: picked?.quality ?? null,
+        item_icon_url: picked?.icon_url ?? null,
+        item_description: picked?.description ?? null,
+        item_detail: picked?.detail ?? null,
         quantity: Math.max(1, Math.min(20, Number(quantity) || 1)),
         note: note.trim() || null,
       }),
@@ -124,7 +140,7 @@ export default function PedidosClient({
       setError(detail(data, "No se pudo crear el pedido"));
       return;
     }
-    setItemName("");
+    setPicked(null);
     setQuantity("1");
     setNote("");
     setOk("Pedido publicado.");
@@ -161,7 +177,10 @@ export default function PedidosClient({
             Profesión
             <select
               value={professionId}
-              onChange={(e) => setProfessionId(Number(e.target.value))}
+              onChange={(e) => {
+                setProfessionId(Number(e.target.value));
+                setPicked(null);
+              }}
               className="elune-select mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gray-500"
             >
               {professions.map((row) => (
@@ -183,15 +202,17 @@ export default function PedidosClient({
             />
           </label>
         </div>
-        <label className="block text-sm text-gray-400">
+        <div className="text-sm text-gray-400">
           Qué necesitas
-          <input
-            value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-            placeholder="Espada, peto, gema, consumible…"
-            className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gray-500"
-          />
-        </label>
+          <div className="mt-1">
+            <CraftItemPicker
+              key={professionId}
+              professionId={professionId}
+              value={picked}
+              onChange={setPicked}
+            />
+          </div>
+        </div>
         <label className="block text-sm text-gray-400">
           Nota (opcional)
           <textarea
@@ -205,7 +226,7 @@ export default function PedidosClient({
         {ok && <p className="text-sm text-emerald-400">{ok}</p>}
         <button
           type="button"
-          disabled={busy || itemName.trim().length < 2}
+          disabled={busy || !picked}
           onClick={createOrder}
           className="px-4 py-2 rounded-lg bg-yellow-500/90 hover:bg-yellow-400 text-black text-sm font-medium disabled:opacity-50"
         >
@@ -218,13 +239,17 @@ export default function PedidosClient({
           Artesanos de {professions.find((row) => row.id === professionId)?.name}
         </h2>
         <p className="text-sm text-gray-500 mb-4">
-          El nivel es el de la última vez que cada jugador abrió la pestaña Profesiones de ese
-          personaje. Un nivel alto está en el 75 % del tramo actual o por encima de 75 puntos.
+          Sale de Battle.net, del tramo de la expansión actual. Un nivel alto está en el 75 % de
+          ese tramo o por encima de 75 puntos. Si no apareces, vincula de nuevo Battle.net en el
+          perfil: el enlace caduca al día.
         </p>
         {board.length === 0 ? (
           <p className="text-sm text-gray-400">
-            Todavía no hay lecturas de esta profesión. Quien la tenga tiene que abrir Profesiones
-            en su ficha para aparecer aquí.
+            {blizzardExpired
+              ? "Tu enlace con Battle.net ha caducado. Vuelve a vincularlo en el perfil y recarga Pedidos: leemos las profesiones de los personajes con el enlace vigente."
+              : blizzardLinked
+                ? "Nadie con el enlace vigente tiene esta profesión."
+                : "Vincula Battle.net en el perfil para que tus personajes salgan aquí. El resto aparece mientras su enlace siga vigente."}
           </p>
         ) : (
           <ul className="divide-y divide-white/10 rounded-xl border border-white/10">
@@ -262,9 +287,24 @@ export default function PedidosClient({
             (options[0] ? `${options[0].character_name}::${options[0].character_realm}` : "");
           return (
             <article key={row.id} className="rounded-xl border border-white/10 p-4 space-y-3">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="font-medium">
-                  {row.quantity}× {row.item_name}
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h3 className="font-medium flex items-start gap-3 min-w-0">
+                  {row.item_icon_url ? (
+                    <img src={row.item_icon_url} alt="" className="w-9 h-9 rounded" />
+                  ) : null}
+                  <span className="min-w-0">
+                    <span className={`block ${qualityClass(row.item_quality)}`}>
+                      {row.quantity}× {row.item_name}
+                    </span>
+                    {row.item_detail && (
+                      <span className="block text-xs text-yellow-200/70 font-normal">{row.item_detail}</span>
+                    )}
+                    {row.item_description && (
+                      <span className="block text-xs text-gray-400 italic font-normal mt-0.5">
+                        “{row.item_description}”
+                      </span>
+                    )}
+                  </span>
                 </h3>
                 <span className="text-xs uppercase tracking-wide text-gray-400">
                   {STATUS[row.status]} · {row.profession_name}

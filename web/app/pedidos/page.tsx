@@ -40,7 +40,12 @@ export default async function PedidosPage() {
     ) as Promise<MyCharacter[]>,
     fetch(apiUrl("/users/me"), { headers, cache: "no-store" }).then((r) =>
       r.ok ? r.json() : null,
-    ) as Promise<{ id: string; role: string } | null>,
+    ) as Promise<{
+      id: string;
+      role: string;
+      has_blizzard?: boolean;
+      blizzard_token_expired?: boolean;
+    } | null>,
   ]);
 
   return (
@@ -50,9 +55,9 @@ export default async function PedidosPage() {
         <header className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-quest-display font-bold">Pedidos</h1>
           <p className="text-gray-400 mt-2 text-sm sm:text-base max-w-2xl">
-            Pide armas, armaduras y objetos que solo salen de una profesión. Al elegirla ves quién
-            de la hermandad la tiene más alta. Los puntos de la fabricación van al artesano de
-            Campaña o Híbrido; Competitivo no suma.
+            Pide armas, armaduras y objetos de una profesión. El buscador trae la receta, el icono
+            y la descripción desde Blizzard, y al lado ves quién de la hermandad tiene esa
+            profesión. Los puntos van al artesano de Campaña o Híbrido; Competitivo no suma.
           </p>
         </header>
         <PedidosClient
@@ -62,6 +67,8 @@ export default async function PedidosPage() {
           characters={Array.isArray(characters) ? characters : []}
           userId={me?.id ?? ""}
           isStaff={me?.role === "admin" || me?.role === "officer"}
+          blizzardLinked={Boolean(me?.has_blizzard)}
+          blizzardExpired={Boolean(me?.blizzard_token_expired)}
         />
       </div>
     </main>

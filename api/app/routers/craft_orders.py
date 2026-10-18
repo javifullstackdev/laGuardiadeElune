@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -12,9 +12,15 @@ from app.models.character import Character
 from app.models.craft import CharacterProfessionSkill, CraftOrder
 from app.models.enums import EventCategory
 from app.models.user import User
-from app.services import points as points_service
+from app.services import blizzard, points as points_service
+from app.services.blizzard import BlizzardError
 from app.services.notifications import notify, notify_points
-from app.services.professions import CRAFTING_IDS, CRAFTING_NAMES, CRAFTING_PROFESSIONS
+from app.services.professions import (
+    CRAFTING_IDS,
+    CRAFTING_NAMES,
+    CRAFTING_PROFESSIONS,
+    refresh_profession_snapshots,
+)
 
 router = APIRouter(prefix="/craft-orders", tags=["craft-orders"])
 
@@ -39,6 +45,11 @@ def _order_out(row: CraftOrder) -> dict:
         "profession_id": row.profession_id,
         "profession_name": row.profession_name,
         "item_name": row.item_name,
+        "blizzard_item_id": row.blizzard_item_id,
+        "item_quality": row.item_quality,
+        "item_icon_url": row.item_icon_url,
+        "item_description": row.item_description,
+        "item_detail": row.item_detail,
         "quantity": row.quantity,
         "note": row.note,
         "status": row.status,
@@ -59,8 +70,22 @@ def _order_out(row: CraftOrder) -> dict:
 class OrderIn(BaseModel):
     profession_id: int
     item_name: str = Field(min_length=2, max_length=255)
+    blizzard_item_id: int | None = Field(default=None, ge=1)
+    item_quality: str | None = Field(default=None, max_length=32)
+    item_icon_url: str | None = Field(default=None, max_length=500)
+    item_description: str | None = Field(default=None, max_length=600)
+    item_detail: str | None = Field(default=None, max_length=160)
     quantity: int = Field(default=1, ge=1, le=MAX_QTY)
     note: str | None = None
+
+
+def _https_icon(url: str | None) -> str | None:
+    if not url:
+        return None
+    cleaned = url.strip()
+    if cleaned.startswith("https://") and len(cleaned) <= 500:
+        return cleaned
+    return None
 
 
 class ClaimIn(BaseModel):
@@ -78,8 +103,26 @@ def list_professions(_: User = Depends(get_current_user)):
     return list(CRAFTING_PROFESSIONS)
 
 
+@router.get("/items/search")
+async def search_craft_items(
+    profession_id: int,
+    q: str = Query(..., min_length=2, max_length=80),
+    _: User = Depends(get_current_user),
+):
+    if profession_id not in CRAFTING_IDS:
+        raise HTTPException(400, "Esa profesión no fabrica objetos")
+    try:
+        return await blizzard.search_profession_crafts(profession_id, q)
+    except BlizzardError as exc:
+        raise HTTPException(502, str(exc)) from exc
+
+
 @router.get("/crafters")
-def list_crafters(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def list_crafters(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        await refresh_profession_snapshots(db)
+    except Exception:
+        db.rollback()
     rows = (
         db.query(CharacterProfessionSkill, Character, User)
         .join(Character, Character.id == CharacterProfessionSkill.character_id)
@@ -137,11 +180,17 @@ def create_order(
     item = body.item_name.strip()
     if len(item) < 2:
         raise HTTPException(400, "Describe el objeto que necesitas")
+    description = (body.item_description or "").strip() or None
     row = CraftOrder(
         requester_id=current_user.id,
         profession_id=body.profession_id,
         profession_name=CRAFTING_NAMES[body.profession_id],
         item_name=item,
+        blizzard_item_id=body.blizzard_item_id,
+        item_quality=(body.item_quality or "").strip().lower() or None,
+        item_icon_url=_https_icon(body.item_icon_url),
+        item_description=description[:600] if description else None,
+        item_detail=((body.item_detail or "").strip()[:160] or None),
         quantity=body.quantity,
         note=(body.note or "").strip() or None,
         status="open",
