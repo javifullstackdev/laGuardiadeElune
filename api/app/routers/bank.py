@@ -20,6 +20,7 @@ from app.services.blizzard import BlizzardError
 router = APIRouter(prefix="/bank", tags=["bank"])
 
 MAX_QTY = 5000
+LOT_SIZES = (1, 10, 100)
 MATERIAL_GRADES = ("none", "bronze", "silver", "gold")
 GRADE_ES = {"none": None, "bronze": "bronce", "silver": "plata", "gold": "oro"}
 GRADE_ALIASES = {
@@ -37,6 +38,22 @@ def _grade(raw: str | None) -> str:
     return GRADE_ALIASES.get((raw or "none").strip().lower(), "none")
 
 
+def _lot(raw: int | None) -> int:
+    return raw if raw in LOT_SIZES else 1
+
+
+def _parse_lot(raw: int | None) -> int:
+    if raw not in LOT_SIZES:
+        raise HTTPException(400, "El lote debe ser 1, 10 o 100")
+    return raw
+
+
+def _award_points(catalog: BankItem | None, quantity: int) -> int:
+    if not catalog:
+        return 0
+    return catalog.points * (quantity // _lot(catalog.lot_size))
+
+
 def _grade_label(raw: str | None) -> str | None:
     return GRADE_ES.get(_grade(raw))
 
@@ -47,6 +64,8 @@ class ItemPick(BaseModel):
     quality: str | None = None
     material_grade: str = "bronze"
     icon_url: str | None = None
+    description: str | None = Field(default=None, max_length=600)
+    crafting_label: str | None = Field(default=None, max_length=120)
     quantity: int = Field(ge=1, le=MAX_QTY)
     note: str | None = Field(default=None, max_length=500)
     character_name: str | None = Field(default=None, max_length=24)
@@ -59,11 +78,15 @@ class CatalogWrite(BaseModel):
     quality: str | None = None
     material_grade: str = "bronze"
     icon_url: str | None = None
+    description: str | None = Field(default=None, max_length=600)
+    crafting_label: str | None = Field(default=None, max_length=120)
     points: int = Field(ge=0, le=5000)
+    lot_size: int = 1
 
 
 class CatalogPoints(BaseModel):
     points: int = Field(ge=0, le=5000)
+    lot_size: int | None = None
 
 
 class ResolveBody(BaseModel):
@@ -125,7 +148,10 @@ def serialize_item(item: BankItem, demand: dict[tuple[int, str], dict[str, int]]
         "quality": item.quality,
         "material_grade": item.material_grade,
         "icon_url": item.icon_url,
+        "description": item.description,
+        "crafting_label": item.crafting_label,
         "points": item.points,
+        "lot_size": _lot(item.lot_size),
         "pending_deposits": stats["deposits"],
         "pending_withdrawals": stats["withdrawals"],
     }
@@ -152,7 +178,7 @@ def serialize_request(
     catalog: BankItem | None = None,
     path: UserPath | None = None,
 ) -> dict:
-    live = (catalog.points * row.quantity) if catalog else None
+    live = _award_points(catalog, row.quantity) if catalog else None
     scores = points_service.scores_guild_bank(path) and row.kind == "deposit"
     return {
         "id": str(row.id),
@@ -163,12 +189,15 @@ def serialize_request(
         "item_quality": row.item_quality,
         "material_grade": row.material_grade,
         "item_icon_url": row.item_icon_url,
+        "item_description": row.item_description or (catalog.description if catalog else None),
+        "crafting_label": row.crafting_label or (catalog.crafting_label if catalog else None),
         "quantity": row.quantity,
         "note": row.note,
         "character_name": row.character_name,
         "character_realm": row.character_realm,
         "estimated_points": row.estimated_points,
         "current_points": live if scores else 0,
+        "lot_size": _lot(catalog.lot_size) if catalog else 1,
         "awarded_points": row.awarded_points,
         "admin_note": row.admin_note,
         "username": _username(row.user),
@@ -215,7 +244,7 @@ def _create_request(db: Session, user: User, body: ItemPick, kind: str) -> BankR
     catalog = _catalog_lookup(db, body.blizzard_item_id, grade)
     char_name, char_realm = _own_character(db, user, body.character_name, body.character_realm)
     eligible = points_service.scores_guild_bank(points_service.season_itinerary(db, user.id))
-    estimated = (catalog.points * body.quantity) if catalog and eligible else 0
+    estimated = _award_points(catalog, body.quantity) if eligible else 0
     row = BankRequest(
         user_id=user.id,
         character_name=char_name,
@@ -227,6 +256,8 @@ def _create_request(db: Session, user: User, body: ItemPick, kind: str) -> BankR
         item_quality=body.quality,
         material_grade=grade,
         item_icon_url=body.icon_url,
+        item_description=(body.description or (catalog.description if catalog else None) or "").strip() or None,
+        crafting_label=(body.crafting_label or (catalog.crafting_label if catalog else None) or "").strip() or None,
         quantity=body.quantity,
         note=(body.note or "").strip() or None,
         estimated_points=estimated if kind == "deposit" else None,
@@ -365,7 +396,12 @@ def upsert_item(
     item.quality = body.quality
     item.material_grade = grade
     item.icon_url = body.icon_url
+    if body.description is not None:
+        item.description = body.description.strip() or None
+    if body.crafting_label is not None:
+        item.crafting_label = body.crafting_label.strip() or None
     item.points = body.points
+    item.lot_size = _parse_lot(body.lot_size)
     db.commit()
     db.refresh(item)
     return serialize_item(item, _demand(db))
@@ -382,6 +418,8 @@ def update_item_points(
     if not item:
         raise HTTPException(404, "Objeto no encontrado")
     item.points = body.points
+    if body.lot_size is not None:
+        item.lot_size = _parse_lot(body.lot_size)
     db.commit()
     db.refresh(item)
     return serialize_item(item, _demand(db))
@@ -405,7 +443,7 @@ def approve_deposit(
     catalog = _catalog_lookup(db, row.blizzard_item_id, row.material_grade)
     path = points_service.season_itinerary(db, row.user_id)
     eligible = points_service.scores_guild_bank(path)
-    suggested = (catalog.points * row.quantity) if catalog else 0
+    suggested = _award_points(catalog, row.quantity)
     amount = suggested if body.amount is None else body.amount
     now = datetime.now(timezone.utc)
 
@@ -430,7 +468,10 @@ def approve_deposit(
             quality=row.item_quality,
             material_grade=_grade(row.material_grade),
             icon_url=row.item_icon_url,
+            description=row.item_description,
+            crafting_label=row.crafting_label,
             points=(amount // row.quantity if eligible and row.quantity else 0),
+            lot_size=1,
         )
         db.add(catalog)
 

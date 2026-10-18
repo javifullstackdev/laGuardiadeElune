@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from "react";
 
-import { apiDetail, gradeLabel, qualityClass, type BankHit, type BankItem, type MaterialGrade } from "@/lib/bank";
+import {
+  apiDetail,
+  qualityClass,
+  rateLabel,
+  type BankHit,
+  type BankItem,
+  type MaterialGrade,
+} from "@/lib/bank";
+import ItemFlavor from "./ItemFlavor";
+import QualityGem from "./QualityGem";
 
 const SEARCH_DELAY_MS = 350;
 
@@ -11,6 +20,8 @@ export type PickedItem = {
   name: string;
   quality: string | null;
   icon_url: string | null;
+  description: string | null;
+  crafting_label: string | null;
   material_grade?: MaterialGrade;
   in_catalog: boolean;
 };
@@ -21,6 +32,8 @@ function toPicked(hit: BankHit): PickedItem {
     name: hit.name,
     quality: hit.quality,
     icon_url: hit.icon_url,
+    description: hit.description,
+    crafting_label: hit.crafting_label,
     in_catalog: hit.in_catalog,
   };
 }
@@ -73,7 +86,7 @@ export default function ItemPicker({
   return (
     <div className="space-y-3">
       {value ? (
-        <div className="flex items-center gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-3 py-2">
+        <div className="flex items-start gap-3 rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-3 py-2">
           {value.icon_url ? (
             <img src={value.icon_url} alt="" className="w-9 h-9 rounded" />
           ) : (
@@ -81,11 +94,10 @@ export default function ItemPicker({
           )}
           <div className="min-w-0 flex-1">
             <p className={`text-sm font-medium truncate ${qualityClass(value.quality)}`}>{value.name}</p>
-            <p className="text-xs text-gray-500">
-              {value.material_grade && value.material_grade !== "none"
-                ? gradeLabel(value.material_grade)
-                : "Elige bronce, plata u oro si es un material"}
-            </p>
+            <ItemFlavor craftingLabel={value.crafting_label} description={value.description} />
+            {!value.crafting_label && !value.description && (
+              <p className="text-xs text-gray-500">Elige bronce, plata u oro si es un material</p>
+            )}
           </div>
           <button
             type="button"
@@ -123,7 +135,12 @@ export default function ItemPicker({
                     ) : (
                       <div className="w-8 h-8 rounded bg-gray-800" />
                     )}
-                    <span className={`text-sm truncate ${qualityClass(hit.quality)}`}>{hit.name}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className={`block text-sm truncate ${qualityClass(hit.quality)}`}>{hit.name}</span>
+                      {hit.crafting_label && (
+                        <span className="block text-[11px] text-yellow-200/70 truncate">{hit.crafting_label}</span>
+                      )}
+                    </span>
                     {hit.in_catalog && (
                       <span className="ml-auto text-[11px] text-yellow-400/90 shrink-0">Catálogo</span>
                     )}
@@ -147,6 +164,8 @@ export default function ItemPicker({
                           name: item.name,
                           quality: item.quality,
                           icon_url: item.icon_url,
+                          description: item.description,
+                          crafting_label: item.crafting_label,
                           material_grade: item.material_grade,
                           in_catalog: true,
                         })
@@ -157,11 +176,15 @@ export default function ItemPicker({
                       ) : (
                         <div className="w-7 h-7 rounded bg-gray-800" />
                       )}
-                      <span className={`text-xs truncate ${qualityClass(item.quality)}`}>
+                      <span className={`text-xs truncate min-w-0 flex-1 ${qualityClass(item.quality)}`}>
                         {item.name}
-                        {item.material_grade !== "none" ? ` · ${gradeLabel(item.material_grade)}` : ""}
                       </span>
-                      <span className="ml-auto text-[11px] text-yellow-400/90 shrink-0">{item.points}</span>
+                      {item.material_grade !== "none" ? (
+                        <QualityGem grade={item.material_grade} size={14} />
+                      ) : null}
+                      <span className="ml-auto text-[11px] text-yellow-400/90 shrink-0">
+                        {rateLabel(item.points, item.lot_size)}
+                      </span>
                     </button>
                   </li>
                 ))}

@@ -41,7 +41,8 @@ export default async function BancoPage() {
           <h1 className="text-3xl sm:text-4xl font-quest-display font-bold">Banco</h1>
           <p className="text-gray-400 mt-2 text-sm sm:text-base max-w-2xl">
             Registra lo que metes en el banco de hermandad o pide una retirada. Los ingresos los
-            valida el administrador. Solo Campaña e Híbrido suman puntos; competitivo no.
+            valida el administrador. Solo Campaña e Híbrido suman puntos; competitivo no. Algunos
+            materiales valen por lote de 10 o de 100.
           </p>
         </header>
         <BancoClient

@@ -244,6 +244,32 @@ async def get_item_icon(item_id: int) -> str | None:
     return None
 
 
+def _crafting_label(preview: dict) -> str | None:
+    raw = preview.get("crafting_reagent")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    if isinstance(raw, dict):
+        label = raw.get("header") or raw.get("name") or raw.get("description")
+        if isinstance(label, str) and label.strip():
+            return label.strip()
+    return None
+
+
+async def get_item_details(item_id: int) -> dict:
+    """Tooltip público: descripción y etiqueta de componente de profesión."""
+    data = await _get_json(f"/data/wow/item/{item_id}", f"static-{_region()}", locale=LOCALE)
+    if not data:
+        return {"description": None, "crafting_label": None}
+    preview = data.get("preview_item") or {}
+    description = (data.get("description") or preview.get("description") or "").strip() or None
+    if description and len(description) > 600:
+        description = description[:597] + "…"
+    return {
+        "description": description,
+        "crafting_label": _crafting_label(preview),
+    }
+
+
 async def search_items(query: str, limit: int = 12) -> list[dict]:
     """Busca objetos en el Game Data Search API (nombre en español, o inglés si no hay)."""
     needle = query.strip()
@@ -279,17 +305,26 @@ async def search_items(query: str, limit: int = 12) -> list[dict]:
                 "name": name,
                 "quality": (quality.get("type") or "").lower() or None,
                 "icon_url": None,
+                "description": None,
+                "crafting_label": None,
             }
         )
         if len(rows) >= page_size:
             break
-    icons = await asyncio.gather(
-        *(get_item_icon(item["id"]) for item in rows),
-        return_exceptions=True,
-    )
-    for item, icon in zip(rows, icons):
+
+    async def _enrich(item: dict) -> None:
+        icon, details = await asyncio.gather(
+            get_item_icon(item["id"]),
+            get_item_details(item["id"]),
+            return_exceptions=True,
+        )
         if isinstance(icon, str):
             item["icon_url"] = icon
+        if isinstance(details, dict):
+            item["description"] = details.get("description")
+            item["crafting_label"] = details.get("crafting_label")
+
+    await asyncio.gather(*(_enrich(item) for item in rows))
     return rows
 
 

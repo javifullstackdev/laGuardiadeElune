@@ -1,6 +1,7 @@
 "use client";
 
-import { GRADE_CLASS, MATERIAL_GRADES, type MaterialGrade } from "@/lib/bank";
+import { MATERIAL_GRADES, type MaterialGrade } from "@/lib/bank";
+import QualityGem from "./QualityGem";
 
 export default function GradeSelect({
   value,
@@ -10,19 +11,42 @@ export default function GradeSelect({
   onChange: (grade: MaterialGrade) => void;
 }) {
   return (
-    <label className="block text-sm text-gray-400">
-      Calidad del material
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as MaterialGrade)}
-        className={`mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 ${GRADE_CLASS[value]}`}
-      >
-        {MATERIAL_GRADES.map((grade) => (
-          <option key={grade.id} value={grade.id}>
-            {grade.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <fieldset>
+      <legend className="text-sm text-gray-400 mb-1.5">Calidad del material</legend>
+      <div className="flex items-center gap-2">
+        {MATERIAL_GRADES.filter((grade) => grade.id !== "none").map((grade) => {
+          const selected = value === grade.id;
+          return (
+            <button
+              key={grade.id}
+              type="button"
+              title={grade.label}
+              aria-label={grade.label}
+              aria-pressed={selected}
+              onClick={() => onChange(grade.id)}
+              className={`rounded-lg p-1.5 border transition-colors ${
+                selected
+                  ? "border-yellow-400 bg-yellow-400/10"
+                  : "border-gray-700 bg-gray-800 hover:border-gray-500"
+              }`}
+            >
+              <QualityGem grade={grade.id} size={30} />
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          aria-pressed={value === "none"}
+          onClick={() => onChange("none")}
+          className={`ml-1 text-xs px-2 py-1 rounded-md border ${
+            value === "none"
+              ? "border-yellow-400/70 text-yellow-300"
+              : "border-gray-700 text-gray-500 hover:text-gray-300"
+          }`}
+        >
+          Sin rango
+        </button>
+      </div>
+    </fieldset>
   );
 }

@@ -33,6 +33,26 @@ body {
   overscroll-behavior-y: none;
 }
 
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.elune-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1.5 1.8 L6 6.2 L10.5 1.8' fill='none' stroke='%23eab308' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+  background-size: 0.65rem 0.45rem;
+  padding-right: 2rem;
+}
+
 html[data-elune-intro="playing"] {
   overflow: hidden;
 }
