@@ -42,6 +42,12 @@ export const CATEGORIES: Category[] = [
     badge: "bg-orange-500/20 text-orange-300 border border-orange-500/30",
     flag: "bg-orange-500 text-black",
   },
+  {
+    value: "pedidos",
+    label: "Pedidos",
+    badge: "bg-yellow-500/20 text-yellow-200 border border-yellow-500/30",
+    flag: "bg-yellow-400 text-black",
+  },
 ];
 
 export function getCategoryStyle(value: string | null): Category {

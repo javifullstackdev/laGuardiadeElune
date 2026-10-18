@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { getCategoryStyle, postHref, postSubtitle, formatDate, type Post } from "@/lib/posts";
 
-export default function PostTile({ post }: { post: Post }) {
+export default function PostTile({ post, href }: { post: Post; href?: string }) {
   const cat = getCategoryStyle(post.category);
   const subtitle = postSubtitle(post);
 
   return (
       <Link
-        href={postHref(post)}
+        href={href ?? postHref(post)}
         draggable={false}
         className="group flex flex-col h-full rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] hover:bg-[#1a2233] transition-colors select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
       >

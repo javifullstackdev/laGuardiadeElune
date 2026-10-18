@@ -158,6 +158,29 @@ async def list_crafters(_: User = Depends(get_current_user), db: Session = Depen
     return out
 
 
+@router.get("/board")
+def public_board(db: Session = Depends(get_db)):
+    """Pedidos abiertos para el tablón. Sin notas ni nombres de jugador."""
+    rows = (
+        db.query(CraftOrder)
+        .filter(CraftOrder.status == "open")
+        .order_by(CraftOrder.created_at.desc())
+        .limit(8)
+        .all()
+    )
+    return [
+        {
+            "id": str(row.id),
+            "profession_id": row.profession_id,
+            "profession_name": row.profession_name,
+            "item_name": row.item_name,
+            "quantity": row.quantity,
+            "created_at": row.created_at.isoformat() if row.created_at else None,
+        }
+        for row in rows
+    ]
+
+
 @router.get("")
 def list_orders(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = (
@@ -196,9 +219,38 @@ def create_order(
         status="open",
     )
     db.add(row)
+    db.flush()
+    _offer_to_crafters(db, row)
     db.commit()
     db.refresh(row)
     return _order_out(row)
+
+
+def _offer_to_crafters(db: Session, order: CraftOrder) -> None:
+    """Avisa a quien tenga esa profesión, salvo a quien ha publicado el pedido."""
+    user_ids = (
+        db.query(Character.user_id)
+        .join(CharacterProfessionSkill, CharacterProfessionSkill.character_id == Character.id)
+        .join(User, User.id == Character.user_id)
+        .filter(
+            CharacterProfessionSkill.blizzard_profession_id == order.profession_id,
+            Character.deleted_at.is_(None),
+            User.deleted_at.is_(None),
+            Character.user_id != order.requester_id,
+        )
+        .distinct()
+        .all()
+    )
+    for (user_id,) in user_ids:
+        notify(
+            db,
+            user_id=user_id,
+            kind="craft_offer",
+            title=f"Pedido de {order.profession_name}",
+            body=f"{order.quantity}× {order.item_name}. ¿Lo fabricas?",
+            href="/pedidos",
+            craft_order_id=order.id,
+        )
 
 
 @router.post("/{order_id}/claim")

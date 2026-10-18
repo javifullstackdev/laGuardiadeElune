@@ -21,6 +21,7 @@ const PROFESSIONS = [
   { id: 755, name: "Joyería" },
   { id: 333, name: "Encantamiento" },
   { id: 185, name: "Cocina" },
+  { id: 356, name: "Pesca" },
 ];
 
 export default async function PedidosPage() {

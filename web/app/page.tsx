@@ -4,6 +4,7 @@ import HomeReveal from "./components/HomeReveal";
 import FadeUp from "./components/FadeUp";
 import { HERO_SLIDES, type HeroSlide } from "@/lib/hero";
 import { getCategoryStyle, postSubtitle, formatDate, postHref} from "@/lib/posts";
+import { boardToPost, type CraftBoardCard } from "@/lib/craft-board";
 import StoryTile from "./components/StoryTile";
 import WikiTile from "./components/WikiTile";
 import type { StoryPublic } from "@/lib/stories";
@@ -21,27 +22,22 @@ type Post = {
 };
 
 export default async function Home() {
-  const [postsRes, storiesRes, wikiRes, heroRes] = await Promise.all([
+  const [postsRes, storiesRes, wikiRes, heroRes, boardRes] = await Promise.all([
     fetch(apiUrl("/posts/"), { cache: "no-store" }),
     fetch(apiUrl("/stories/"), { cache: "no-store" }),
     fetch(apiUrl("/wiki/"), { cache: "no-store" }),
     fetch(apiUrl("/hero/"), { cache: "no-store" }),
+    fetch(apiUrl("/craft-orders/board"), { cache: "no-store" }),
   ]);
   const posts: Post[] = postsRes.ok ? await postsRes.json() : [];
+  const board: CraftBoardCard[] = boardRes.ok ? await boardRes.json() : [];
+  const tablon = homeTablon(posts, Array.isArray(board) ? board : []);
   const stories: StoryPublic[] = storiesRes.ok ? await storiesRes.json() : [];
   const wiki: WikiListItem[] = wikiRes.ok ? await wikiRes.json() : [];
   const heroSlides: HeroSlide[] = heroRes.ok ? await heroRes.json() : [];
-  const grid = posts.slice(0, 8);
-  const tablonFirst = grid.slice(0, 4);
-  const tablonRest = grid.slice(4);
   const storyGrid = stories.slice(0, 4);
   const wikiGrid = wiki.slice(0, 4);
 
-  const tablonListClass =
-    grid.length > 1
-      ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:overscroll-auto"
-      : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3";
-  const tablonItemClass = grid.length > 1 ? "w-[80%] shrink-0 snap-start sm:w-full h-full" : "h-full";
   const wikiListClass =
     wikiGrid.length > 1
       ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:overscroll-auto"
@@ -52,39 +48,27 @@ export default async function Home() {
   return (
     <main className="relative min-h-screen">
       <HomeReveal>
-        <div className="flex flex-col sm:h-[calc(100svh-3rem)]">
+        <div className="flex flex-col sm:min-h-[calc(100svh-3rem)]">
           <HomeHero slides={heroSlides.length > 0 ? heroSlides : HERO_SLIDES} />
 
-          {tablonFirst.length > 0 && (
+          {tablon.length > 0 && (
             <section id="tablon" className="shrink-0 px-4 pt-3 pb-5 sm:pt-4 sm:pb-6">
               <div className="flex items-end justify-between mb-4 sm:mb-5">
                 <h2 className="text-xl sm:text-2xl font-quest font-bold">Tablón</h2>
-                <p className="text-xs sm:text-sm text-gray-500">Últimas publicaciones</p>
+                <Link href="/posts" className="text-xs sm:text-sm text-gray-500 hover:text-gray-300">
+                  Ver todos
+                </Link>
               </div>
-              <ul className={tablonListClass}>
-                {tablonFirst.map((post) => (
-                  <li key={post.id} className={tablonItemClass}>
-                    <PostTile post={post} />
+              <ul className="flex gap-0 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain md:grid md:grid-cols-4 md:gap-3 md:overflow-visible md:overscroll-auto">
+                {tablon.map((tile) => (
+                  <li key={tile.post.id} className="w-full shrink-0 snap-start md:w-auto md:min-w-0">
+                    <PostTile post={tile.post} href={tile.href} />
                   </li>
                 ))}
               </ul>
             </section>
           )}
         </div>
-
-        {tablonRest.length > 0 && (
-          <section className="px-4 pb-10 sm:pb-14">
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {tablonRest.map((post, i) => (
-                <li key={post.id}>
-                  <FadeUp className="h-full" delayMs={i * 70}>
-                    <PostTile post={post} />
-                  </FadeUp>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
 
         {wikiGrid.length > 0 && (
           <section className="px-4 pb-10 sm:pb-14">
@@ -134,13 +118,45 @@ export default async function Home() {
   );
 }
 
-function PostTile({ post }: { post: Post }) {
+function homeTablon(posts: Post[], orders: CraftBoardCard[]) {
+  const pedido = orders[0]
+    ? { post: boardToPost(orders[0]), href: "/pedidos" as const }
+    : null;
+  const slots = pedido ? 3 : 4;
+  const sorted = [...posts].sort(
+    (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
+  );
+  const picked: Post[] = [];
+  const seen = new Set<string>();
+  for (const post of sorted) {
+    const key = (post.category ?? "").trim().toLowerCase() || `__${post.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    picked.push(post);
+    if (picked.length === slots) break;
+  }
+  if (picked.length < slots) {
+    for (const post of sorted) {
+      if (picked.some((item) => item.id === post.id)) continue;
+      picked.push(post);
+      if (picked.length === slots) break;
+    }
+  }
+  picked.sort(
+    (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
+  );
+  const row = picked.map((post) => ({ post, href: undefined as string | undefined }));
+  if (pedido) row.push(pedido);
+  return row;
+}
+
+function PostTile({ post, href }: { post: Post; href?: string }) {
   const cat = getCategoryStyle(post.category);
   const subtitle = postSubtitle(post);
 
   return (
     <Link
-      href={postHref(post)}
+      href={href ?? postHref(post)}
       draggable={false}
       className="group flex flex-col h-full rounded-lg overflow-hidden bg-[#151515] hover:bg-[#1c1c1c] transition-colors select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
     >

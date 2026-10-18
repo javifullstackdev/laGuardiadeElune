@@ -3,9 +3,10 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from app.models.craft import CraftOrder
 from app.models.relation_claim import Notification, RelationClaim
 
 
@@ -18,6 +19,7 @@ def notify(
     body: str | None = None,
     href: str | None = None,
     claim_id=None,
+    craft_order_id=None,
 ) -> Notification:
     row = Notification(
         id=uuid.uuid4(),
@@ -27,6 +29,7 @@ def notify(
         body=body,
         href=href,
         claim_id=claim_id,
+        craft_order_id=craft_order_id,
     )
     db.add(row)
     return row
@@ -64,10 +67,16 @@ def notify_points(
 
 
 def mark_passive_read(db: Session, user_id) -> None:
-    """Marca como leídos los avisos que no piden una respuesta. Las menciones pendientes siguen sin leer."""
+    """Marca como leídos los avisos que no piden una respuesta.
+
+    Siguen sin leer las menciones pendientes y los pedidos que el artesano aún puede coger.
+    """
     pending_ids = [
         row[0]
         for row in db.query(RelationClaim.id).filter(RelationClaim.status == "pending").all()
+    ]
+    open_order_ids = [
+        row[0] for row in db.query(CraftOrder.id).filter(CraftOrder.status == "open").all()
     ]
     now = datetime.now(timezone.utc)
     filters = [
@@ -77,6 +86,13 @@ def mark_passive_read(db: Session, user_id) -> None:
     if pending_ids:
         filters.append(
             or_(Notification.claim_id.is_(None), Notification.claim_id.notin_(pending_ids))
+        )
+    if open_order_ids:
+        filters.append(
+            ~and_(
+                Notification.kind == "craft_offer",
+                Notification.craft_order_id.in_(open_order_ids),
+            )
         )
     db.query(Notification).filter(*filters).update(
         {Notification.read_at: now},
