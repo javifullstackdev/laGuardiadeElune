@@ -193,7 +193,7 @@ def list_orders(_: User = Depends(get_current_user), db: Session = Depends(get_d
 
 
 @router.post("", status_code=201)
-def create_order(
+async def create_order(
     body: OrderIn,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -219,7 +219,12 @@ def create_order(
         status="open",
     )
     db.add(row)
-    db.flush()
+    db.commit()
+    db.refresh(row)
+    try:
+        await refresh_profession_snapshots(db)
+    except Exception:
+        db.rollback()
     _offer_to_crafters(db, row)
     db.commit()
     db.refresh(row)
@@ -227,30 +232,54 @@ def create_order(
 
 
 def _offer_to_crafters(db: Session, order: CraftOrder) -> None:
-    """Avisa a quien tenga esa profesión, salvo a quien ha publicado el pedido."""
-    user_ids = (
-        db.query(Character.user_id)
-        .join(CharacterProfessionSkill, CharacterProfessionSkill.character_id == Character.id)
-        .join(User, User.id == Character.user_id)
-        .filter(
-            CharacterProfessionSkill.blizzard_profession_id == order.profession_id,
-            Character.deleted_at.is_(None),
-            User.deleted_at.is_(None),
-            Character.user_id != order.requester_id,
+    """Avisa del pedido. Quien lo publica ve la confirmación; el resto puede cogerlo."""
+    known = {
+        user_id
+        for (user_id,) in (
+            db.query(Character.user_id)
+            .join(CharacterProfessionSkill, CharacterProfessionSkill.character_id == Character.id)
+            .join(User, User.id == Character.user_id)
+            .filter(
+                CharacterProfessionSkill.blizzard_profession_id == order.profession_id,
+                Character.deleted_at.is_(None),
+                User.deleted_at.is_(None),
+            )
+            .distinct()
+            .all()
         )
-        .distinct()
-        .all()
-    )
-    for (user_id,) in user_ids:
+    }
+    recipients = known - {order.requester_id}
+    # Sin profesiones guardadas no hay a quién avisar. Se avisa al resto de la hermandad.
+    if not known:
+        recipients = {
+            user_id
+            for (user_id,) in (
+                db.query(User.id)
+                .filter(User.deleted_at.is_(None), User.id != order.requester_id)
+                .all()
+            )
+        }
+    title = f"Pedido de {order.profession_name}"
+    body = f"{order.quantity}× {order.item_name}. ¿Lo fabricas?"
+    for user_id in recipients:
         notify(
             db,
             user_id=user_id,
             kind="craft_offer",
-            title=f"Pedido de {order.profession_name}",
-            body=f"{order.quantity}× {order.item_name}. ¿Lo fabricas?",
+            title=title,
+            body=body,
             href="/pedidos",
             craft_order_id=order.id,
         )
+    notify(
+        db,
+        user_id=order.requester_id,
+        kind="craft_published",
+        title="Tu pedido ya está en el tablón",
+        body=f"{order.quantity}× {order.item_name} ({order.profession_name}).",
+        href="/pedidos",
+        craft_order_id=order.id,
+    )
 
 
 @router.post("/{order_id}/claim")

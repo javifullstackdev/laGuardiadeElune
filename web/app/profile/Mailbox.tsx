@@ -33,6 +33,7 @@ const KIND_LABEL: Record<string, string> = {
   craft_claimed: "Pedido",
   craft_done: "Pedido",
   craft_offer: "Pedido",
+  craft_published: "Pedido",
   eremita_story: "Eremita",
   eremita_bio: "Eremita",
   relation_claim: "Mención",
