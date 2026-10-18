@@ -27,6 +27,7 @@ export default async function Navbar() {
     { href: "/ranking", label: "Ranking" },
     ...(token
       ? [
+          { href: "/banco", label: "Banco" },
           { href: "/profile", label: "Perfil" },
           ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
           { href: "/api/auth/logout", label: "Salir" },

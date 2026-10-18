@@ -74,6 +74,14 @@ const SECTIONS = [
     color:       "border-emerald-500/40 hover:border-emerald-400",
     badge:       "bg-emerald-500/20 text-emerald-300",
   },
+  {
+    href:        "/admin/banco",
+    title:       "Banco",
+    description: "Validar ingresos, marcar retiradas y ajustar los puntos de cada objeto.",
+    color:       "border-lime-500/40 hover:border-lime-400",
+    badge:       "bg-lime-500/20 text-lime-300",
+    adminOnly:   true,
+  },
 ];
 
 export default async function AdminPage() {
@@ -89,6 +97,8 @@ export default async function AdminPage() {
   const user = await res.json();
   if (user.role !== "admin" && user.role !== "officer") redirect("/");
 
+  const sections = SECTIONS.filter((s) => !("adminOnly" in s && s.adminOnly) || user.role === "admin");
+
   return (
     <main className="min-h-screen">
       <div className="max-w-3xl mx-auto px-4 py-12">
@@ -103,7 +113,7 @@ export default async function AdminPage() {
         </div>
 
         <div className="grid gap-4">
-          {SECTIONS.map((s) => (
+          {sections.map((s) => (
             <Link
               key={s.href}
               href={s.href}

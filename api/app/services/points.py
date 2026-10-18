@@ -74,6 +74,20 @@ def season_path_or_default(db: Session, user_id, season: Season) -> UserPath:
     return choice.path
 
 
+def season_itinerary(db: Session, user_id, at: datetime | None = None) -> UserPath | None:
+    """Itinerario elegido para la temporada en curso. None si aún no lo ha fijado."""
+    season = season_service.current_season(db, at=at)
+    if not season:
+        return None
+    choice = season_service.season_path(db, user_id, season.id)
+    return choice.path if choice else None
+
+
+def scores_guild_bank(path: UserPath | None) -> bool:
+    """Solo Campaña e Híbrido puntúan por meter materiales al banco. Competitivo, no."""
+    return path in (UserPath.CAMPAIGN, UserPath.HYBRID)
+
+
 def record_capped_event(
     db: Session,
     *,

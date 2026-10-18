@@ -46,4 +46,5 @@ export const CATEGORY_LABEL: Record<string, string> = {
   profession: "Profesión",
   delves: "Profundidades",
   reputation: "Reputación",
+  guild_bank: "Banco de hermandad",
 };
