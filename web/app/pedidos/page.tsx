@@ -56,9 +56,8 @@ export default async function PedidosPage() {
         <header className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-quest-display font-bold">Pedidos</h1>
           <p className="text-gray-400 mt-2 text-sm sm:text-base max-w-2xl">
-            Pide armas, armaduras y objetos de una profesión. El buscador trae la receta, el icono
-            y la descripción desde Blizzard, y al lado ves quién de la hermandad tiene esa
-            profesión. Los puntos van al artesano de Campaña o Híbrido; Competitivo no suma.
+            Aquí puedes publicar todos los pedidos de artesanía que necesitas. Los mejores artesanos
+            de la Guardia serán avisados en cuanto lo publiques.
           </p>
         </header>
         <PedidosClient

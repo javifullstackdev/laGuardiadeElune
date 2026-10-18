@@ -82,6 +82,14 @@ const SECTIONS = [
     badge:       "bg-lime-500/20 text-lime-300",
     adminOnly:   true,
   },
+  {
+    href:        "/admin/pedidos",
+    title:       "Pedidos",
+    description: "Fijar los puntos que gana el artesano por cada pedido recogido. Por defecto, 50.",
+    color:       "border-teal-500/40 hover:border-teal-400",
+    badge:       "bg-teal-500/20 text-teal-300",
+    adminOnly:   true,
+  },
 ];
 
 export default async function AdminPage() {

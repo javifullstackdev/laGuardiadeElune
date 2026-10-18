@@ -1540,89 +1540,26 @@ type ProfData = {
   total_recipes: number;
 };
 
+type CompletedCraft = {
+  item_name: string;
+  quantity: number;
+  profession_name: string;
+  status: string;
+};
+
 type ProfessionsResponse = {
   primaries: ProfData[];
   secondaries: ProfData[];
+  completed_orders?: CompletedCraft[];
   is_forever?: boolean;
   no_token?: boolean;
   token_expired?: boolean;
   error?: boolean;
 };
 
-function ProfessionCard({ prof, color, compact = false }: { prof: ProfData; color: string; compact?: boolean }) {
-  const pct = prof.current_max > 0 ? Math.round((prof.current_skill / prof.current_max) * 100) : 0;
-  const maxed = prof.current_skill >= prof.current_max && prof.current_max > 0;
-
-  return (
-    <div className={`bg-gray-900/70 border border-gray-800/60 rounded-xl ${compact ? "p-3" : "p-4"}`}>
-      {/* Cabecera */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="min-w-0">
-          <p className={`font-semibold truncate ${compact ? "text-sm" : "text-base"}`}
-            style={{ color }}>
-            {prof.name}
-          </p>
-          {prof.current_tier_name && (
-            <p className="text-xs text-gray-500 truncate mt-0.5">{prof.current_tier_name}</p>
-          )}
-        </div>
-        <div className="text-right shrink-0">
-          <p className={`font-mono font-semibold ${compact ? "text-xs" : "text-sm"}`}
-            style={{ color: maxed ? "#22c55e" : "#e5e7eb" }}>
-            {prof.current_skill}<span className="text-gray-600">/{prof.current_max}</span>
-          </p>
-          {maxed && (
-            <p className="text-xs text-green-500 font-medium">Máximo</p>
-          )}
-        </div>
-      </div>
-
-      {/* Barra de progreso del tier actual */}
-      {prof.current_max > 0 && (
-        <div className="mb-3">
-          <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${pct}%`,
-                background: maxed ? "#22c55e" : color,
-                opacity: 0.8,
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="flex items-center gap-4">
-        <div>
-          <p className="text-xs text-gray-600">Recetas totales</p>
-          <p className="text-sm font-medium text-gray-300">{prof.total_recipes}</p>
-        </div>
-        {!compact && prof.tiers.length > 1 && (
-          <div>
-            <p className="text-xs text-gray-600">Expansiones</p>
-            <p className="text-sm font-medium text-gray-300">{prof.tiers.length}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Historial de tiers (solo en vista completa) */}
-      {!compact && prof.tiers.length > 1 && (
-        <div className="mt-3 pt-3 border-t border-gray-800/60 space-y-1.5">
-          {[...prof.tiers].reverse().slice(1).map((t, i) => (
-            <div key={i} className="flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-600 truncate">{t.name}</p>
-              <p className="text-xs text-gray-500 shrink-0 font-mono">
-                {t.skill_points}/{t.max_skill_points}
-                <span className="text-gray-700 ml-1">· {t.recipe_count}rec</span>
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+function professionLevel(prof: ProfData) {
+  if (!prof.current_max) return `Nivel ${prof.current_skill}`;
+  return `Nivel ${prof.current_skill}/${prof.current_max}`;
 }
 
 function ProfessionsTab({ char, color }: { char: Character; color: string }) {
@@ -1630,7 +1567,6 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (char.game !== "retail") { setLoading(false); return; }
     setLoading(true);
     setData(null);
     fetch(`/api/characters/professions?name=${encodeURIComponent(char.name)}&realm=${encodeURIComponent(char.realm)}`)
@@ -1639,8 +1575,21 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
       .catch(() => { setData({ primaries: [], secondaries: [], error: true }); setLoading(false); });
   }, [char.name, char.realm, char.game]);
 
-  // ── Warcraft Forever ──
-  if (char.game !== "retail") {
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-3 animate-pulse">
+        {[1, 2].map(i => (
+          <div key={i} className="h-12 rounded-xl bg-gray-900/60 border border-gray-800/40" />
+        ))}
+      </div>
+    );
+  }
+
+  const professions = [...(data?.primaries ?? []), ...(data?.secondaries ?? [])];
+  const orders = data?.completed_orders ?? [];
+  const empty = professions.length === 0 && orders.length === 0;
+
+  if (data?.is_forever && empty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center gap-2">
         <p className="text-gray-400 text-sm font-medium">Personaje de Warcraft Forever</p>
@@ -1651,19 +1600,7 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
     );
   }
 
-  // ── Loading ──
-  if (loading) {
-    return (
-      <div className="flex flex-col gap-3 animate-pulse">
-        {[1, 2].map(i => (
-          <div key={i} className="h-28 rounded-xl bg-gray-900/60 border border-gray-800/40" />
-        ))}
-      </div>
-    );
-  }
-
-  // ── Sin Battle.net ──
-  if (data?.no_token) {
+  if (data?.no_token && empty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
         <p className="text-gray-400 text-sm font-medium">Battle.net no conectado</p>
@@ -1677,8 +1614,7 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
     );
   }
 
-  // ── Token caducado ──
-  if (data?.token_expired) {
+  if (data?.token_expired && empty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
         <p className="text-amber-400 text-sm font-medium">Token de Battle.net caducado</p>
@@ -1692,8 +1628,7 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
     );
   }
 
-  // ── Error genérico ──
-  if (data?.error || !data) {
+  if ((data?.error || !data) && empty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <p className="text-gray-500 text-sm">No se pudieron cargar las profesiones.</p>
@@ -1701,11 +1636,7 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
     );
   }
 
-  const hasPrimaries = data.primaries.length > 0;
-  const hasSecondaries = data.secondaries.length > 0;
-
-  // ── Sin profesiones ──
-  if (!hasPrimaries && !hasSecondaries) {
+  if (empty) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <p className="text-gray-400 text-sm font-medium">{char.name} no tiene profesiones</p>
@@ -1715,32 +1646,54 @@ function ProfessionsTab({ char, color }: { char: Character; color: string }) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Primarias */}
-      {hasPrimaries && (
-        <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">
-            Profesiones primarias
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {data.primaries.map((p, i) => (
-              <ProfessionCard key={i} prof={p} color={color} />
-            ))}
-          </div>
-        </div>
+    <div className="space-y-4">
+      {(data?.no_token || data?.token_expired) && (
+        <a
+          href={publicApiUrl("/auth/blizzard/login")}
+          className="inline-block text-xs text-amber-300 hover:text-amber-100 underline"
+        >
+          Reconecta Battle.net para actualizar los niveles
+        </a>
       )}
+      <ProfessionsBody professions={professions} orders={orders} color={color} />
+    </div>
+  );
+}
 
-      {/* Secundarias */}
-      {hasSecondaries && (
+function ProfessionsBody({
+  professions,
+  orders,
+  color,
+}: {
+  professions: ProfData[];
+  orders: CompletedCraft[];
+  color: string;
+}) {
+  return (
+    <div className="space-y-6">
+      {professions.length > 0 && (
+        <ul className="divide-y divide-white/10 rounded-xl border border-white/10">
+          {professions.map((prof) => (
+            <li key={`${prof.id}-${prof.name}`} className="flex items-baseline justify-between gap-3 px-4 py-3">
+              <p className="text-sm font-medium truncate" style={{ color }}>{prof.name}</p>
+              <p className="text-xs text-gray-400 shrink-0">{professionLevel(prof)}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {orders.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">
-            Profesiones secundarias
+            Pedidos completados
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {data.secondaries.map((p, i) => (
-              <ProfessionCard key={i} prof={p} color={color} compact />
+          <ul className="space-y-2">
+            {orders.map((order, index) => (
+              <li key={`${order.item_name}-${index}`} className="text-sm text-gray-300">
+                {order.quantity}× {order.item_name}
+                <span className="text-gray-500"> · {order.profession_name}</span>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       )}
     </div>

@@ -7,9 +7,9 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_admin
+from app.dependencies import get_current_user
 from app.models.character import Character
-from app.models.craft import CharacterProfessionSkill, CraftOrder
+from app.models.craft import CharacterProfessionSkill, CraftOrder, CraftReward
 from app.models.enums import EventCategory
 from app.models.relation_claim import Notification
 from app.models.user import User
@@ -26,6 +26,63 @@ from app.services.professions import (
 router = APIRouter(prefix="/craft-orders", tags=["craft-orders"])
 
 MAX_QTY = 20
+DEFAULT_CRAFT_POINTS = 50
+
+
+def require_craft_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role.value != "admin":
+        raise HTTPException(403, "Solo el administrador puede anotar los puntos de un pedido")
+    return current_user
+
+
+def _reward_row(db: Session) -> CraftReward:
+    row = db.query(CraftReward).filter(CraftReward.id == 1).first()
+    if row is None:
+        row = CraftReward(id=1, points_per_order=DEFAULT_CRAFT_POINTS)
+        db.add(row)
+        db.flush()
+    return row
+
+
+def _score_collected(db: Session, row: CraftOrder) -> None:
+    """Da al artesano los puntos que el administrador dejó por defecto."""
+    if row.awarded_points is not None or not row.crafter_user_id:
+        return
+    path = points_service.season_itinerary(db, row.crafter_user_id)
+    eligible = points_service.scores_campaign(path)
+    amount = _reward_row(db).points_per_order if eligible else 0
+    now = datetime.now(timezone.utc)
+    note = None
+    if not eligible:
+        note = (
+            "Itinerario competitivo: fabricación sin puntos"
+            if path and path.value == "competitive"
+            else "Sin itinerario de campaña/híbrido: fabricación sin puntos"
+        )
+    tx = None
+    if eligible and amount > 0:
+        tx = points_service.record_capped_event(
+            db,
+            user_id=row.crafter_user_id,
+            amount=amount,
+            reason=f"Artesanía: {row.quantity}× {row.item_name}",
+            category=EventCategory.PROFESSION,
+            occurred_at=now,
+        )
+        counted = (tx.counted_amount or 0) if tx else 0
+        if tx is not None and counted > 0:
+            notify_points(
+                db,
+                user_id=row.crafter_user_id,
+                kind="points_craft",
+                counted=counted,
+                amount=amount,
+                reason=f"Pedido entregado: {row.quantity}× {row.item_name}",
+                href="/pedidos",
+            )
+    row.awarded_points = (tx.counted_amount or 0) if tx else 0
+    row.point_transaction_id = tx.id if tx else None
+    row.admin_note = note
 
 
 def _visible_name(user: User | None) -> str:
@@ -191,6 +248,43 @@ def list_orders(_: User = Depends(get_current_user), db: Session = Depends(get_d
         .all()
     )
     return [_order_out(row) for row in rows]
+
+
+class RewardIn(BaseModel):
+    points_per_order: int = Field(ge=0, le=5000)
+
+
+@router.get("/admin")
+def admin_queue(_: User = Depends(require_craft_admin), db: Session = Depends(get_db)):
+    """Valor por defecto y pedidos recogidos."""
+    rows = (
+        db.query(CraftOrder)
+        .filter(CraftOrder.status == "collected")
+        .order_by(CraftOrder.resolved_at.desc(), CraftOrder.created_at.desc())
+        .limit(40)
+        .all()
+    )
+    orders = []
+    for row in rows:
+        item = _order_out(row)
+        path = points_service.season_itinerary(db, row.crafter_user_id) if row.crafter_user_id else None
+        item["scores_points"] = bool(points_service.scores_campaign(path))
+        item["path"] = path.value if path else None
+        orders.append(item)
+    return {"points_per_order": _reward_row(db).points_per_order, "orders": orders}
+
+
+@router.put("/admin")
+def set_reward(
+    body: RewardIn,
+    _: User = Depends(require_craft_admin),
+    db: Session = Depends(get_db),
+):
+    row = _reward_row(db)
+    row.points_per_order = body.points_per_order
+    db.commit()
+    db.refresh(row)
+    return {"points_per_order": row.points_per_order}
 
 
 @router.post("", status_code=201)
@@ -468,6 +562,7 @@ def collect_order(
     row.status = "collected"
     row.resolved_by = current_user.id
     row.resolved_at = datetime.now(timezone.utc)
+    _score_collected(db, row)
     if row.crafter_user_id:
         notify(
             db,
@@ -487,7 +582,7 @@ def collect_order(
 def complete_order(
     order_id: UUID,
     body: CompleteIn,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_craft_admin),
     db: Session = Depends(get_db),
 ):
     row = _load_order(db, order_id)
@@ -495,45 +590,10 @@ def complete_order(
         raise HTTPException(400, "El pedido tiene que estar recogido antes de anotar puntos")
     if row.awarded_points is not None:
         raise HTTPException(400, "Este pedido ya tiene puntos")
-
-    path = points_service.season_itinerary(db, row.crafter_user_id)
-    eligible = points_service.scores_campaign(path)
-    amount = body.amount if eligible else 0
-    now = datetime.now(timezone.utc)
-    note = (body.note or "").strip() or None
-    if not eligible:
-        extra = (
-            "Itinerario competitivo: fabricación sin puntos"
-            if path and path.value == "competitive"
-            else "Sin itinerario de campaña/híbrido: fabricación sin puntos"
-        )
-        note = f"{note} · {extra}" if note else extra
-
-    tx = None
-    if eligible and amount > 0:
-        tx = points_service.record_capped_event(
-            db,
-            user_id=row.crafter_user_id,
-            amount=amount,
-            reason=f"Artesanía: {row.quantity}× {row.item_name}",
-            category=EventCategory.PROFESSION,
-            occurred_at=now,
-        )
-        counted = (tx.counted_amount or 0) if tx else 0
-        if tx is not None and counted > 0:
-            notify_points(
-                db,
-                user_id=row.crafter_user_id,
-                kind="points_craft",
-                counted=counted,
-                amount=amount,
-                reason=f"Pedido entregado: {row.quantity}× {row.item_name}",
-                href="/pedidos",
-            )
-
-    row.awarded_points = (tx.counted_amount or 0) if tx else 0
-    row.point_transaction_id = tx.id if tx else None
-    row.admin_note = note
+    _score_collected(db, row)
+    if body.note and body.note.strip():
+        extra = body.note.strip()
+        row.admin_note = f"{row.admin_note} · {extra}" if row.admin_note else extra
     db.commit()
     db.refresh(row)
     return _order_out(row)

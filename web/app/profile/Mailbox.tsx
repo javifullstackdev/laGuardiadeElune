@@ -239,7 +239,7 @@ export default function Mailbox({ children }: { children: ReactNode }) {
                       >
                         {options.map((opt) => (
                           <option key={`${opt.name}-${opt.realm}`} value={`${opt.name}::${opt.realm}`}>
-                            {opt.name}-{opt.realm}
+                            {opt.name} · nivel {opt.skill_points}
                           </option>
                         ))}
                       </select>

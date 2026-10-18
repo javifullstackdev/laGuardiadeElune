@@ -100,8 +100,6 @@ export default function PedidosClient({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
-  const [points, setPoints] = useState<Record<string, string>>({});
-  const [staffNote, setStaffNote] = useState<Record<string, string>>({});
   const [claimChar, setClaimChar] = useState<Record<string, string>>({});
 
   const board = useMemo(
@@ -244,9 +242,7 @@ export default function PedidosClient({
           Artesanos de {professions.find((row) => row.id === professionId)?.name}
         </h2>
         <p className="text-sm text-gray-500 mb-4">
-          Sale de Battle.net, del tramo de la expansión actual. Un nivel alto está en el 75 % de
-          ese tramo o por encima de 75 puntos. Si no apareces, vincula de nuevo Battle.net en el
-          perfil: el enlace caduca al día.
+          El nivel es el de la expansión actual. No podemos ver si conoce una receta concreta.
         </p>
         {board.length === 0 ? (
           <p className="text-sm text-gray-400">
@@ -264,16 +260,10 @@ export default function PedidosClient({
                 className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-3"
               >
                 <div>
-                  <p className="text-sm">
-                    <span className="font-medium">{row.character_name}</span>
-                    <span className="text-gray-500">-{row.character_realm}</span>
-                    <span className="text-gray-400"> · {row.owner_name}</span>
-                  </p>
+                  <p className="text-sm font-medium">{row.character_name}</p>
                   <p className="text-xs text-gray-500">
-                    {row.tier_name ? `${row.tier_name} · ` : ""}
-                    {row.skill_points}/{row.max_skill_points || "—"}
-                    {row.high_skill ? " · nivel alto" : ""}
-                    {row.scores_points ? "" : " · fabrica sin puntos de campaña"}
+                    Nivel {row.skill_points}
+                    {row.max_skill_points ? `/${row.max_skill_points}` : ""}
                   </p>
                 </div>
               </li>
@@ -324,7 +314,6 @@ export default function PedidosClient({
                 <p className="text-sm text-gray-300">
                   {row.status === "completed" ? "Fabricado por " : "Lo fabrica "}
                   {row.crafter_character_name}
-                  {row.crafter_character_realm ? `-${row.crafter_character_realm}` : ""}
                   {row.crafter_name ? ` (${row.crafter_name})` : ""}
                 </p>
               )}
@@ -344,7 +333,7 @@ export default function PedidosClient({
                               key={`${opt.character_name}-${opt.character_realm}`}
                               value={`${opt.character_name}::${opt.character_realm}`}
                             >
-                              {opt.character_name}-{opt.character_realm} ({opt.skill_points})
+                              {opt.character_name} · nivel {opt.skill_points}
                             </option>
                           ))}
                         </select>
@@ -410,51 +399,12 @@ export default function PedidosClient({
         <section className="space-y-2">
           <h2 className="text-lg font-semibold">Cerrados</h2>
           {closed.slice(0, 20).map((row) => (
-            <div key={row.id} className="space-y-2">
-              <p className="text-sm text-gray-400">
-                {STATUS[row.status]} · {row.quantity}× {row.item_name} ({row.profession_name})
-                {row.awarded_points != null && row.status === "collected"
-                  ? ` · ${row.awarded_points} pts`
-                  : ""}
-                {row.admin_note ? ` · ${row.admin_note}` : ""}
-              </p>
-              {isStaff && row.status === "collected" && row.awarded_points == null && (
-                <div className="grid sm:grid-cols-[8rem_1fr_auto] gap-2 items-end">
-                  <label className="text-sm text-gray-400">
-                    Puntos
-                    <input
-                      type="number"
-                      min={0}
-                      max={5000}
-                      value={points[row.id] ?? ""}
-                      onChange={(e) => setPoints((prev) => ({ ...prev, [row.id]: e.target.value }))}
-                      className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
-                    />
-                  </label>
-                  <label className="text-sm text-gray-400">
-                    Nota
-                    <input
-                      value={staffNote[row.id] ?? ""}
-                      onChange={(e) => setStaffNote((prev) => ({ ...prev, [row.id]: e.target.value }))}
-                      className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    disabled={busy || points[row.id] === undefined || points[row.id] === ""}
-                    onClick={() =>
-                      void act(row.id, "complete", {
-                        amount: Math.max(0, Number(points[row.id]) || 0),
-                        note: (staffNote[row.id] || "").trim() || null,
-                      })
-                    }
-                    className="px-3 py-2 rounded-lg bg-emerald-500/90 hover:bg-emerald-400 text-black text-sm font-medium disabled:opacity-50"
-                  >
-                    Anotar puntos
-                  </button>
-                </div>
-              )}
-            </div>
+            <p key={row.id} className="text-sm text-gray-400">
+              {STATUS[row.status]} · {row.quantity}× {row.item_name} ({row.profession_name})
+              {row.awarded_points != null && row.status === "collected"
+                ? ` · ${row.awarded_points} pts`
+                : ""}
+            </p>
           ))}
         </section>
       )}

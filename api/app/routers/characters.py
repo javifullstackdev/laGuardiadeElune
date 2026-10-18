@@ -31,6 +31,7 @@ from app.schemas.character import (
     AchievementOut, merge_public_fields,
 )
 from app.services import blizzard, title_sync
+from app.models.craft import CharacterProfessionSkill, CraftOrder
 from app.services.professions import store_profession_snapshot, summarize_profession
 from app.services.bio_questions import answers_complete, normalize_answers
 from app.urls import static_url
@@ -1233,6 +1234,49 @@ def remove_custom_face(
 
 # ── Profesiones ────────────────────────────────────────────────────────────
 
+def _completed_craft_orders(db: Session, char: Character) -> list[dict]:
+    rows = (
+        db.query(CraftOrder)
+        .filter(
+            CraftOrder.crafter_user_id == char.user_id,
+            sa_func.lower(CraftOrder.crafter_character_name) == char.name.lower(),
+            sa_func.lower(CraftOrder.crafter_character_realm) == char.realm.lower(),
+            CraftOrder.status.in_(("completed", "collected")),
+        )
+        .order_by(CraftOrder.resolved_at.desc(), CraftOrder.claimed_at.desc())
+        .limit(30)
+        .all()
+    )
+    return [
+        {
+            "item_name": row.item_name,
+            "quantity": row.quantity,
+            "profession_name": row.profession_name,
+            "status": row.status,
+        }
+        for row in rows
+    ]
+
+
+def _snapshot_professions(db: Session, char: Character) -> list[dict]:
+    skills = (
+        db.query(CharacterProfessionSkill)
+        .filter(CharacterProfessionSkill.character_id == char.id)
+        .order_by(CharacterProfessionSkill.name.asc())
+        .all()
+    )
+    return [
+        {
+            "name": skill.name,
+            "id": skill.blizzard_profession_id,
+            "current_skill": skill.skill_points,
+            "current_max": skill.max_skill_points,
+            "current_tier_name": skill.tier_name or "",
+        }
+        for skill in skills
+    ]
+
+
 @router.get("/{name}/{realm}/professions")
 async def get_character_professions(
     name: str,
@@ -1245,14 +1289,21 @@ async def get_character_professions(
     Solo disponible para personajes Retail con Battle.net vinculado.
     """
     char = _get_own_character(name, realm, current_user, db)
+    completed = _completed_craft_orders(db, char)
 
     # Warcraft Forever no tiene datos en la API de Blizzard
     if char.game != "retail":
-        return {"primaries": [], "secondaries": [], "is_forever": True}
+        return {"primaries": [], "secondaries": [], "is_forever": True, "completed_orders": completed}
 
     # Necesitamos el token de Battle.net
     if not current_user.blizzard_access_token:
-        return {"primaries": [], "secondaries": [], "no_token": True}
+        saved = _snapshot_professions(db, char)
+        return {
+            "primaries": saved,
+            "secondaries": [],
+            "no_token": True,
+            "completed_orders": completed,
+        }
 
     realm_slug = realm.lower().replace(" ", "-")
 
@@ -1266,15 +1317,29 @@ async def get_character_professions(
                 timeout=8.0,
             )
         except Exception:
-            return {"primaries": [], "secondaries": [], "error": True}
+            return {
+                "primaries": _snapshot_professions(db, char),
+                "secondaries": [],
+                "error": True,
+                "completed_orders": completed,
+            }
 
     if res.status_code == 401:
-        return {"primaries": [], "secondaries": [], "token_expired": True}
+        return {
+            "primaries": _snapshot_professions(db, char),
+            "secondaries": [],
+            "token_expired": True,
+            "completed_orders": completed,
+        }
     if res.status_code != 200:
-        return {"primaries": [], "secondaries": []}
+        return {
+            "primaries": _snapshot_professions(db, char),
+            "secondaries": [],
+            "completed_orders": completed,
+        }
 
     raw = res.json()
     primaries = [summarize_profession(p) for p in raw.get("primaries", [])]
     secondaries = [summarize_profession(s) for s in raw.get("secondaries", [])]
     store_profession_snapshot(db, char.id, primaries + secondaries)
-    return {"primaries": primaries, "secondaries": secondaries}
+    return {"primaries": primaries, "secondaries": secondaries, "completed_orders": completed}
