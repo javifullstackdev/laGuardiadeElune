@@ -103,33 +103,6 @@ html[data-elune-intro="playing"] nav {
   }
 }
 
-.fact-cycle-card {
-  opacity: 0;
-  transform: translateY(0.85rem);
-  transition:
-    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.fact-cycle-card.is-in {
-  opacity: 1;
-  transform: none;
-}
-
-.fact-cycle-card.is-out {
-  opacity: 0;
-  transform: translateY(-0.4rem);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .fact-cycle-card,
-  .fact-cycle-card.is-out {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
-
 /* Scroll usable, barra invisible (Firefox, Chromium, Safari, Edge) */
 .scrollbar-none {
   scrollbar-width: none;
