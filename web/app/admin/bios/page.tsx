@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import BioReviewPanel from "./BioReviewPanel";
-import type { BioPending } from "@/lib/bio";
+import PublishedSheetEditor from "./PublishedSheetEditor";
+import type { BioPending, BioPublished } from "@/lib/bio";
 
 import { apiUrl } from "@/lib/api";
 export default async function AdminBiosPage() {
@@ -9,12 +10,16 @@ export default async function AdminBiosPage() {
   const token = cookieStore.get("token")?.value;
   if (!token) redirect("/");
 
-  const [me, pending] = await Promise.all([
+  const [me, pending, published] = await Promise.all([
     fetch(apiUrl("/users/me"), {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     }).then((r) => (r.ok ? r.json() : null)),
     fetch(apiUrl("/bios/pending"), {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }).then((r) => (r.ok ? r.json() : [])),
+    fetch(apiUrl("/bios/published"), {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     }).then((r) => (r.ok ? r.json() : [])),
@@ -24,7 +29,7 @@ export default async function AdminBiosPage() {
 
   return (
     <main className="min-h-screen px-4 py-12">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <a href="/admin" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">
             Panel admin
@@ -35,8 +40,20 @@ export default async function AdminBiosPage() {
         <p className="text-sm text-gray-500 mb-8">
           El jugador responde el cuestionario y puede adjuntar capturas del juego.
           Si te convence la ficha, escribe el texto, sube el arte y se publica.
+          Las que ya están en público se corrigen abajo.
         </p>
-        <BioReviewPanel pending={pending as BioPending[]} />
+        <section className="mb-14">
+          <h2 className="text-lg font-semibold mb-4">Pendientes</h2>
+          <BioReviewPanel pending={pending as BioPending[]} />
+        </section>
+        <section>
+          <h2 className="text-lg font-semibold mb-1">Publicadas</h2>
+          <p className="text-sm text-gray-500 mb-5">
+            Cambia la biografía, la personalidad, el aspecto o sustituye la imagen.
+            Al guardar, la ficha pública se actualiza.
+          </p>
+          <PublishedSheetEditor initial={published as BioPublished[]} />
+        </section>
       </div>
     </main>
   );

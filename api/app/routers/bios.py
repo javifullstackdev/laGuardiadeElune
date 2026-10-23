@@ -12,6 +12,7 @@ from app.models.user import User
 from app.schemas.bio import (
     BioAnswerView,
     BioPendingOut,
+    BioPublishedOut,
     BioQuestionOut,
     BioReferenceImage,
     BioRejectIn,
@@ -29,6 +30,13 @@ def _cover(char: Character) -> str | None:
     if char.custom_avatar_url:
         return static_url(char.custom_avatar_url)
     return char.render_url
+
+
+def _face(char: Character) -> str | None:
+    """Cara pública: propia aprobada > cara de Battle.net."""
+    if char.custom_face_url:
+        return static_url(char.custom_face_url)
+    return char.face_url
 
 
 def _reference_views(reqs: list[ImageRequest]) -> list[BioReferenceImage]:
@@ -67,6 +75,20 @@ def _pending_out(
         current_biography=char.biography,
         current_personality=char.personality,
         current_appearance=char.appearance,
+    )
+
+
+def _published_out(char: Character, author: User) -> BioPublishedOut:
+    return BioPublishedOut(
+        character_id=char.id,
+        character_name=char.name,
+        character_realm=char.realm,
+        author_username=author.username,
+        cover_url=_cover(char),
+        face_url=_face(char),
+        biography=char.biography,
+        personality=char.personality,
+        appearance=char.appearance,
     )
 
 
@@ -128,6 +150,25 @@ def list_pending(
     return [_pending_out(char, author, refs.get(char.id, [])) for char, author in rows]
 
 
+@router.get("/published", response_model=list[BioPublishedOut])
+def list_published(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Fichas ya públicas, para corregir texto e imagen."""
+    rows = (
+        db.query(Character, User)
+        .join(User, User.id == Character.user_id)
+        .filter(
+            Character.deleted_at.is_(None),
+            Character.bio_status == "published",
+        )
+        .order_by(Character.name.asc())
+        .all()
+    )
+    return [_published_out(char, author) for char, author in rows]
+
+
 @router.post("/{character_id}/publish", response_model=BioPendingOut)
 async def publish_bio(
     character_id: str,
@@ -180,6 +221,60 @@ async def publish_bio(
     db.commit()
     db.refresh(char)
     return _pending_out(char, author, _pending_refs(db, [char.id]).get(char.id, []))
+
+
+@router.post("/{character_id}/update", response_model=BioPublishedOut)
+async def update_published_bio(
+    character_id: str,
+    biography: str = Form(...),
+    personality: str | None = Form(None),
+    appearance: str | None = Form(None),
+    full_file: UploadFile | None = File(None),
+    face_file: UploadFile | None = File(None),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: corrige el texto o el retrato de una ficha que ya es pública."""
+    row = (
+        db.query(Character, User)
+        .join(User, User.id == Character.user_id)
+        .filter(Character.id == character_id, Character.deleted_at.is_(None))
+        .first()
+    )
+    if not row:
+        raise HTTPException(404, "Personaje no encontrado")
+    char, author = row
+    if char.bio_status != "published":
+        raise HTTPException(409, "Esta ficha aún no está publicada")
+    text = (biography or "").strip()
+    if len(text) < 40:
+        raise HTTPException(400, "La biografía es demasiado corta")
+    replaced_image = False
+    if full_file is not None and full_file.filename:
+        await publish_character_image(char, full_file, "full")
+        _close_requests(db, char, "full")
+        replaced_image = True
+    if face_file is not None and face_file.filename:
+        await publish_character_image(char, face_file, "face")
+        _close_requests(db, char, "face")
+        replaced_image = True
+    char.biography = text
+    char.personality = (personality or "").strip() or None
+    char.appearance = (appearance or "").strip() or None
+    notice = f"El texto de {char.name} ya está actualizado."
+    if replaced_image:
+        notice = f"La ficha de {char.name} ya tiene el texto y la imagen nuevos."
+    notify(
+        db,
+        user_id=author.id,
+        kind="eremita_bio",
+        title="El Eremita ha actualizado tu ficha",
+        body=notice,
+        href=f"/personajes/{quote(char.realm, safe='')}/{quote(char.name, safe='')}",
+    )
+    db.commit()
+    db.refresh(char)
+    return _published_out(char, author)
 
 
 @router.post("/{character_id}/reject", response_model=BioPendingOut)
