@@ -335,7 +335,12 @@ def update_bio(
     """Actualiza identidad, datos de ficha, borrador de lore y el cuestionario."""
     char = _get_own_character(name, realm, current_user, db)
 
-    if data.surname      is not None: char.surname      = data.surname      or None
+    if data.surname is not None:
+        new_surname = (data.surname or "").strip() or None
+        old_surname = (char.surname or "").strip() or None
+        if new_surname != old_surname:
+            char.surname = new_surname
+            char.surname_allowed = False if new_surname else True
     if data.origin       is not None: char.origin       = data.origin       or None
     if data.age_lore     is not None: char.age_lore     = data.age_lore
     if data.residence    is not None: char.residence    = data.residence    or None
@@ -666,7 +671,8 @@ async def add_character(
         game=data.game,
         name=data.name,
         realm=data.realm,
-        surname=data.surname or None,
+        surname=(data.surname or "").strip() or None,
+        surname_allowed=not bool((data.surname or "").strip()),
         blizzard_character_id=blizzard_character_id,
         render_url=render_url,
         face_url=face_url,

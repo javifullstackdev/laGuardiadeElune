@@ -10,6 +10,7 @@ from app.models.character import Character
 from app.models.character_story import ContentLike, CharacterStory
 from app.models.post import Post
 from app.schemas.story import LikeState, LikeToggle
+from app.services.surnames import visible_surname
 
 router = APIRouter(prefix="/likes", tags=["likes"])
 
@@ -69,8 +70,9 @@ def _resolve_target(db: Session, target_type: str, target_id) -> dict | None:
         )
         if not char:
             return None
+        surname = visible_surname(char)
         return {
-            "title": f"{char.name}{(' ' + char.surname) if char.surname else ''}".strip(),
+            "title": f"{char.name}{(' ' + surname) if surname else ''}".strip(),
             "subtitle": char.realm,
             "href": f"/personajes/{char.realm}/{char.name}",
             "meta": char.bio_status,
