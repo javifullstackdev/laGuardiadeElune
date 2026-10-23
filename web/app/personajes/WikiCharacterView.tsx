@@ -204,7 +204,7 @@ export default function WikiCharacterView({
                 displayName={char.display_name}
                 title={char.title}
               />
-              <FactCycle facts={facts} />
+              <FactCycle facts={facts} layout="grid" />
             </aside>
           </div>
         </div>
