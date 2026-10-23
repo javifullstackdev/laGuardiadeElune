@@ -11,6 +11,7 @@ from app.models.character_story import CharacterStory
 from app.schemas.hero import HeroSlideCreate, HeroSlideUpdate, HeroReorder, HeroSlidePublic, HeroSlideAdmin
 from app.schemas.character import merge_public_fields
 from app.services.bio_questions import has_public_sheet
+from app.services.surnames import visible_surname
 from app.urls import static_url
 
 router = APIRouter(prefix="/hero", tags=["hero"])
@@ -80,7 +81,8 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
         if not char or not has_public_sheet(char):
             return None
         src = src or _portrait(char) or FALLBACK_IMAGE
-        display = f"{char.name}{(' ' + char.surname) if char.surname else ''}".strip()
+        surname = visible_surname(char)
+        display = f"{char.name}{(' ' + surname) if surname else ''}".strip()
         fields = merge_public_fields(char.public_fields)
         shown_title = None
         if fields.get("title") and char.favorite_title:

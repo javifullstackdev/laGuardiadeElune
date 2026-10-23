@@ -44,6 +44,7 @@ type Character = {
   id: string;
   name: string;
   surname: string | null;
+  surname_allowed?: boolean;
   prefix_title: string | null;
   game: string;
   realm: string;
@@ -134,7 +135,7 @@ function getRelationLabel(type: string) {
 // ── Tipo de edición parcial de personaje ──────────────────────────────────
 
 type CharPatch = Partial<Pick<Character,
-  "surname" | "prefix_title" | "favorite_prefix" | "biography" | "personality" | "appearance" |
+  "surname" | "surname_allowed" | "prefix_title" | "favorite_prefix" | "biography" | "personality" | "appearance" |
   "origin" | "age_lore" | "residence" |
   "avatar_url" | "face_display_url" | "custom_avatar_url" | "pending_avatar_url" |
   "custom_face_url" | "pending_face_url" |
@@ -977,7 +978,7 @@ function buildFichaPreview(char: Character, biography: string): WikiCharacter {
     id: char.id,
     name: char.name,
     realm: char.realm,
-    display_name: `${char.name}${char.surname ? ` ${char.surname}` : ""}`.trim(),
+    display_name: `${char.name}${char.surname && char.surname_allowed !== false ? ` ${char.surname}` : ""}`.trim(),
     title: fields.title ? (char.favorite_title?.name ?? null) : null,
     prefix_title: fields.prefix ? (char.favorite_prefix?.name ?? char.prefix_title) : null,
     cover_url: char.avatar_url,
@@ -1275,12 +1276,13 @@ function DetailsTab({
           public_fields: publicFields,
         }),
       });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const d = await res.json();
-        setError(typeof d.detail === "string" ? d.detail : "Error al guardar");
+        setError(typeof data.detail === "string" ? data.detail : "Error al guardar");
       } else {
         onDetailsPatch({
-          surname: surname || null,
+          surname: data.surname ?? (surname || null),
+          surname_allowed: data.surname_allowed,
           origin: origin || null,
           age_lore: ageLore ? parseInt(ageLore) : null,
           residence: residence || null,
@@ -1367,7 +1369,14 @@ function DetailsTab({
         Datos de la ficha. Se actualizan sin pasar por el Eremita.
       </p>
       <div className="grid grid-cols-2 gap-3">
-        <LoreInput label="Apellido" placeholder="(opcional en retail)" value={surname} onChange={setSurname} />
+        <div>
+          <LoreInput label="Apellido" placeholder="(opcional en retail)" value={surname} onChange={setSurname} />
+          {char.surname && char.surname_allowed === false && (
+            <p className="text-[11px] text-amber-500/90 mt-1">
+              El Eremita no lo ha dado por válido. No se muestra en público.
+            </p>
+          )}
+        </div>
         <LoreInput label="Origen" placeholder="Ciudad, región..." value={origin} onChange={setOrigin} />
         <LoreInput label="Residencia" placeholder="Lugar actual..." value={residence} onChange={setResidence} />
         <LoreInput label="Edad (lore)" placeholder="Años" value={ageLore} onChange={setAge} type="number" />
@@ -2178,7 +2187,11 @@ function CharacterList({
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold truncate text-sm" style={{ color }}>
                           {char.name}
-                          {char.surname && <span className="font-normal opacity-70"> {char.surname}</span>}
+                          {char.surname && (
+                            <span className={`font-normal ${char.surname_allowed === false ? "text-gray-500" : "opacity-70"}`}>
+                              {" "}{char.surname}{char.surname_allowed === false ? " (oculto)" : ""}
+                            </span>
+                          )}
                           {char.is_main && <span className="ml-1 text-xs text-yellow-400 font-normal opacity-80">(main)</span>}
                         </p>
                         <p className="text-xs truncate mt-0.5">

@@ -9,6 +9,7 @@ type MyCharacter = {
   realm: string;
   game: string;
   surname: string | null;
+  surname_allowed?: boolean;
   wow_class: string | null;
   is_main: boolean;
   is_verified: boolean;
@@ -148,7 +149,9 @@ function CharacterBadge({ char }: { char: MyCharacter }) {
   return (
     <li className="flex items-center gap-2 border rounded px-4 py-2">
       <span className="font-semibold">{char.name}</span>
-      {char.surname && <span className="text-gray-500 text-sm">{char.surname}</span>}
+      {char.surname && char.surname_allowed !== false && (
+        <span className="text-gray-500 text-sm">{char.surname}</span>
+      )}
       <span className="text-gray-400 text-sm">· {char.game !== "forever" ? realmLabel(char.realm) ?? char.realm : char.realm}</span>
       {char.is_main && (
         <span className="text-xs text-yellow-600 border border-yellow-400/40 rounded-full px-2 py-0.5">main</span>

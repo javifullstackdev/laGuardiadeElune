@@ -41,6 +41,19 @@ class BioReferenceImage(BaseModel):
     url: str
 
 
+class SurnameReviewOut(BaseModel):
+    character_id: UUID
+    character_name: str
+    character_realm: str
+    author_username: str
+    surname: str
+    surname_allowed: bool
+
+
+class SurnameDecisionIn(BaseModel):
+    allowed: bool
+
+
 class BioPublishedOut(BaseModel):
     character_id: UUID
     character_name: str

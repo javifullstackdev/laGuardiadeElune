@@ -46,6 +46,7 @@ class CharacterResponse(BaseModel):
     game: str
     name: str
     surname: Optional[str] = None
+    surname_allowed: bool = True
     prefix_title: Optional[str] = None
     realm: str
     blizzard_character_id: Optional[int] = None

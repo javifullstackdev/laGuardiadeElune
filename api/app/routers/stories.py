@@ -20,6 +20,7 @@ from app.services.claims import (
 )
 from app.services.notifications import notify
 from app.services.slugs import is_uuid, unique_slug
+from app.services.surnames import visible_surname
 from app.urls import static_url
 
 router = APIRouter(prefix="/stories", tags=["stories"])
@@ -88,7 +89,7 @@ def _to_public(db: Session, story: CharacterStory, char: Character, author: User
         appearance=story.appearance,
         published_at=story.published_at,
         character_name=char.name,
-        character_surname=char.surname,
+        character_surname=visible_surname(char),
         character_realm=char.realm,
         character_class=_class_value(char),
         character_faction=char.faction,
@@ -250,7 +251,8 @@ async def submit_story(
         prefix = char.favorite_prefix.name
     elif char.prefix_title:
         prefix = char.prefix_title
-    display = f"{(prefix + ' ') if prefix else ''}{char.name}{(' ' + char.surname) if char.surname else ''}".strip()
+    surname = visible_surname(char)
+    display = f"{(prefix + ' ') if prefix else ''}{char.name}{(' ' + surname) if surname else ''}".strip()
     story_title = (title or "").strip() or display
 
     now = datetime.now(timezone.utc)

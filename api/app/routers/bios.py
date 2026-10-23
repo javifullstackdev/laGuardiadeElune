@@ -16,6 +16,8 @@ from app.schemas.bio import (
     BioQuestionOut,
     BioReferenceImage,
     BioRejectIn,
+    SurnameDecisionIn,
+    SurnameReviewOut,
 )
 from app.services.bio_questions import QUESTIONS, formatted_answers, has_public_sheet
 from app.services.character_images import publish_character_image, reference_paths
@@ -167,6 +169,83 @@ def list_published(
         .all()
     )
     return [_published_out(char, author) for char, author in rows]
+
+
+@router.get("/surnames", response_model=list[SurnameReviewOut])
+def list_surnames(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Apellidos escritos por los jugadores, para aceptarlos u ocultarlos."""
+    rows = (
+        db.query(Character, User)
+        .join(User, User.id == Character.user_id)
+        .filter(
+            Character.deleted_at.is_(None),
+            Character.surname.isnot(None),
+            Character.surname != "",
+        )
+        .order_by(Character.surname_allowed.desc(), Character.name.asc())
+        .all()
+    )
+    return [
+        SurnameReviewOut(
+            character_id=char.id,
+            character_name=char.name,
+            character_realm=char.realm,
+            author_username=author.username,
+            surname=char.surname,
+            surname_allowed=bool(char.surname_allowed),
+        )
+        for char, author in rows
+        if (char.surname or "").strip()
+    ]
+
+
+@router.post("/{character_id}/surname", response_model=SurnameReviewOut)
+def decide_surname(
+    character_id: str,
+    body: SurnameDecisionIn,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: el apellido se muestra solo si lo da por válido."""
+    row = (
+        db.query(Character, User)
+        .join(User, User.id == Character.user_id)
+        .filter(Character.id == character_id, Character.deleted_at.is_(None))
+        .first()
+    )
+    if not row:
+        raise HTTPException(404, "Personaje no encontrado")
+    char, author = row
+    if not (char.surname or "").strip():
+        raise HTTPException(400, "Este personaje no tiene apellido")
+    char.surname_allowed = body.allowed
+    if body.allowed:
+        title = f"El Eremita ha aceptado el apellido de {char.name}"
+        notice = "Ya se muestra en la ficha."
+    else:
+        title = f"El Eremita ha ocultado el apellido de {char.name}"
+        notice = "No se muestra en público. Puedes cambiarlo en tu perfil."
+    notify(
+        db,
+        user_id=author.id,
+        kind="eremita_bio",
+        title=title,
+        body=notice,
+        href="/profile",
+    )
+    db.commit()
+    db.refresh(char)
+    return SurnameReviewOut(
+        character_id=char.id,
+        character_name=char.name,
+        character_realm=char.realm,
+        author_username=author.username,
+        surname=char.surname,
+        surname_allowed=bool(char.surname_allowed),
+    )
 
 
 @router.post("/{character_id}/publish", response_model=BioPendingOut)

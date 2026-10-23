@@ -67,6 +67,7 @@ class Character(Base):
     is_verified = Column(Boolean, nullable=False, default=False, server_default="false")
     # ── Identidad narrativa ────────────────────────────────────────────────
     surname      = Column(String(100), nullable=True)   # apellido (obligatorio en WF)
+    surname_allowed = Column(Boolean, nullable=False, default=True, server_default="true")
     prefix_title = Column(String(100), nullable=True)   # espejo del antetítulo favorito
     faction      = Column(String(20),  nullable=True)   # ALLIANCE | HORDE (de Blizzard)
     gender       = Column(String(10),  nullable=True)   # MALE | FEMALE (de Blizzard)

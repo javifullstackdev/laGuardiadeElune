@@ -12,6 +12,7 @@ from app.schemas.character import (
     WikiCharacterOut, WikiListItem, WikiRelatedOut, WikiStoryOut, merge_public_fields,
 )
 from app.services.bio_questions import has_public_sheet
+from app.services.surnames import visible_surname
 from app.urls import static_url
 
 router = APIRouter(prefix="/wiki", tags=["wiki"])
@@ -33,7 +34,8 @@ def _portrait(char: Character, story: CharacterStory | None = None) -> str | Non
 
 
 def _display_name(char: Character) -> str:
-    return f"{char.name}{(' ' + char.surname) if char.surname else ''}".strip()
+    surname = visible_surname(char)
+    return f"{char.name}{(' ' + surname) if surname else ''}".strip()
 
 
 def _shown_title(char: Character, fields: dict) -> str | None:
