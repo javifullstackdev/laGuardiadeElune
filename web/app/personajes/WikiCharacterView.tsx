@@ -8,6 +8,7 @@ import Breadcrumb from "@/app/components/Breadcrumb";
 import ShareBar from "@/app/components/ShareBar";
 import Parchment from "@/app/components/ui/Parchment";
 import WikiMobileStage from "@/app/personajes/[realm]/[name]/WikiMobileStage";
+import FactCycle from "@/app/personajes/FactCycle";
 
 export type { WikiNeighbor };
 
@@ -203,24 +204,7 @@ export default function WikiCharacterView({
                 displayName={char.display_name}
                 title={char.title}
               />
-              {facts.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  {facts.map((f) => (
-                    <div
-                      key={f.label}
-                      className="rounded-lg px-3 py-2.5 border border-white/20 bg-white/15 backdrop-blur-[2px]"
-                    >
-                      <p className="text-xs text-white/55 mb-0.5 ">{f.label}</p>
-                      <p
-                        className="text-sm font-medium truncate text-white"
-                        style={f.color ? { color: f.color } : undefined}
-                      >
-                        {f.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <FactCycle facts={facts} />
             </aside>
           </div>
         </div>

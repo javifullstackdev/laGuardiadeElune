@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Breadcrumb, { type Crumb } from "@/app/components/Breadcrumb";
+import FactCycle from "@/app/personajes/FactCycle";
 import type { WikiNeighbor } from "@/lib/wiki";
 
 type Fact = {
@@ -18,25 +19,13 @@ type Fact = {
   color?: string;
 };
 
-const FACTS_PER_PAGE = 3;
 const SLIDE_MS = 700;
-/** Stagger between fact cards (same spirit as home FadeUp delays) */
-const CARD_STAGGER_MS = 100;
 const NAME_FADE_MS = 650;
 /** Open / close sheet — slower than a snap, same family as home fades */
 const SHEET_MS = 1100;
 const SHEET_EASE = "cubic-bezier(0.33, 0.2, 0.25, 1)";
 const DISMISS_DISTANCE = 140;
 const DISMISS_VELOCITY = 900;
-
-function chunkFacts(facts: Fact[], size: number): Fact[][] {
-  if (facts.length === 0) return [[]];
-  const pages: Fact[][] = [];
-  for (let i = 0; i < facts.length; i += size) {
-    pages.push(facts.slice(i, i + size));
-  }
-  return pages;
-}
 
 function CoverArt({
   url,
@@ -134,12 +123,7 @@ export default function WikiMobileStage({
   const router = useRouter();
   const hasLore = Boolean(children);
   const canSlide = Boolean(prev || next);
-  const factPages = useMemo(() => chunkFacts(facts, FACTS_PER_PAGE), [facts]);
-  const factPageCount = factPages.length;
 
-  const [factPage, setFactPage] = useState(0);
-  const [factOffset, setFactOffset] = useState(0);
-  const [factDragging, setFactDragging] = useState(false);
   const [loreOpen, setLoreOpen] = useState(false);
   const [loreDragY, setLoreDragY] = useState(0);
   const [loreDragging, setLoreDragging] = useState(false);
@@ -192,10 +176,7 @@ export default function WikiMobileStage({
   const locked = useRef(false);
   const pendingHref = useRef<string | null>(null);
 
-  const factDeckRef = useRef<HTMLDivElement>(null);
   const cardsZoneRef = useRef<HTMLDivElement>(null);
-  const factPageRef = useRef(0);
-  const factOffsetRef = useRef(0);
   const stageRef = useRef<HTMLElement>(null);
   const loreSheetRef = useRef<HTMLDivElement>(null);
   const loreHandleRef = useRef<HTMLDivElement>(null);
@@ -203,15 +184,12 @@ export default function WikiMobileStage({
   const loreClosingRef = useRef(false);
   const goRef = useRef<(dir: 1 | -1) => void>(() => {});
 
-  factPageRef.current = factPage;
-
-  // Reset strip: name fades in from background, then cards rise one by one
+  // Reset strip: name fades in from background, then the fact card rises
   useEffect(() => {
     locked.current = false;
     pendingHref.current = null;
     setAnimate(false);
     setOffset(currentIndex);
-    setFactPage(0);
     setNameReady(false);
     setCardsReady(false);
     let readyId = 0;
@@ -263,94 +241,6 @@ export default function WikiMobileStage({
     if (prev?.href) router.prefetch(prev.href);
     if (next?.href) router.prefetch(next.href);
   }, [router, prev?.href, next?.href]);
-
-  // Horizontal swipe between fact pages (cards zone only)
-  useEffect(() => {
-    const root = factDeckRef.current;
-    if (!root || factPageCount < 2 || loreOpen) return;
-
-    let x0 = 0;
-    let y0 = 0;
-    let axis: "x" | "y" | null = null;
-    let active = false;
-
-    const start = (x: number, y: number) => {
-      if (locked.current) return;
-      x0 = x;
-      y0 = y;
-      axis = null;
-      active = true;
-      factOffsetRef.current = 0;
-      setFactDragging(true);
-      setFactOffset(0);
-    };
-
-    const move = (x: number, y: number, event: Event) => {
-      if (!active) return;
-      const dx = x - x0;
-      const dy = y - y0;
-      if (!axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-        axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-      }
-      if (axis !== "x") return;
-      event.preventDefault();
-      const atStart = factPageRef.current === 0 && dx > 0;
-      const atEnd = factPageRef.current === factPageCount - 1 && dx < 0;
-      const nextOff = atStart || atEnd ? dx * 0.28 : dx;
-      factOffsetRef.current = nextOff;
-      setFactOffset(nextOff);
-    };
-
-    const end = () => {
-      if (!active) return;
-      active = false;
-      setFactDragging(false);
-      const width = root.clientWidth || 1;
-      const dx = factOffsetRef.current;
-      if (axis === "x" && Math.abs(dx) > width * 0.16) {
-        const nextPage = factPageRef.current + (dx < 0 ? 1 : -1);
-        setFactPage(Math.max(0, Math.min(factPageCount - 1, nextPage)));
-      }
-      factOffsetRef.current = 0;
-      setFactOffset(0);
-      axis = null;
-    };
-
-    const onTouchStart = (event: TouchEvent) => {
-      start(event.touches[0].clientX, event.touches[0].clientY);
-    };
-    const onTouchMove = (event: TouchEvent) => {
-      move(event.touches[0].clientX, event.touches[0].clientY, event);
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.pointerType === "touch") return;
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      start(event.clientX, event.clientY);
-    };
-    const onPointerMove = (event: PointerEvent) => {
-      move(event.clientX, event.clientY, event);
-    };
-
-    root.addEventListener("touchstart", onTouchStart, { passive: true });
-    root.addEventListener("touchmove", onTouchMove, { passive: false });
-    root.addEventListener("touchend", end);
-    root.addEventListener("touchcancel", end);
-    root.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", end);
-    window.addEventListener("pointercancel", end);
-
-    return () => {
-      root.removeEventListener("touchstart", onTouchStart);
-      root.removeEventListener("touchmove", onTouchMove);
-      root.removeEventListener("touchend", end);
-      root.removeEventListener("touchcancel", end);
-      root.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", end);
-      window.removeEventListener("pointercancel", end);
-    };
-  }, [factPageCount, loreOpen]);
 
   // Carousel swipe on background (same gesture as HomeHero)
   useEffect(() => {
@@ -625,79 +515,11 @@ export default function WikiMobileStage({
                     ready={nameReady}
                   />
 
-                  <div ref={cardsZoneRef} className="shrink-0">
-                    <div ref={factDeckRef} className="overflow-hidden">
-                      <div
-                        className={`flex w-full ${
-                          factDragging
-                            ? ""
-                            : "transition-transform duration-300 ease-out"
-                        }`}
-                        style={{
-                          transform: `translateX(calc(${-factPage * 100}% + ${factOffset}px))`,
-                        }}
-                      >
-                        {factPages.map((pageFacts, pageIndex) => (
-                          <div
-                            key={`facts-${pageIndex}`}
-                            className="w-full shrink-0 flex flex-col gap-2"
-                          >
-                            {pageFacts.map((f, cardIndex) => {
-                              const staggerIndex =
-                                pageIndex * FACTS_PER_PAGE + cardIndex;
-                              return (
-                                <div
-                                  key={`${displayName}-${f.label}`}
-                                  className={`home-fade-up rounded-lg px-3 py-2.5 border border-white/20 bg-white/15 backdrop-blur-[2px] ${
-                                    cardsReady ? "is-in" : ""
-                                  }`}
-                                  style={{
-                                    transitionDelay: `${staggerIndex * CARD_STAGGER_MS}ms`,
-                                  }}
-                                >
-                                  <p className="text-xs text-white/55 mb-0.5">
-                                    {f.label}
-                                  </p>
-                                  <p
-                                    className="text-sm font-medium truncate text-white"
-                                    style={
-                                      f.color ? { color: f.color } : undefined
-                                    }
-                                  >
-                                    {f.value}
-                                  </p>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {factPageCount > 1 && (
-                      <div
-                        className={`mt-3 flex justify-center gap-1.5 home-fade-up ${
-                          cardsReady ? "is-in" : ""
-                        }`}
-                        style={{
-                          transitionDelay: `${FACTS_PER_PAGE * CARD_STAGGER_MS}ms`,
-                        }}
-                      >
-                        {factPages.map((_, i) => (
-                          <button
-                            key={`dot-${i}`}
-                            type="button"
-                            aria-label={`Datos ${i + 1} de ${factPageCount}`}
-                            className={`h-1.5 rounded-full transition-all ${
-                              i === factPage
-                                ? "w-5 bg-[#e4ddd0]"
-                                : "w-1.5 bg-white/40"
-                            }`}
-                            onClick={() => setFactPage(i)}
-                          />
-                        ))}
-                      </div>
-                    )}
+                  <div
+                    ref={cardsZoneRef}
+                    className={`shrink-0 home-fade-up ${cardsReady ? "is-in" : ""}`}
+                  >
+                    <FactCycle facts={facts} />
 
                     {hasLore && (
                       <button
@@ -708,12 +530,7 @@ export default function WikiMobileStage({
                           setLoreDragY(0);
                           setLoreOpen(true);
                         }}
-                        className={`mt-3 mb-1 w-full text-center text-[11px] tracking-wide text-white/55 home-fade-up ${
-                          cardsReady ? "is-in" : ""
-                        }`}
-                        style={{
-                          transitionDelay: `${(FACTS_PER_PAGE + 1) * CARD_STAGGER_MS}ms`,
-                        }}
+                        className="mt-3 mb-1 w-full text-center text-[11px] tracking-wide text-white/55"
                       >
                         Desliza hacia arriba para la biografía
                       </button>
