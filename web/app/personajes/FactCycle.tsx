@@ -20,7 +20,39 @@ function chunkFacts(facts: FactChip[]): FactChip[][] {
   return pages;
 }
 
-export default function FactCycle({ facts }: { facts: FactChip[] }) {
+function FactCard({ fact }: { fact: FactChip }) {
+  return (
+    <div className="rounded-lg px-3 py-2.5 border border-white/20 bg-white/15 backdrop-blur-[2px] text-center">
+      <p className="text-xs text-white/55 mb-0.5">{fact.label}</p>
+      <p
+        className="text-sm font-medium leading-snug text-white"
+        style={fact.color ? { color: fact.color } : undefined}
+      >
+        {fact.value}
+      </p>
+    </div>
+  );
+}
+
+function FactGrid({ facts }: { facts: FactChip[] }) {
+  if (facts.length === 0) return null;
+  return (
+    <div className="flex w-full justify-center">
+      <div className="grid w-[min(28rem,calc(100vw-3rem))] shrink-0 grid-cols-2 gap-2.5">
+        {facts.map((fact) => (
+          <div
+            key={fact.label}
+            className="relative transition-transform duration-300 ease-out hover:z-10 hover:scale-[1.03] motion-reduce:transition-none motion-reduce:hover:scale-100"
+          >
+            <FactCard fact={fact} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FactCycleDeck({ facts }: { facts: FactChip[] }) {
   const pages = chunkFacts(facts);
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState<"enter" | "show" | "leave">("enter");
@@ -95,18 +127,7 @@ export default function FactCycle({ facts }: { facts: FactChip[] }) {
           aria-live="polite"
         >
           {page.map((fact) => (
-            <div
-              key={fact.label}
-              className="rounded-lg px-4 py-2.5 border border-white/20 bg-white/15 backdrop-blur-[2px] text-center"
-            >
-              <p className="text-xs text-white/55 mb-0.5">{fact.label}</p>
-              <p
-                className="text-sm font-medium text-white"
-                style={fact.color ? { color: fact.color } : undefined}
-              >
-                {fact.value}
-              </p>
-            </div>
+            <FactCard key={fact.label} fact={fact} />
           ))}
         </div>
         {pages.length > 1 && (
@@ -127,4 +148,15 @@ export default function FactCycle({ facts }: { facts: FactChip[] }) {
       </div>
     </div>
   );
+}
+
+export default function FactCycle({
+  facts,
+  layout = "cycle",
+}: {
+  facts: FactChip[];
+  layout?: "cycle" | "grid";
+}) {
+  if (layout === "grid") return <FactGrid facts={facts} />;
+  return <FactCycleDeck facts={facts} />;
 }
