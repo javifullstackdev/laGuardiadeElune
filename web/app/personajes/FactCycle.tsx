@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 export type FactChip = {
   label: string;
@@ -36,8 +36,7 @@ function FactGrid({ facts }: { facts: FactChip[] }) {
   if (facts.length === 0) return null;
   const lastSpans = facts.length % 2 === 1;
   return (
-    <div className="flex w-full justify-center">
-      <div className="grid w-[min(28rem,calc(100vw-3rem))] shrink-0 grid-cols-2 gap-2.5">
+    <div className="grid w-full grid-cols-2 gap-2.5">
         {facts.map((fact, i) => (
           <div
             key={fact.label}
@@ -48,6 +47,64 @@ function FactGrid({ facts }: { facts: FactChip[] }) {
             <FactCard fact={fact} />
           </div>
         ))}
+    </div>
+  );
+}
+
+export function DesktopIdentity({
+  facts,
+  children,
+}: {
+  facts: FactChip[];
+  children: ReactNode;
+}) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [nameWidth, setNameWidth] = useState(0);
+  const [shift, setShift] = useState(0);
+
+  useEffect(() => {
+    const el = nameRef.current;
+    if (!el) return;
+    const measure = () => setNameWidth(el.getBoundingClientRect().width);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  const width =
+    nameWidth > 0
+      ? `min(max(28rem, ${Math.round(nameWidth * 1.12)}px), calc(100vw - 2.5rem))`
+      : "min(28rem, calc(100vw - 2.5rem))";
+
+  useEffect(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+    const overflow = grid.getBoundingClientRect().right - (window.innerWidth - 20);
+    setShift((current) => {
+      if (overflow > 1) return current - overflow;
+      if (overflow < -1 && current < 0) return Math.min(0, current - overflow);
+      return current;
+    });
+  }, [nameWidth, width]);
+
+  return (
+    <div
+      ref={frameRef}
+      className="flex w-full flex-col items-center"
+      style={shift ? { transform: `translateX(${shift}px)` } : undefined}
+    >
+      <div ref={nameRef} className="w-max max-w-[calc(100vw-2.5rem)]">
+        {children}
+      </div>
+      <div ref={gridRef} style={{ width, maxWidth: "calc(100vw - 2.5rem)" }}>
+        <FactGrid facts={facts} />
       </div>
     </div>
   );
