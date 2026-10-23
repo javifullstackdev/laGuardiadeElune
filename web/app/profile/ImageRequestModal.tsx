@@ -18,45 +18,16 @@ type Props = {
   onSubmitted?: () => void;
 };
 
-function Field({
-  label,
-  hint,
-  required,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-xs font-medium text-gray-300">
-        {label}
-        {required ? <span className="text-amber-400"> *</span> : null}
-      </span>
-      {hint ? <span className="block text-[11px] text-gray-500 leading-snug">{hint}</span> : null}
-      {children}
-    </label>
-  );
-}
-
-const inputCls =
-  "w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder:text-gray-600 focus:outline-none focus:border-gray-500";
+const MAX_FILES = 6;
 
 export default function ImageRequestModal({ open, kind, char, onClose, onSubmitted }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
-
-  const [posture, setPosture] = useState("");
-  const [expression, setExpression] = useState("");
-  const [emphasis, setEmphasis] = useState("");
-  const [extraNotes, setExtraNotes] = useState("");
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -65,48 +36,48 @@ export default function ImageRequestModal({ open, kind, char, onClose, onSubmitt
       el.showModal();
       setError(null);
       setOk(false);
-      setFile(null);
-      setPreview(null);
-      setPosture("");
-      setExpression("");
-      setEmphasis("");
-      setExtraNotes("");
+      setFiles([]);
+      setPreviews((prev) => {
+        prev.forEach((url) => URL.revokeObjectURL(url));
+        return [];
+      });
     }
     if (!open && el.open) el.close();
   }, [open, char]);
 
   useEffect(() => {
     return () => {
-      if (preview) URL.revokeObjectURL(preview);
+      previews.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [preview]);
+  }, [previews]);
 
-  function onFile(f: File | null) {
-    if (preview) URL.revokeObjectURL(preview);
-    setFile(f);
-    setPreview(f ? URL.createObjectURL(f) : null);
+  function onFiles(list: File[]) {
+    if (list.length > MAX_FILES) {
+      setError(`Puedes adjuntar hasta ${MAX_FILES} capturas.`);
+    } else {
+      setError(null);
+    }
+    const next = list.slice(0, MAX_FILES);
+    setPreviews((prev) => {
+      prev.forEach((url) => URL.revokeObjectURL(url));
+      return next.map((file) => URL.createObjectURL(file));
+    });
+    setFiles(next);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file) {
-      setError("Adjunta una captura del juego.");
+    if (files.length === 0) {
+      setError("Adjunta al menos una captura del juego.");
       return;
     }
     setSubmitting(true);
     setError(null);
-    const answers = {
-      posture,
-      expression,
-      emphasis,
-      extra_notes: extraNotes,
-    };
     const fd = new FormData();
     fd.append("name", char.name);
     fd.append("realm", char.realm);
     fd.append("kind", kind);
-    fd.append("answers_json", JSON.stringify(answers));
-    fd.append("file", file);
+    for (const file of files) fd.append("files", file);
 
     const res = await fetch("/api/image-requests", { method: "POST", body: fd });
     const data = await res.json().catch(() => ({}));
@@ -115,7 +86,7 @@ export default function ImageRequestModal({ open, kind, char, onClose, onSubmitt
       setError(
         typeof data.detail === "string"
           ? data.detail
-          : data.error ?? "No se pudo enviar la solicitud"
+          : data.error ?? "No se pudieron enviar las capturas"
       );
       return;
     }
@@ -123,7 +94,7 @@ export default function ImageRequestModal({ open, kind, char, onClose, onSubmitt
     onSubmitted?.();
   }
 
-  const title = kind === "face" ? "Solicitar foto de cara" : "Solicitar imagen completa";
+  const title = kind === "face" ? "Capturas de la cara" : "Capturas del personaje";
 
   return (
     <dialog
@@ -136,8 +107,7 @@ export default function ImageRequestModal({ open, kind, char, onClose, onSubmitt
           <div>
             <h2 className="text-lg font-semibold">{title}</h2>
             <p className="text-xs text-gray-400 mt-1">
-              {char.name} · Adjunta una captura clara del personaje. La imagen define apariencia
-              y equipo; abajo solo indícenos ajustes opcionales.
+              {char.name} · Adjunta fotos in-game. El Eremita las descarga y, si publica tu ficha, crea el retrato.
             </p>
           </div>
           <button
@@ -151,9 +121,9 @@ export default function ImageRequestModal({ open, kind, char, onClose, onSubmitt
 
         {ok ? (
           <div className="p-8 text-center space-y-3">
-            <p className="text-green-400 font-medium">Solicitud enviada</p>
+            <p className="text-green-400 font-medium">Capturas enviadas</p>
             <p className="text-sm text-gray-400">
-              Generaremos el arte con la captura y la línea estética de la hermandad.
+              Quedan en manos del Eremita. Si le convence la ficha, publicará la imagen él mismo.
             </p>
             <button
               type="button"
@@ -168,84 +138,46 @@ export default function ImageRequestModal({ open, kind, char, onClose, onSubmitt
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               <div className="space-y-2">
                 <p className="text-xs font-medium text-gray-300">
-                  Captura del juego <span className="text-amber-400">*</span>
+                  Capturas del juego <span className="text-amber-400">*</span>
                 </p>
                 <p className="text-[11px] text-gray-500">
-                  Dressing Room, transmog o similar. JPEG, PNG o WebP · máx. 8 MB.
+                  Dressing Room, primer plano o cuerpo entero. JPEG, PNG o WebP · hasta {MAX_FILES} archivos · 8 MB cada uno.
                 </p>
                 <input
                   ref={fileRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
+                  multiple
                   className="hidden"
-                  onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => onFiles(Array.from(e.target.files ?? []))}
                 />
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => fileRef.current?.click()}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-gray-600 hover:border-gray-400 text-gray-200"
-                  >
-                    {file ? "Cambiar captura" : "Adjuntar captura"}
-                  </button>
-                  {file && <span className="text-xs text-gray-500 truncate">{file.name}</span>}
-                </div>
-                {preview && (
-                  <img
-                    src={preview}
-                    alt=""
-                    className="mt-2 max-h-48 rounded-lg border border-white/10 object-contain bg-black/40"
-                  />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-gray-600 hover:border-gray-400 text-gray-200"
+                >
+                  {files.length > 0 ? "Cambiar capturas" : "Adjuntar capturas"}
+                </button>
+                {files.length > 0 && (
+                  <ul className="text-xs text-gray-500 space-y-0.5">
+                    {files.map((file) => (
+                      <li key={`${file.name}-${file.size}`} className="truncate">{file.name}</li>
+                    ))}
+                  </ul>
+                )}
+                {previews.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {previews.map((src) => (
+                      <img
+                        key={src}
+                        src={src}
+                        alt=""
+                        className="h-28 w-full rounded-lg border border-white/10 object-contain bg-black/40"
+                      />
+                    ))}
+                  </div>
                 )}
               </div>
-
-              <p className="text-[11px] text-gray-500 border-t border-white/5 pt-3">
-                Opcional — solo si quieres cambiar algo respecto a la captura:
-              </p>
-
-              <Field
-                label="Postura o acción"
-                hint="Ej.: mirando a cámara, con el bastón alzado, caminando..."
-              >
-                <input
-                  className={inputCls}
-                  value={posture}
-                  onChange={(e) => setPosture(e.target.value)}
-                  placeholder="Dejar vacío para usar la de la captura"
-                />
-              </Field>
-
-              <Field
-                label="Expresión"
-                hint="Ej.: serena, desafiante, sonrisa leve..."
-              >
-                <input
-                  className={inputCls}
-                  value={expression}
-                  onChange={(e) => setExpression(e.target.value)}
-                />
-              </Field>
-
-              <Field
-                label="Énfasis en algún detalle"
-                hint="Ej.: las gemas de las hombreras, el brillo del arma, el peinado..."
-              >
-                <textarea
-                  className={`${inputCls} min-h-[3.5rem] resize-y`}
-                  value={emphasis}
-                  onChange={(e) => setEmphasis(e.target.value)}
-                />
-              </Field>
-
-              <Field label="Notas adicionales">
-                <textarea
-                  className={`${inputCls} min-h-[3rem] resize-y`}
-                  value={extraNotes}
-                  onChange={(e) => setExtraNotes(e.target.value)}
-                  placeholder="Cualquier otro ajuste..."
-                />
-              </Field>
-
               {error && <p className="text-sm text-red-400">{error}</p>}
             </div>
 
@@ -262,7 +194,7 @@ export default function ImageRequestModal({ open, kind, char, onClose, onSubmitt
                 disabled={submitting}
                 className="px-4 py-2 rounded-lg bg-yellow-600/90 hover:bg-yellow-500 text-black text-sm font-semibold disabled:opacity-50"
               >
-                {submitting ? "Enviando..." : "Enviar solicitud"}
+                {submitting ? "Enviando..." : "Enviar capturas"}
               </button>
             </footer>
           </>

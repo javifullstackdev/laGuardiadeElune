@@ -26,6 +26,13 @@ export type BioAnswerView = {
   value: string;
 };
 
+export type BioReferenceImage = {
+  request_id: string;
+  kind: "face" | "full" | string;
+  index: number;
+  url: string;
+};
+
 export type BioPending = {
   character_id: string;
   character_name: string;
@@ -33,6 +40,7 @@ export type BioPending = {
   author_username: string;
   cover_url: string | null;
   answers: BioAnswerView[];
+  reference_images?: BioReferenceImage[];
   submitted_at: string | null;
   bio_status: string;
   current_biography: string | null;

@@ -34,6 +34,13 @@ class BioRejectIn(BaseModel):
     reason: str | None = None
 
 
+class BioReferenceImage(BaseModel):
+    request_id: UUID
+    kind: str
+    index: int
+    url: str
+
+
 class BioPendingOut(BaseModel):
     character_id: UUID
     character_name: str
@@ -41,6 +48,7 @@ class BioPendingOut(BaseModel):
     author_username: str
     cover_url: str | None = None
     answers: list[BioAnswerView]
+    reference_images: list[BioReferenceImage] = []
     submitted_at: datetime | None = None
     bio_status: str
     current_biography: str | None = None
