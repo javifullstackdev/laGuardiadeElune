@@ -1986,11 +1986,29 @@ function CharacterImageSlot({
   char: Character;
   onPatch: (p: CharPatch) => void;
 }) {
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [requestOpen, setRequestOpen] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/image-requests")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((rows: { kind?: string; status?: string; character?: { name?: string; realm?: string } }[]) => {
+        if (cancelled || !Array.isArray(rows)) return;
+        const pending = rows.some(
+          (row) =>
+            row.status === "pending"
+            && row.kind === kind
+            && row.character?.name === char.name
+            && row.character?.realm === char.realm
+        );
+        if (pending) setRequestSent(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, char.name, char.realm]);
   const isFace = kind === "face";
   const endpoint = isFace ? "/api/characters/face" : "/api/characters/avatar";
   const pending = isFace ? char.pending_face_url : char.pending_avatar_url;
@@ -1999,28 +2017,6 @@ function CharacterImageSlot({
     ? (char.face_display_url ?? char.face_url)
     : (char.avatar_url ?? char.render_url);
   const initials = char.name.slice(0, 2).toUpperCase();
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("name", char.name);
-    fd.append("realm", char.realm);
-    const res = await fetch(endpoint, { method: "POST", body: fd });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error ?? data.detail ?? "Error al subir");
-    } else if (isFace) {
-      onPatch({ pending_face_url: "pending" });
-    } else {
-      onPatch({ pending_avatar_url: "pending" });
-    }
-    setUploading(false);
-    if (inputRef.current) inputRef.current.value = "";
-  }
 
   async function handleRemove() {
     const res = await fetch(
@@ -2049,14 +2045,6 @@ function CharacterImageSlot({
 
   return (
     <div className="rounded-xl border border-white/10 bg-gray-900/50 px-4 py-3 flex items-center gap-3">
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-
       {preview ? (
         <img
           src={preview}
@@ -2081,8 +2069,8 @@ function CharacterImageSlot({
         </p>
         <p className="text-[11px] text-gray-500 leading-snug">
           {isFace
-            ? "Se muestra en el ranking. Battle.net por defecto, o sube una propia."
-            : "Se muestra en la ficha, el perfil y el carrusel."}
+            ? "Adjunta capturas in-game de la cara. El Eremita genera el retrato del ranking."
+            : "Adjunta capturas in-game del personaje. El Eremita genera la imagen de la ficha."}
         </p>
         {custom && (
           <span className="text-[11px] text-green-500 border border-green-600/30 rounded-full px-2 py-0.5">
@@ -2097,18 +2085,10 @@ function CharacterImageSlot({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
           <button
             type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading || !!pending}
-            className="text-xs text-gray-300 hover:text-white transition-colors disabled:opacity-40"
-          >
-            {uploading ? "Subiendo..." : pending ? "Pendiente..." : preview ? "Cambiar" : "Subir foto"}
-          </button>
-          <button
-            type="button"
             onClick={() => setRequestOpen(true)}
             className="text-xs text-yellow-500/90 hover:text-yellow-400 transition-colors"
           >
-            Solicitar imagen
+            Adjuntar capturas
           </button>
           {(custom || pending) && (
             <button
@@ -2121,9 +2101,8 @@ function CharacterImageSlot({
           )}
         </div>
         {requestSent && (
-          <p className="text-[11px] text-green-500/90">Solicitud de imagen enviada.</p>
+          <p className="text-[11px] text-green-500/90">Capturas enviadas. El Eremita las revisa con la ficha.</p>
         )}
-        {error && <p className="text-xs text-red-400">{error}</p>}
       </div>
 
       <ImageRequestModal

@@ -14,14 +14,14 @@ const SECTIONS = [
   {
     href:        "/admin/avatars",
     title:       "Imágenes pendientes",
-    description: "Revisar y aprobar las imágenes de personaje enviadas por los jugadores.",
+    description: "Descargar los retratos que un jugador subió directamente, y aprobarlos o rechazarlos.",
     color:       "border-green-500/40 hover:border-green-400",
     badge:       "bg-green-500/20 text-green-300",
   },
   {
     href:        "/admin/image-requests",
     title:       "Solicitudes de imagen",
-    description: "Formularios + capturas para generar arte con el prompt de la hermandad.",
+    description: "Descargar capturas in-game y publicar el retrato que generes tú.",
     color:       "border-orange-500/40 hover:border-orange-400",
     badge:       "bg-orange-500/20 text-orange-300",
   },
@@ -42,7 +42,7 @@ const SECTIONS = [
   {
     href:        "/admin/bios",
     title:       "Fichas",
-    description: "Leer el cuestionario del jugador y escribir la biografía de la ficha.",
+    description: "Leer la ficha, descargar las capturas y publicar el texto con la imagen.",
     color:       "border-amber-500/40 hover:border-amber-400",
     badge:       "bg-amber-500/20 text-amber-300",
   },

@@ -94,7 +94,13 @@ export default function AvatarReviewPanel({ pending }: { pending: PendingAvatar[
                 </span>
               </div>
 
-              <div className="flex gap-3 mt-5">
+              <div className="flex flex-wrap gap-3 mt-5">
+                <a
+                  href={`/api/admin/characters/avatar/file?name=${encodeURIComponent(item.name)}&realm=${encodeURIComponent(item.realm)}&kind=${kind}`}
+                  className="px-4 py-2 rounded-lg border border-cyan-500/40 text-cyan-300 hover:text-cyan-200 text-sm font-semibold"
+                >
+                  Descargar
+                </a>
                 <button
                   onClick={() => handle(item, "approve")}
                   disabled={!!loading}

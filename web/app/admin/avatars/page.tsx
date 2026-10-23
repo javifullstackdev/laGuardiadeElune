@@ -37,6 +37,10 @@ export default async function AdminAvatarsPage() {
           <span className="text-gray-700">/</span>
           <h1 className="text-2xl font-bold">Imágenes pendientes</h1>
         </div>
+        <p className="text-sm text-gray-400 mb-8">
+          Retratos que un jugador subió directamente. Descárgalos antes de aprobar o rechazar.
+          Las capturas in-game nuevas están en Solicitudes de imagen.
+        </p>
 
         {pending.length === 0 ? (
           <p className="text-gray-500">No hay imágenes pendientes de revisión.</p>

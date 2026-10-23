@@ -10,6 +10,7 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sa_func
 
@@ -34,6 +35,7 @@ from app.services import blizzard, title_sync
 from app.models.craft import CharacterProfessionSkill, CraftOrder
 from app.services.professions import store_profession_snapshot, summarize_profession
 from app.services.bio_questions import answers_complete, normalize_answers
+from app.services.character_images import media_type_for, upload_file
 from app.urls import static_url
 
 BLIZZARD_REGION = os.getenv("BLIZZARD_REGION", "eu")
@@ -1014,6 +1016,38 @@ def list_pending_avatars(
                 "pending_avatar_url": static_url(c.pending_face_url),
             })
     return out
+
+
+@router.get("/{name}/{realm}/pending-file")
+def download_pending_image(
+    name: str,
+    realm: str,
+    kind: str = "full",
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: descarga la imagen de perfil o de cara que subió el jugador."""
+    if kind not in ("face", "full"):
+        raise HTTPException(400, "kind debe ser face o full")
+    char = db.query(Character).filter(
+        Character.name == name,
+        Character.realm == realm,
+        Character.deleted_at.is_(None),
+    ).first()
+    if not char:
+        raise HTTPException(404, "Personaje no encontrado")
+    relative = char.pending_face_url if kind == "face" else char.pending_avatar_url
+    if not relative:
+        raise HTTPException(404, "No hay imagen pendiente para este personaje")
+    path = upload_file(relative)
+    safe = "".join(ch if ch.isalnum() else "-" for ch in char.name).strip("-") or "personaje"
+    filename = f"{safe}-{kind}{path.suffix.lower()}"
+    return FileResponse(
+        path,
+        media_type=media_type_for(path),
+        filename=filename,
+        content_disposition_type="attachment",
+    )
 
 
 @router.delete("/{name}/{realm}", status_code=204)

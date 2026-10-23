@@ -6,7 +6,7 @@ from app.database import Base
 
 
 class ImageRequest(Base):
-    """Solicitud de generación de imagen (cara o completa) por un jugador."""
+    """Capturas in-game que un jugador envía para que el Eremita genere el retrato."""
 
     __tablename__ = "image_requests"
 
@@ -22,6 +22,8 @@ class ImageRequest(Base):
     # Prompt ensamblado listo para generar (image_prompt_data)
     prompt_data = Column(JSONB, nullable=False, server_default="{}", default=dict)
     reference_image_url = Column(String(500), nullable=False)
+    # Todas las capturas, incluida la primera (reference_image_url se mantiene por compatibilidad)
+    reference_image_urls = Column(JSONB, nullable=False, server_default="[]", default=list)
     player_notes = Column(Text, nullable=True)
     admin_notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -34,8 +34,8 @@ export default async function AdminImageRequestsPage() {
           <h1 className="text-2xl font-bold">Solicitudes de imagen</h1>
         </div>
         <p className="text-sm text-gray-400 mb-8">
-          Captura de referencia + ajustes opcionales. Copia el JSON del prompt y usa la imagen
-          adjunta para generar el arte con la línea estética de la hermandad.
+          Capturas in-game de los jugadores. Descárgalas, genera el retrato y publícalo aquí,
+          o inclúyelo al publicar la ficha si te convence el texto.
         </p>
         <ImageRequestReview initial={pending} />
       </div>

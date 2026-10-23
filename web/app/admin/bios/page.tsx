@@ -33,7 +33,8 @@ export default async function AdminBiosPage() {
           <h1 className="text-2xl font-bold">Fichas</h1>
         </div>
         <p className="text-sm text-gray-500 mb-8">
-          El jugador responde un cuestionario. Tú escribes la biografía que sale en Personajes.
+          El jugador responde el cuestionario y puede adjuntar capturas del juego.
+          Si te convence la ficha, escribe el texto, sube el arte y se publica.
         </p>
         <BioReviewPanel pending={pending as BioPending[]} />
       </div>

@@ -20,27 +20,55 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
       ),
   );
   const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [art, setArt] = useState<Record<string, { full: File | null; face: File | null }>>({});
 
   function patch(id: string, field: "biography" | "personality" | "appearance" | "reason", value: string) {
     setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
   }
 
+  function setArtFile(id: string, kind: "full" | "face", file: File | null) {
+    setArt((prev) => ({
+      ...prev,
+      [id]: {
+        full: prev[id]?.full ?? null,
+        face: prev[id]?.face ?? null,
+        [kind]: file,
+      },
+    }));
+  }
+
   async function handle(item: BioPending, action: "publish" | "reject") {
     setLoading(`${item.character_id}-${action}`);
+    setError(null);
     const draft = drafts[item.character_id];
-    const res = await fetch(`/api/admin/bios/${item.character_id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action,
-        reason: draft?.reason ?? null,
-        biography: draft?.biography ?? "",
-        personality: draft?.personality ?? null,
-        appearance: draft?.appearance ?? null,
-      }),
-    });
+    let res: Response;
+    if (action === "publish") {
+      const body = new FormData();
+      body.append("biography", draft?.biography ?? "");
+      body.append("personality", draft?.personality ?? "");
+      body.append("appearance", draft?.appearance ?? "");
+      const files = art[item.character_id];
+      if (files?.full) body.append("full_file", files.full);
+      if (files?.face) body.append("face_file", files.face);
+      res = await fetch(`/api/admin/bios/${item.character_id}`, { method: "POST", body });
+    } else {
+      res = await fetch(`/api/admin/bios/${item.character_id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          reason: draft?.reason ?? null,
+        }),
+      });
+    }
+    const data = await res.json().catch(() => ({}));
     setLoading(null);
-    if (res.ok) setItems((prev) => prev.filter((i) => i.character_id !== item.character_id));
+    if (!res.ok) {
+      setError(typeof data.detail === "string" ? data.detail : "No se pudo guardar la ficha.");
+      return;
+    }
+    setItems((prev) => prev.filter((i) => i.character_id !== item.character_id));
   }
 
   if (items.length === 0) {
@@ -49,6 +77,7 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
 
   return (
     <div className="space-y-8">
+      {error && <p className="text-sm text-red-400">{error}</p>}
       {items.map((item) => {
         const draft = drafts[item.character_id] ?? {
           biography: "",
@@ -87,6 +116,59 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
                   </div>
                 ))
               )}
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-xs uppercase tracking-wider text-gray-500">Capturas in-game</h3>
+              {(item.reference_images ?? []).length === 0 ? (
+                <p className="text-sm text-gray-500">Este jugador no ha adjuntado capturas.</p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {(item.reference_images ?? []).map((image) => (
+                    <div key={`${image.request_id}-${image.index}`} className="space-y-2">
+                      <a
+                        href={image.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block rounded-lg overflow-hidden border border-gray-700 bg-black/40"
+                      >
+                        <img src={image.url} alt="" className="w-full h-36 object-contain" />
+                      </a>
+                      <a
+                        href={`/api/image-requests/${image.request_id}/file?index=${image.index}`}
+                        className="inline-flex text-xs font-medium text-cyan-400 hover:text-cyan-300"
+                      >
+                        Descargar {image.kind === "face" ? "cara" : "cuerpo"}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-xs uppercase tracking-wider text-gray-500">Imagen que publicas tú</h3>
+              <p className="text-xs text-gray-500">
+                Si te convence la ficha, adjunta el arte generado. Se publica junto con el texto.
+              </p>
+              <label className="block text-xs text-gray-400">
+                Imagen completa (ficha y carrusel)
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => setArtFile(item.character_id, "full", e.target.files?.[0] ?? null)}
+                  className="mt-1 block w-full text-xs text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-xs file:text-gray-200"
+                />
+              </label>
+              <label className="block text-xs text-gray-400">
+                Foto de cara (ranking)
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => setArtFile(item.character_id, "face", e.target.files?.[0] ?? null)}
+                  className="mt-1 block w-full text-xs text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-xs file:text-gray-200"
+                />
+              </label>
             </div>
 
             <div className="space-y-3">
