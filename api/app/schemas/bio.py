@@ -41,6 +41,18 @@ class BioReferenceImage(BaseModel):
     url: str
 
 
+class BioPublishedOut(BaseModel):
+    character_id: UUID
+    character_name: str
+    character_realm: str
+    author_username: str
+    cover_url: str | None = None
+    face_url: str | None = None
+    biography: str | None = None
+    personality: str | None = None
+    appearance: str | None = None
+
+
 class BioPendingOut(BaseModel):
     character_id: UUID
     character_name: str

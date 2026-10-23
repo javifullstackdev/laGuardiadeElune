@@ -42,7 +42,7 @@ const SECTIONS = [
   {
     href:        "/admin/bios",
     title:       "Fichas",
-    description: "Leer la ficha, descargar las capturas y publicar el texto con la imagen.",
+    description: "Publicar fichas nuevas y corregir el texto o la imagen de las que ya están en público.",
     color:       "border-amber-500/40 hover:border-amber-400",
     badge:       "bg-amber-500/20 text-amber-300",
   },

@@ -33,6 +33,18 @@ export type BioReferenceImage = {
   url: string;
 };
 
+export type BioPublished = {
+  character_id: string;
+  character_name: string;
+  character_realm: string;
+  author_username: string;
+  cover_url: string | null;
+  face_url: string | null;
+  biography: string | null;
+  personality: string | null;
+  appearance: string | null;
+};
+
 export type BioPending = {
   character_id: string;
   character_name: string;
