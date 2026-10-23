@@ -8,7 +8,7 @@ import Breadcrumb from "@/app/components/Breadcrumb";
 import ShareBar from "@/app/components/ShareBar";
 import Parchment from "@/app/components/ui/Parchment";
 import WikiMobileStage from "@/app/personajes/[realm]/[name]/WikiMobileStage";
-import FactCycle from "@/app/personajes/FactCycle";
+import FactCycle, { DesktopIdentity } from "@/app/personajes/FactCycle";
 
 export type { WikiNeighbor };
 
@@ -197,14 +197,15 @@ export default function WikiCharacterView({
               </div>
             )}
 
-            <aside className="w-full flex-1 min-w-0 lg:self-end lg:mb-24 lg:-ml-20 lg:mr-20">
-              <CharacterHeading
-                className="mb-6 text-center text-[#f3eee4]"
-                prefixTitle={char.prefix_title}
-                displayName={char.display_name}
-                title={char.title}
-              />
-              <FactCycle facts={facts} layout="grid" />
+            <aside className="flex w-full flex-1 min-w-0 flex-col items-center lg:self-end lg:mb-24 lg:-ml-20 lg:mr-20">
+              <DesktopIdentity facts={facts}>
+                <CharacterHeading
+                  className="mb-6 text-center text-[#f3eee4]"
+                  prefixTitle={char.prefix_title}
+                  displayName={char.display_name}
+                  title={char.title}
+                />
+              </DesktopIdentity>
             </aside>
           </div>
         </div>
