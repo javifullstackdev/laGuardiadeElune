@@ -31,7 +31,7 @@ export default async function AdminPostsPage({
   });
   if (!userRes.ok) redirect("/");
   const user = await userRes.json();
-  if (user.role !== "admin" && user.role !== "officer") redirect("/");
+  if (user.role !== "admin") redirect("/");
 
   const postsRes = await fetch(apiUrl("/posts/"), { cache: "no-store" });
   const posts: Post[] = postsRes.ok ? await postsRes.json() : [];

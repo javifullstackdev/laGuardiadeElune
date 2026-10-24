@@ -57,7 +57,8 @@ def get_optional_user(
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role.value not in ("admin", "officer"):
+    """Panel de administración: Líder y Admin. Los oficiales no entran."""
+    if current_user.role.value != "admin":
         raise HTTPException(
             status_code=403,
             detail="No tienes permisos para realizar esta acción"

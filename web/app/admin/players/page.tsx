@@ -18,7 +18,7 @@ export default async function AdminPlayersPage() {
 
   if (!userRes.ok) redirect("/");
   const user = await userRes.json();
-  if (user.role !== "admin" && user.role !== "officer") redirect("/");
+  if (user.role !== "admin") redirect("/");
 
   const players = playersRes.ok ? await playersRes.json() : [];
 

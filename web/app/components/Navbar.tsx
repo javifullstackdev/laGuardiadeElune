@@ -17,7 +17,7 @@ export default async function Navbar() {
     if (res.ok) user = await res.json();
   }
 
-  const isAdmin = user?.role === "admin" || user?.role === "officer";
+  const isAdmin = user?.role === "admin";
   const unread = Number(user?.unread_notifications ?? 0);
 
   const items = [

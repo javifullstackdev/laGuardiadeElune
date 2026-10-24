@@ -103,7 +103,7 @@ export default async function AdminPage() {
   });
   if (!res.ok) redirect("/");
   const user = await res.json();
-  if (user.role !== "admin" && user.role !== "officer") redirect("/");
+  if (user.role !== "admin") redirect("/");
 
   const sections = SECTIONS.filter((s) => !("adminOnly" in s && s.adminOnly) || user.role === "admin");
 
