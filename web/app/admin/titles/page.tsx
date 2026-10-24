@@ -44,14 +44,14 @@ export default async function AdminTitlesPage({
   const token = cookieStore.get("token")?.value;
   if (!token) redirect("/");
 
-  // Verificar que es admin/officer
+  // Verificar que es líder o admin
   const userRes = await fetch(apiUrl("/users/me"), {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
   if (!userRes.ok) redirect("/");
   const user = await userRes.json();
-  if (user.role !== "admin" && user.role !== "officer") redirect("/");
+  if (user.role !== "admin") redirect("/");
 
   // Cargar títulos con sus poseedores
   const titlesRes = await fetch(apiUrl("/titles/admin"), {

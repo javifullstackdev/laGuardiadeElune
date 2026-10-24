@@ -192,7 +192,7 @@ def get_story(
     if not row:
         raise HTTPException(404, "Historia no encontrada")
     story, char, author = row
-    is_staff = viewer and viewer.role.value in ("admin", "officer")
+    is_staff = viewer and viewer.role.value == "admin"
     is_owner = viewer and viewer.id == story.author_id
     if story.status != "approved" and not is_staff and not is_owner:
         raise HTTPException(404, "Historia no encontrada")

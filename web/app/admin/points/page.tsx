@@ -29,7 +29,7 @@ export default async function AdminPointsPage() {
     ) as Promise<HistoryTx[]>,
   ]);
 
-  if (!me || (me.role !== "admin" && me.role !== "officer")) redirect("/admin");
+  if (!me || me.role !== "admin") redirect("/");
 
   return (
     <main className="min-h-screen px-4 py-12">

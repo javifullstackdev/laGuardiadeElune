@@ -27,7 +27,7 @@ export default async function AdminStoriesPage() {
     ),
   ]);
 
-  if (!me || (me.role !== "admin" && me.role !== "officer")) redirect("/admin");
+  if (!me || me.role !== "admin") redirect("/");
 
   const publishedStories = published as StoryPublic[];
 

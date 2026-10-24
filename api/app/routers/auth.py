@@ -32,8 +32,8 @@ BLIZZARD_REGION        = os.getenv("BLIZZARD_REGION", "eu")
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 # ── Mapeo de roles de Discord → nivel de permiso ─────────────────────────
-# Solo "Lider"/"Líder" → ADMIN, "Oficial" → OFFICER, todo lo demás → MEMBER
-_ADMIN_KEYWORDS   = {"lider", "líder"}
+# "Lider"/"Líder"/"Admin" → ADMIN, "Oficial" → OFFICER, todo lo demás → MEMBER
+_ADMIN_KEYWORDS   = {"lider", "líder", "admin"}
 _OFFICER_KEYWORDS = {"oficial"}
 
 
