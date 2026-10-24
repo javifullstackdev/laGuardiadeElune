@@ -777,6 +777,13 @@ html[data-elune-intro="playing"] nav {
     font-size: 1.35rem;
   }
 
+  .wiki-mobile-lore .quest-parchment-head-display h2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
   .wiki-mobile-lore .quest-parchment-body {
     text-align: justify;
     text-justify: inter-word;

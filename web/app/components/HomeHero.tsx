@@ -222,7 +222,11 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
             className="absolute z-[3] inset-y-0 left-0 flex flex-col justify-end sm:justify-center max-w-lg px-5 pb-8 sm:px-12 sm:pb-0 lg:px-16 group/hero-copy"
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <h1 className="text-2xl sm:text-4xl lg:text-[2.6rem] font-quest-display font-bold leading-tight text-white group-hover/hero-copy:text-white/95">
+            <h1
+              className={`font-quest-display font-bold leading-tight text-white group-hover/hero-copy:text-white/95 text-2xl sm:text-4xl lg:text-[2.6rem] ${
+                current.kind === "story" ? "line-clamp-2 sm:line-clamp-none" : ""
+              }`}
+            >
               {current.title}
             </h1>
             {current.subtitle ? (
