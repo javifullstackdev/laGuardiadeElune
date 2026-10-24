@@ -66,7 +66,8 @@ export default async function Navbar() {
       <NavbarBrand />
       <NavbarLinks items={items} />
 
-      <div className="md:hidden">
+      <div className="flex items-center gap-3 md:hidden">
+        <div id="story-reading-toggle-slot" className="flex items-center" />
         <NavbarMobile links={mobileLinks} username={user?.username ?? null} />
       </div>
     </nav>

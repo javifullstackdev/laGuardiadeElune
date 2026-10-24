@@ -13,6 +13,7 @@
   --font-mono: var(--font-geist-mono);
   --font-quest: var(--font-cinzel), "Palatino Linotype", Palatino, Georgia, serif;
   --font-quest-display: var(--font-cinzel-decorative), var(--font-cinzel), Georgia, serif;
+  --font-story: var(--font-source-sans), "Segoe UI", sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -297,6 +298,212 @@ html[data-elune-intro="playing"] nav {
   .animate-parchment-up {
     animation: none;
     opacity: 1;
+  }
+}
+
+/* Historia: el pergamino baja, el fondo se funde y la lectura entra desde abajo.
+   La cabecera (migas y modo) no se transforma. */
+.story-scene {
+  height: calc(100dvh - 3rem);
+  overflow: hidden;
+}
+
+.story-scene[data-open="true"] {
+  height: auto;
+  min-height: calc(100dvh - 3rem);
+  overflow: visible;
+}
+
+.story-bg,
+.story-parchment-move {
+  position: fixed;
+  top: 3rem;
+  right: 0;
+  left: 0;
+  height: calc(100dvh - 3rem);
+  overflow: hidden;
+}
+
+.story-bg {
+  z-index: 0;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: none;
+  transition:
+    opacity 0.9s ease 0.42s,
+    visibility 0s linear 0s;
+}
+
+.story-parchment-move {
+  z-index: 20;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: none;
+  transition:
+    transform 0.95s cubic-bezier(0.33, 0.2, 0.25, 1) 0.5s,
+    visibility 0s linear 0s;
+}
+
+.story-read-lead,
+.story-read-cover,
+.story-read-rule,
+.story-read-fade,
+.story-read-text {
+  opacity: 0;
+  transform: translateY(100dvh);
+}
+
+.story-read-lead,
+.story-read-cover {
+  transition:
+    transform 0.5s cubic-bezier(0.4, 0, 1, 1),
+    opacity 0.38s ease;
+}
+
+.story-read-rule,
+.story-read-fade,
+.story-read-text {
+  transition:
+    transform 0.46s cubic-bezier(0.4, 0, 1, 1),
+    opacity 0.34s ease;
+}
+
+.story-scene[data-mode="comfort"] .story-parchment-move {
+  transform: translateY(110%);
+  visibility: hidden;
+  transition:
+    transform 0.8s cubic-bezier(0.45, 0, 0.55, 0.35),
+    visibility 0s linear 0.8s;
+}
+
+.story-scene[data-mode="comfort"] .story-bg {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 1.05s ease 0.06s,
+    visibility 0s linear 1.05s;
+}
+
+.story-scene[data-mode="comfort"] .story-read-lead,
+.story-scene[data-mode="comfort"] .story-read-cover {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.78s,
+    opacity 0.85s ease 0.78s;
+}
+
+.story-scene[data-mode="comfort"] .story-read-rule,
+.story-scene[data-mode="comfort"] .story-read-fade,
+.story-scene[data-mode="comfort"] .story-read-text {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    transform 0.95s cubic-bezier(0.22, 1, 0.36, 1) 0.96s,
+    opacity 0.9s ease 0.96s;
+}
+
+.story-read-text {
+  font-family: var(--font-story);
+}
+
+.story-read-text .prose > :first-child,
+.story-read-text .prose > section:first-child > :first-child {
+  margin-top: 0;
+}
+
+.story-read-fade {
+  height: 1.15rem;
+  background: linear-gradient(to bottom, #030712 0%, rgba(3, 7, 18, 0.9) 40%, transparent 100%);
+  pointer-events: none;
+}
+
+@media (max-width: 639px) {
+  .story-chrome nav ol {
+    flex-wrap: nowrap;
+  }
+
+  .story-chrome nav ol > li:not(:last-child) {
+    flex-shrink: 0;
+  }
+
+  .story-chrome nav ol > li:last-child {
+    overflow: hidden;
+  }
+}
+
+.story-scene[data-mode="comfort"][data-settled="true"] .story-chrome {
+  position: sticky;
+  top: var(--pin-header, 4.5rem);
+  z-index: 40;
+  background: #030712;
+}
+
+.story-scene[data-mode="comfort"][data-settled="true"] .story-chrome::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  height: calc(var(--pin-header, 4.5rem) - 3rem);
+  background: inherit;
+}
+
+@media (min-width: 1024px) {
+  .story-scene[data-mode="comfort"][data-settled="true"] .story-chrome {
+    background: linear-gradient(
+      to right,
+      transparent 0,
+      transparent clamp(25rem, 28vw, 32rem),
+      #030712 clamp(25rem, 28vw, 32rem)
+    );
+  }
+}
+
+.story-scene[data-mode="comfort"][data-settled="true"] .story-read-lead,
+.story-scene[data-mode="comfort"][data-settled="true"] .story-read-cover,
+.story-scene[data-mode="comfort"][data-settled="true"] .story-read-rule,
+.story-scene[data-mode="comfort"][data-settled="true"] .story-read-fade,
+.story-scene[data-mode="comfort"][data-settled="true"] .story-read-text {
+  transform: none;
+}
+
+.story-scene[data-mode="comfort"][data-settled="true"] .story-read-lead {
+  position: sticky;
+  top: var(--pin-lead, 8rem);
+  z-index: 30;
+}
+
+.story-scene[data-mode="comfort"][data-settled="true"] .story-read-rule {
+  position: sticky;
+  top: var(--pin-rule, 14rem);
+  z-index: 30;
+}
+
+.story-scene[data-mode="comfort"][data-settled="true"] .story-read-fade {
+  position: sticky;
+  top: var(--pin-fade, 14.1rem);
+  z-index: 30;
+}
+
+.story-scene[data-mode="parchment"] .story-comfort {
+  pointer-events: none;
+}
+
+.story-scene[data-mode="comfort"] .story-parchment-move,
+.story-scene[data-mode="comfort"] .story-parchment-move * {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-parchment-move,
+  .story-bg,
+  .story-read-lead,
+  .story-read-cover,
+  .story-read-rule,
+  .story-read-fade,
+  .story-read-text {
+    transition: none;
   }
 }
 
