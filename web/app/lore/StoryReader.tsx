@@ -370,7 +370,7 @@ export default function StoryReader({
               </h1>
             </div>
             {story.cover_url ? (
-              <div className="story-read-cover relative z-0 mb-4 overflow-hidden rounded-2xl border border-gray-800 lg:mb-24">
+              <div className="story-read-cover relative z-0 mb-2 overflow-hidden rounded-2xl border border-gray-800 lg:mb-24">
                 <img
                   src={story.cover_url}
                   alt={`Portada: ${story.title}`}

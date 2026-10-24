@@ -426,12 +426,14 @@ html[data-elune-intro="playing"] nav {
 
 @media (max-width: 1023px) {
   .story-read-fade {
-    height: 2.25rem;
+    height: 2.15rem;
+    margin-bottom: -0.82rem;
     background: linear-gradient(
       to bottom,
       #030712 0%,
-      #030712 62%,
-      rgba(3, 7, 18, 0.85) 84%,
+      #030712 18%,
+      rgba(3, 7, 18, 0.55) 40%,
+      transparent 62%,
       transparent 100%
     );
   }
