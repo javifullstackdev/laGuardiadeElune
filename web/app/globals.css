@@ -424,6 +424,21 @@ html[data-elune-intro="playing"] nav {
   pointer-events: none;
 }
 
+@media (max-width: 1023px) {
+  .story-read-fade {
+    height: 2.15rem;
+    margin-bottom: -0.82rem;
+    background: linear-gradient(
+      to bottom,
+      #030712 0%,
+      #030712 18%,
+      rgba(3, 7, 18, 0.55) 40%,
+      transparent 62%,
+      transparent 100%
+    );
+  }
+}
+
 @media (max-width: 639px) {
   .story-chrome nav ol {
     flex-wrap: nowrap;
