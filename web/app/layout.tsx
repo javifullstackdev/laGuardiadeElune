@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cinzel, Cinzel_Decorative, Geist, Geist_Mono } from "next/font/google";
+import { Cinzel, Cinzel_Decorative, Geist, Geist_Mono, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
 import HomeLogo from "./components/HomeLogo";
@@ -28,6 +28,12 @@ const cinzelDecorative = Cinzel_Decorative({
   variable: "--font-cinzel-decorative",
   subsets: ["latin"],
   weight: ["400", "700"],
+});
+
+const sourceSans = Source_Sans_3({
+  variable: "--font-source-sans",
+  subsets: ["latin"],
+  weight: ["400", "600"],
 });
 
 export const metadata: Metadata = {
@@ -66,7 +72,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} ${cinzelDecorative.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} ${cinzelDecorative.variable} ${sourceSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-gray-950 text-white">
         <JsonLd />
