@@ -15,6 +15,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     NEXT_TELEMETRY_DISABLED=1
 
+# Turbopack fails next/font Google loads in this image (Cinzel: "queries have exactly one entry").
 RUN npm run build
 
 FROM node:22-alpine AS runner
