@@ -59,9 +59,16 @@ export default async function Home() {
                   Ver todos
                 </Link>
               </div>
-              <ul className="flex gap-0 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain md:grid md:grid-cols-4 md:gap-3 md:overflow-visible md:overscroll-auto">
+              <ul className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain md:grid md:grid-cols-4 md:overflow-visible md:overscroll-auto">
                 {tablon.map((tile) => (
-                  <li key={tile.post.id} className="w-full shrink-0 snap-start md:w-auto md:min-w-0">
+                  <li
+                    key={tile.post.id}
+                    className={
+                      tablon.length > 1
+                        ? "w-[80%] shrink-0 snap-start md:w-auto md:min-w-0"
+                        : "w-full md:w-auto md:min-w-0"
+                    }
+                  >
                     <PostTile post={tile.post} href={tile.href} />
                   </li>
                 ))}
@@ -102,9 +109,22 @@ export default async function Home() {
                 </Link>
               </div>
             </FadeUp>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <ul
+              className={
+                storyGrid.length > 1
+                  ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain md:grid md:grid-cols-4 md:overflow-visible md:overscroll-auto"
+                  : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              }
+            >
               {storyGrid.map((story, i) => (
-                <li key={story.id}>
+                <li
+                  key={story.id}
+                  className={
+                    storyGrid.length > 1
+                      ? "w-[80%] shrink-0 snap-start md:w-auto md:min-w-0"
+                      : undefined
+                  }
+                >
                   <FadeUp className="h-full" delayMs={80 + i * 70}>
                     <StoryTile story={story} />
                   </FadeUp>
