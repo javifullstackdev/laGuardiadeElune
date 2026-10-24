@@ -365,7 +365,7 @@ export default function StoryReader({
                   <span className="text-sm text-gray-500">{formatDate(story.published_at)}</span>
                 ) : null}
               </div>
-              <h1 className="font-quest-display text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
+              <h1 className="font-quest-display text-3xl font-bold leading-tight line-clamp-2 sm:line-clamp-none sm:text-4xl lg:text-5xl">
                 {story.title}
               </h1>
             </div>
