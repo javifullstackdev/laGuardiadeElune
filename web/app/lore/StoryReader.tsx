@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { textToParagraphs, formatDate } from "@/lib/posts";
+import { fitToOneLine } from "@/lib/fit-line";
 import ShareBar from "@/app/components/ShareBar";
 import Breadcrumb, { type Crumb } from "@/app/components/Breadcrumb";
 import Parchment from "@/app/components/ui/Parchment";
@@ -109,31 +110,7 @@ function ComfortTitle({ title }: { title: string }) {
       lastWidth = width;
       const max = Number.parseFloat(getComputedStyle(el).getPropertyValue("--title-max")) || 48;
       const min = Number.parseFloat(getComputedStyle(el).getPropertyValue("--title-min")) || 16;
-
-      const linesAt = (size: number) => {
-        el.style.fontSize = `${size}px`;
-        const lineHeight = Number.parseFloat(getComputedStyle(el).lineHeight) || size * 1.18;
-        return el.scrollHeight / lineHeight;
-      };
-
-      if (linesAt(max) <= 2.08) {
-        el.style.fontSize = `${max}px`;
-        return;
-      }
-
-      let low = min;
-      let high = max;
-      let best = min;
-      while (high - low > 0.5) {
-        const mid = (low + high) / 2;
-        if (linesAt(mid) <= 2.08) {
-          best = mid;
-          low = mid;
-        } else {
-          high = mid;
-        }
-      }
-      el.style.fontSize = `${best}px`;
+      fitToOneLine(el, max, min);
     };
 
     const schedule = () => {
@@ -201,6 +178,8 @@ function StoryParchment({
   return (
     <Parchment
       title={story.title}
+      subtitle={story.subtitle}
+      fitTitle
       titleFont="display"
       author={characterSignature(story) || story.author_username}
       actions={actions}
@@ -436,6 +415,7 @@ export default function StoryReader({
                 ) : null}
               </div>
               <ComfortTitle title={story.title} />
+              {story.subtitle ? <p className="story-read-kicker">{story.subtitle}</p> : null}
             </div>
             {story.cover_url ? (
               <div className="story-read-cover relative z-0 mb-2 overflow-hidden rounded-2xl border border-gray-800 lg:mb-24">

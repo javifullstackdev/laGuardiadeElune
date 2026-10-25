@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import StoryReviewPanel from "./StoryReviewPanel";
 import StoryCoverButton from "./StoryCoverButton";
+import StorySubtitleField from "./StorySubtitleField";
 import StoryDeleteButton from "./StoryDeleteButton";
 import type { StoryPending, StoryPublic } from "@/lib/stories";
 import { storyHref } from "@/lib/stories";
@@ -54,7 +55,7 @@ export default async function AdminStoriesPage() {
         <section>
           <h2 className="text-lg font-semibold mb-1">Publicadas</h2>
           <p className="text-sm text-gray-500 mb-5">
-            Puedes cambiar la imagen de una historia ya publicada. Solo el Eremita o un administrador puede eliminarla.
+            Puedes cambiar la imagen y el subtítulo de una historia ya publicada. Solo el Eremita o un administrador puede eliminarla.
           </p>
           {publishedStories.length === 0 ? (
             <p className="text-gray-500">No hay historias publicadas.</p>
@@ -63,9 +64,9 @@ export default async function AdminStoriesPage() {
               {publishedStories.map((story) => (
                 <li
                   key={story.id}
-                  className="flex items-center justify-between gap-4 bg-gray-900 rounded-xl border border-gray-800 px-4 py-3"
+                  className="flex items-start justify-between gap-4 bg-gray-900 rounded-xl border border-gray-800 px-4 py-3"
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <Link
                       href={storyHref(story)}
                       className="font-medium hover:text-yellow-400 transition-colors"
@@ -79,9 +80,12 @@ export default async function AdminStoriesPage() {
                       {story.author_username}
                       {story.published_at ? ` · ${formatDate(story.published_at)}` : ""}
                     </p>
+                    <StorySubtitleField storyId={story.id} subtitle={story.subtitle ?? null} />
                   </div>
-                  <StoryCoverButton storyId={story.id} coverUrl={story.cover_url} />
-                  <StoryDeleteButton storyId={story.id} />
+                  <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                    <StoryCoverButton storyId={story.id} coverUrl={story.cover_url} />
+                    <StoryDeleteButton storyId={story.id} />
+                  </div>
                 </li>
               ))}
             </ul>

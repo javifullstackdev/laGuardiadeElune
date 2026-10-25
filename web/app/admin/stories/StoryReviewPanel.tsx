@@ -31,6 +31,9 @@ export default function StoryReviewPanel({ pending }: { pending: StoryPending[] 
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0">
               <h2 className="font-bold text-lg">{item.title}</h2>
+              {item.subtitle ? (
+                <p className="text-[11px] uppercase tracking-[0.16em] text-gray-400 mt-0.5">{item.subtitle}</p>
+              ) : null}
               <p className="text-sm text-gray-400">
                 {item.character_name} · {item.character_realm} · {item.author_username}
               </p>

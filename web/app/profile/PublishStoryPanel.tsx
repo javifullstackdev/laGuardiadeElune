@@ -56,6 +56,7 @@ export default function PublishStoryPanel({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
+  const [subtitle, setSubtitle] = useState("");
   const [body, setBody] = useState("");
   const [cover, setCover] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -127,6 +128,7 @@ export default function PublishStoryPanel({
     fd.append("name", name);
     fd.append("realm", realm);
     if (title.trim()) fd.append("title", title.trim());
+    if (subtitle.trim()) fd.append("subtitle", subtitle.trim());
     fd.append("body", body);
     fd.append(
       "mentions",
@@ -149,6 +151,7 @@ export default function PublishStoryPanel({
       setStories((prev) => [data, ...prev]);
       setOpenId(data.id);
       setTitle("");
+      setSubtitle("");
       setBody("");
       onCover(null);
       if (fileRef.current) fileRef.current.value = "";
@@ -179,6 +182,17 @@ export default function PublishStoryPanel({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={`Historia de ${name}`}
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-500 block mb-1">Subtítulo (opcional)</label>
+          <input
+            value={subtitle}
+            onChange={(e) => setSubtitle(e.target.value)}
+            placeholder="Capítulo I"
+            maxLength={80}
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600"
           />
         </div>
@@ -323,6 +337,11 @@ export default function PublishStoryPanel({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-gray-100 truncate">{story.title}</p>
+                    {story.subtitle ? (
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-gray-500 mt-0.5 truncate">
+                        {story.subtitle}
+                      </p>
+                    ) : null}
                     {excerpt && (
                       <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{excerpt}</p>
                     )}

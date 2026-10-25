@@ -237,6 +237,24 @@ html[data-elune-intro="playing"] nav {
   letter-spacing: 0.03em;
 }
 
+.quest-parchment-head-fit h2 {
+  --title-max: 32;
+  --title-min: 12;
+  white-space: nowrap;
+  text-wrap: nowrap;
+}
+
+.quest-parchment-subtitle {
+  margin: 0.15rem 0 0.35rem;
+  text-align: center;
+  font-family: var(--font-quest);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #5c4030;
+}
+
 .parchment-share-btn {
   color: #2a1c10;
   opacity: 0.78;
@@ -405,13 +423,24 @@ html[data-elune-intro="playing"] nav {
 
 .story-read-title {
   --title-max: 30;
-  --title-min: 16;
+  --title-min: 14;
   margin: 0;
   text-align: center;
-  text-wrap: balance;
+  white-space: nowrap;
   line-height: 1.18;
   letter-spacing: 0.02em;
   font-size: calc(var(--title-max) * 1px);
+}
+
+.story-read-kicker {
+  margin: 0.7rem 0 0;
+  text-align: center;
+  font-family: var(--font-quest);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #d6d3d1;
 }
 
 @media (min-width: 640px) {
@@ -783,6 +812,10 @@ html[data-elune-intro="playing"] nav {
     margin-bottom: 0.65rem;
   }
 
+  .quest-parchment-head-fit h2 {
+    --title-max: 20;
+  }
+
   .quest-parchment-body p {
     font-size: 1.08rem;
     line-height: 1.95;
@@ -844,6 +877,15 @@ html[data-elune-intro="playing"] nav {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     overflow: hidden;
+  }
+
+  .wiki-mobile-lore .quest-parchment-head-fit h2 {
+    --title-max: 21.6;
+    display: block;
+    -webkit-line-clamp: unset;
+    -webkit-box-orient: unset;
+    overflow: visible;
+    white-space: nowrap;
   }
 
   .wiki-mobile-lore .quest-parchment-body {

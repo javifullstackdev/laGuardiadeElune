@@ -13,7 +13,7 @@ from app.models.user import User
 from app.models.character import Character
 from app.models.character_story import CharacterStory, ContentLike
 from app.schemas.story import (
-    StoryMentionIn, StoryReject, StoryApprove, StoryPublic, StoryMine, StoryPending,
+    StoryMentionIn, StoryReject, StoryApprove, StoryPublic, StoryMine, StoryPending, StorySubtitleIn,
 )
 from app.services.claims import (
     awaiting_relations, claims_out, replace_claims,
@@ -46,6 +46,7 @@ def _mine_out(db: Session, story: CharacterStory, char: Character) -> StoryMine:
         slug=story.slug,
         status=story.status,
         title=story.title,
+        subtitle=story.subtitle,
         rejection_reason=story.rejection_reason,
         submitted_at=story.submitted_at,
         published_at=story.published_at,
@@ -83,6 +84,7 @@ def _to_public(db: Session, story: CharacterStory, char: Character, author: User
         id=story.id,
         slug=story.slug,
         title=story.title,
+        subtitle=story.subtitle,
         status=story.status,
         biography=story.biography,
         personality=story.personality,
@@ -131,6 +133,7 @@ def list_pending(
         StoryPending(
             id=story.id,
             title=story.title,
+            subtitle=story.subtitle,
             biography=story.biography,
             personality=story.personality,
             appearance=story.appearance,
@@ -219,6 +222,7 @@ async def submit_story(
     name: str = Form(...),
     realm: str = Form(...),
     title: str | None = Form(None),
+    subtitle: str | None = Form(None),
     body: str = Form(...),
     mentions: str = Form("[]"),
     cover: UploadFile | None = File(None),
@@ -261,6 +265,7 @@ async def submit_story(
         character_id=char.id,
         author_id=current_user.id,
         title=story_title,
+        subtitle=_clean_subtitle(subtitle),
         slug=unique_slug(db, CharacterStory, story_title, "historia"),
         biography=body.strip(),
         personality=None,
@@ -319,6 +324,7 @@ def approve_story(
     return StoryPending(
         id=story.id,
         title=story.title,
+        subtitle=story.subtitle,
         biography=story.biography,
         personality=story.personality,
         appearance=story.appearance,
@@ -369,6 +375,7 @@ def reject_story(
     return StoryPending(
         id=story.id,
         title=story.title,
+        subtitle=story.subtitle,
         biography=story.biography,
         personality=story.personality,
         appearance=story.appearance,
@@ -380,6 +387,15 @@ def reject_story(
         awaiting_relations=awaiting_relations(db, story.id),
         cover_url=_cover_url(story, char),
     )
+
+
+def _clean_subtitle(value: str | None) -> str | None:
+    text = " ".join((value or "").split())
+    if not text:
+        return None
+    if len(text) > 80:
+        raise HTTPException(400, "El subtítulo no puede superar 80 caracteres")
+    return text
 
 
 def _remove_cover_file(story: CharacterStory) -> None:
@@ -442,6 +458,24 @@ async def replace_story_cover(
     )
     db.commit()
     return {"cover_url": _cover_url(story, char)}
+
+
+@router.post("/{story_id}/subtitle")
+def set_story_subtitle(
+    story_id: str,
+    body: StorySubtitleIn,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Cambia el subtítulo de una historia ya publicada."""
+    story = db.query(CharacterStory).filter(CharacterStory.id == story_id).first()
+    if not story:
+        raise HTTPException(404, "Historia no encontrada")
+    if story.status != "approved":
+        raise HTTPException(409, "Solo se puede cambiar el subtítulo de una historia publicada")
+    story.subtitle = _clean_subtitle(body.subtitle)
+    db.commit()
+    return {"subtitle": story.subtitle}
 
 
 @router.delete("/{story_id}", status_code=204)
