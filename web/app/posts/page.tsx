@@ -3,7 +3,6 @@ import Link from "next/link";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import PostTile from "../components/PostTile";
 import { CATEGORIES, getCategoryStyle, type Post } from "@/lib/posts";
-import { boardToPost, type CraftBoardCard } from "@/lib/craft-board";
 import { mythicHref, mythicToPost, type MythicRun } from "@/lib/mythic-board";
 
 import { apiUrl } from "@/lib/api";
@@ -20,29 +19,20 @@ export default async function PostsPage({
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category } = await searchParams;
-  const showMythicTiles = !category || category === "miticas";
-  const [res, boardRes, mythicRes] = await Promise.all([
+  const showMythicTiles = category === "miticas";
+  const [res, mythicRes] = await Promise.all([
     fetch(apiUrl("/posts/"), { cache: "no-store" }),
-    fetch(apiUrl("/craft-orders/board"), { cache: "no-store" }),
     showMythicTiles
       ? fetch(apiUrl("/points/mythic-plus"), { cache: "no-store" })
       : Promise.resolve(null),
   ]);
   const posts: Post[] = res.ok ? await res.json() : [];
-  const board: CraftBoardCard[] = boardRes.ok ? await boardRes.json() : [];
   const runs: MythicRun[] = mythicRes?.ok ? await mythicRes.json() : [];
-  const orders = category && category !== "pedidos" ? [] : Array.isArray(board) ? board : [];
-  const filtered = category === "pedidos"
-    ? []
-    : category
-      ? posts.filter((p) => p.category?.toLowerCase() === category.toLowerCase())
-      : posts;
+  const filtered = category
+    ? posts.filter((p) => p.category?.toLowerCase() === category.toLowerCase())
+    : posts;
   const mythicRuns = Array.isArray(runs) ? runs : [];
   const cards = [
-    ...orders.map((card) => {
-      const post = boardToPost(card);
-      return { post, href: "/pedidos" as string | undefined, at: post.published_at };
-    }),
     ...(showMythicTiles
       ? mythicRuns.map((run) => {
           const post = mythicToPost(run);
@@ -82,7 +72,7 @@ export default async function PostsPage({
           >
             Todo
           </Link>
-          {CATEGORIES.map((c) => (
+          {CATEGORIES.filter((c) => c.value !== "pedidos").map((c) => (
             <Link
               key={c.value}
               href={`/posts?category=${c.value}`}

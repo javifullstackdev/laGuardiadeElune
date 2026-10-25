@@ -4,8 +4,6 @@ import HomeReveal from "./components/HomeReveal";
 import FadeUp from "./components/FadeUp";
 import { HERO_SLIDES, type HeroSlide } from "@/lib/hero";
 import { getCategoryStyle, postSubtitle, formatDate, postHref} from "@/lib/posts";
-import { boardToPost, type CraftBoardCard } from "@/lib/craft-board";
-import { mythicHref, mythicToPost, type MythicRun } from "@/lib/mythic-board";
 import StoryTile from "./components/StoryTile";
 import WikiTile from "./components/WikiTile";
 import type { StoryPublic } from "@/lib/stories";
@@ -23,18 +21,14 @@ type Post = {
 };
 
 export default async function Home() {
-  const [postsRes, storiesRes, wikiRes, heroRes, boardRes, mythicRes] = await Promise.all([
+  const [postsRes, storiesRes, wikiRes, heroRes] = await Promise.all([
     fetch(apiUrl("/posts/"), { cache: "no-store" }),
     fetch(apiUrl("/stories/"), { cache: "no-store" }),
     fetch(apiUrl("/wiki/"), { cache: "no-store" }),
     fetch(apiUrl("/hero/"), { cache: "no-store" }),
-    fetch(apiUrl("/craft-orders/board"), { cache: "no-store" }),
-    fetch(apiUrl("/points/mythic-plus?limit=1"), { cache: "no-store" }),
   ]);
   const posts: Post[] = postsRes.ok ? await postsRes.json() : [];
-  const board: CraftBoardCard[] = boardRes.ok ? await boardRes.json() : [];
-  const mythics: MythicRun[] = mythicRes.ok ? await mythicRes.json() : [];
-  const tablon = homeTablon(posts, Array.isArray(board) ? board : [], Array.isArray(mythics) ? mythics : []);
+  const tablon = homeTablon(posts);
   const stories: StoryPublic[] = storiesRes.ok ? await storiesRes.json() : [];
   const wiki: WikiListItem[] = wikiRes.ok ? await wikiRes.json() : [];
   const heroSlides: HeroSlide[] = heroRes.ok ? await heroRes.json() : [];
@@ -63,16 +57,16 @@ export default async function Home() {
                 </Link>
               </div>
               <ul className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain md:grid md:grid-cols-4 md:overflow-visible md:overscroll-auto">
-                {tablon.map((tile, index) => (
+                {tablon.map((post) => (
                   <li
-                    key={tile.post.id}
+                    key={post.id}
                     className={
                       tablon.length > 1
                         ? "w-[80%] shrink-0 snap-start md:w-auto md:min-w-0"
                         : "w-full md:w-auto md:min-w-0"
                     }
                   >
-                    <PostTile post={tile.post} href={tile.href} mood={index !== 2} />
+                    <PostTile post={post} />
                   </li>
                 ))}
               </ul>
@@ -151,39 +145,32 @@ function latestOf(posts: Post[], category: string): Post | null {
   return byNewest(posts.filter((post) => (post.category ?? "").toLowerCase() === category))[0] ?? null;
 }
 
-function homeTablon(posts: Post[], orders: CraftBoardCard[], runs: MythicRun[]) {
-  const row: { post: Post; href?: string }[] = [];
+const HOME_BOARD = ["noticias", "guias", "lore"];
+
+function homeTablon(posts: Post[]): Post[] {
+  const pool = posts.filter((post) => HOME_BOARD.includes((post.category ?? "").toLowerCase()));
+  const row: Post[] = [];
   const used = new Set<string>();
-  const noticia = latestOf(posts, "noticias");
-  const guia = latestOf(posts, "guias");
-  if (noticia) {
-    row.push({ post: noticia });
-    used.add(noticia.id);
+  for (const category of HOME_BOARD) {
+    const latest = latestOf(pool, category);
+    if (!latest) continue;
+    row.push(latest);
+    used.add(latest.id);
   }
-  if (guia) {
-    row.push({ post: guia });
-    used.add(guia.id);
-  }
-  if (runs[0]) row.push({ post: mythicToPost(runs[0]), href: mythicHref(runs[0].id) });
-  if (orders[0]) {
-    row.push({ post: boardToPost(orders[0]), href: "/pedidos" });
-    return row;
-  }
-  const spare = byNewest(posts.filter((post) => !used.has(post.id)));
-  for (const post of spare) {
+  for (const post of byNewest(pool.filter((post) => !used.has(post.id)))) {
     if (row.length >= 4) break;
-    row.push({ post });
+    row.push(post);
   }
   return row;
 }
 
-function PostTile({ post, href, mood = false }: { post: Post; href?: string; mood?: boolean }) {
+function PostTile({ post }: { post: Post }) {
   const cat = getCategoryStyle(post.category);
   const subtitle = postSubtitle(post);
 
   return (
     <Link
-      href={href ?? postHref(post)}
+      href={postHref(post)}
       draggable={false}
       className="group flex flex-col h-full rounded-lg overflow-hidden bg-[#151515] hover:bg-[#1c1c1c] transition-colors select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
     >
@@ -193,12 +180,11 @@ function PostTile({ post, href, mood = false }: { post: Post; href?: string; moo
               src={post.cover_url}
               alt={`Portada: ${post.title}`}
               draggable={false}
-              className={`w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 select-none pointer-events-none [-webkit-user-drag:none]${mood ? " tablon-cover-mood" : ""}`}
+              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 select-none pointer-events-none [-webkit-user-drag:none]"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />
           )}
-          {mood ? <div className="tablon-cover-veil pointer-events-none absolute inset-0" aria-hidden /> : null}
           {post.category && (
             <span className={`absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm ${cat.flag}`}>
               {cat.label}
