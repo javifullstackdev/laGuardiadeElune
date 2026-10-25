@@ -91,6 +91,76 @@ function StoryBody({
   );
 }
 
+function ComfortTitle({ title }: { title: string }) {
+  const ref = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const box = el?.parentElement;
+    if (!el || !box) return;
+
+    let frame = 0;
+    let lastWidth = -1;
+
+    const fit = () => {
+      const width = box.clientWidth;
+      if (width < 8) return;
+      if (Math.abs(width - lastWidth) < 0.5 && el.style.fontSize) return;
+      lastWidth = width;
+      const max = Number.parseFloat(getComputedStyle(el).getPropertyValue("--title-max")) || 48;
+      const min = Number.parseFloat(getComputedStyle(el).getPropertyValue("--title-min")) || 16;
+
+      const linesAt = (size: number) => {
+        el.style.fontSize = `${size}px`;
+        const lineHeight = Number.parseFloat(getComputedStyle(el).lineHeight) || size * 1.18;
+        return el.scrollHeight / lineHeight;
+      };
+
+      if (linesAt(max) <= 2.08) {
+        el.style.fontSize = `${max}px`;
+        return;
+      }
+
+      let low = min;
+      let high = max;
+      let best = min;
+      while (high - low > 0.5) {
+        const mid = (low + high) / 2;
+        if (linesAt(mid) <= 2.08) {
+          best = mid;
+          low = mid;
+        } else {
+          high = mid;
+        }
+      }
+      el.style.fontSize = `${best}px`;
+    };
+
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    };
+
+    fit();
+    const observer = new ResizeObserver(schedule);
+    observer.observe(box);
+    void document.fonts?.ready.then(() => {
+      lastWidth = -1;
+      schedule();
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [title]);
+
+  return (
+    <h1 ref={ref} className="story-read-title font-quest-display font-bold">
+      {title}
+    </h1>
+  );
+}
+
 function StatusBadge({ status }: { status: StoryPublic["status"] }) {
   if (!status || status === "approved") return null;
   return (
@@ -356,8 +426,8 @@ export default function StoryReader({
 
           <div ref={comfortRef} className="story-comfort relative z-10 pb-16 lg:pl-[clamp(25rem,28vw,32rem)] lg:pr-20" inert={look !== "comfort"}>
             <div className="mx-auto w-full max-w-[76rem] px-6 sm:px-8 lg:px-0">
-            <div ref={leadRef} className="story-read-lead bg-[#030712] pb-6">
-              <div className="mb-4 flex flex-wrap items-center gap-3">
+            <div ref={leadRef} className="story-read-lead bg-[#030712] pb-8">
+              <div className="mb-5 flex flex-wrap items-center gap-3">
                 <span className="rounded-full border border-purple-400/30 bg-purple-500/15 px-2 py-0.5 text-xs font-medium text-purple-200">
                   Historia
                 </span>
@@ -365,9 +435,7 @@ export default function StoryReader({
                   <span className="text-sm text-gray-500">{formatDate(story.published_at)}</span>
                 ) : null}
               </div>
-              <h1 className="font-quest-display text-3xl font-bold leading-tight line-clamp-2 sm:line-clamp-none sm:text-4xl lg:text-5xl">
-                {story.title}
-              </h1>
+              <ComfortTitle title={story.title} />
             </div>
             {story.cover_url ? (
               <div className="story-read-cover relative z-0 mb-2 overflow-hidden rounded-2xl border border-gray-800 lg:mb-24">
@@ -384,14 +452,14 @@ export default function StoryReader({
             <div className="story-read-fade" aria-hidden />
             <div className="story-read-text">
               {hasLore ? (
-                <div className="prose prose-invert max-w-none text-justify prose-p:text-justify prose-p:text-[1.05rem] prose-p:leading-relaxed prose-p:text-gray-300 sm:prose-p:text-lg prose-headings:mt-10 prose-headings:font-quest-display prose-headings:text-yellow-400 prose-headings:text-left">
+                <div className="story-prose">
                   <StoryBody story={story} nameClass="font-semibold text-violet-300" />
                 </div>
               ) : (
                 <p className="text-sm text-white/60">Esta historia aún no tiene texto publicado.</p>
               )}
               {signature ? (
-                <p className="mt-8 text-right text-base font-semibold italic tracking-wide text-gray-400 sm:text-lg">
+                <p className="mt-12 text-right text-base font-semibold italic tracking-wide text-gray-400 sm:text-lg">
                   {signature}
                 </p>
               ) : null}
