@@ -1,4 +1,5 @@
-import type { MythicRun } from "@/lib/mythic-board";
+import Link from "next/link";
+import type { MythicPlayer, MythicRole, MythicRun } from "@/lib/mythic-board";
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("es-ES", {
@@ -13,6 +14,82 @@ function fmtTime(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+const ROLE_LABEL: Record<MythicRole, string> = {
+  tank: "Tanque",
+  healer: "Sanador",
+  dps: "Daño",
+};
+
+function RoleMark({ role, spec }: { role?: MythicRole | null; spec?: string | null }) {
+  const balance = spec === "balance";
+  if (!balance && role !== "tank" && role !== "healer" && role !== "dps") return null;
+  const label = balance ? "Equilibrio" : ROLE_LABEL[role as MythicRole];
+  const color = balance
+    ? "text-amber-300"
+    : role === "tank"
+      ? "text-sky-400"
+      : role === "healer"
+        ? "text-emerald-400"
+        : "text-rose-400";
+  return (
+    <span title={label} aria-label={label} className={`inline-flex shrink-0 ${color}`}>
+      {balance ? <MoonIcon /> : role === "tank" ? <ShieldIcon /> : role === "healer" ? <SparklesIcon /> : <SwordIcon />}
+    </span>
+  );
+}
+
+function OutlineIcon({ d }: { d: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d={d} />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <OutlineIcon d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+  );
+}
+
+function MoonIcon() {
+  return (
+    <OutlineIcon d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+  );
+}
+
+function SparklesIcon() {
+  return (
+    <OutlineIcon d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+  );
+}
+
+function SwordIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="w-5 h-5" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18.8 4.2 11.2 13.8 9.2 11.8Z" />
+      <path strokeLinecap="round" d="M7.6 10.2 12.8 15.4" />
+      <path strokeLinecap="round" d="M10.2 12.8 6.05 16.95" />
+      <circle cx="5.2" cy="17.8" r="1.2" />
+    </svg>
+  );
+}
+
+function CharacterName({ player }: { player: MythicPlayer }) {
+  const name = player.character_name ?? "—";
+  if (!player.profile_path || !player.character_name) {
+    return <p className="font-medium text-gray-100 truncate">{name}</p>;
+  }
+  return (
+    <Link
+      href={player.profile_path}
+      className="font-medium text-yellow-100 truncate underline decoration-yellow-100/40 underline-offset-2 hover:text-yellow-300"
+    >
+      {name}
+    </Link>
+  );
 }
 
 export default function MythicRunCard({ run }: { run: MythicRun }) {
@@ -37,10 +114,10 @@ export default function MythicRunCard({ run }: { run: MythicRun }) {
         <div className="absolute inset-0 bg-gradient-to-t from-[#070b14] via-[#070b14]/75 to-black/25" />
         <div className="relative z-10 flex flex-col justify-end min-h-[13rem] p-5">
           <p className="text-xs uppercase tracking-wider text-yellow-400/90">{pace}</p>
-          <h2 className="text-2xl font-quest-display font-bold text-white mt-1 leading-tight">
+          <h1 className="text-2xl font-quest-display font-bold text-white mt-1 leading-tight">
             {run.dungeon}
             {run.mythic_level != null && <span className="text-yellow-400"> +{run.mythic_level}</span>}
-          </h2>
+          </h1>
           <p className="text-sm text-gray-200 mt-2">
             {fmtDate(run.completed_at)}
             <span className="text-gray-500"> · </span>
@@ -68,14 +145,12 @@ export default function MythicRunCard({ run }: { run: MythicRun }) {
               const partial = player.weekly_capped && player.points !== player.amount;
               return (
                 <li
-                  key={`${player.username}-${player.character_name ?? ""}-${player.character_realm ?? ""}`}
+                  key={`${player.username}-${player.character_name ?? ""}`}
                   className="grid grid-cols-1 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_5.5rem] gap-1 sm:gap-3 sm:items-center px-5 py-3"
                 >
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-100 truncate">{player.character_name ?? "—"}</p>
-                    {player.character_realm && (
-                      <p className="text-xs text-gray-500 truncate">{player.character_realm}</p>
-                    )}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <RoleMark role={player.role} spec={player.spec} />
+                    <CharacterName player={player} />
                   </div>
                   <p className="text-sm text-gray-300 truncate">{player.username}</p>
                   <p className={`font-bold tabular-nums sm:text-right ${player.points > 0 ? "text-green-400" : "text-gray-400"}`}>

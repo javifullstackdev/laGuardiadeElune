@@ -63,3 +63,50 @@ def run_season(run: dict) -> str:
 async def run_details(season: str, run_id: int) -> dict | None:
     """Detalle de la partida con los 5 integrantes. El id solo es único dentro de su temporada."""
     return await _get("/mythic-plus/run-details", season=season, id=run_id)
+
+
+# Una partida terminada no cambia de especialización. Se guarda para no repetir la petición.
+_roster_cache: dict[str, list[dict]] = {}
+
+
+def _spec_role(member: dict) -> str | None:
+    spec = (member.get("character") or {}).get("spec") or {}
+    raw = str(spec.get("role") or "").lower()
+    if raw in ("tank", "healer"):
+        return raw
+    if raw in ("dps", "melee", "ranged", "damage"):
+        return "dps"
+    return None
+
+
+async def roster_roles(season: str, run_id: int) -> list[dict]:
+    """Nombre, reino y función (tank, healer o dps) de cada integrante.
+
+    Lista vacía si Raider.io no responde. No lanza: el detalle público sigue sin el icono.
+    """
+    key = f"{season}:{run_id}"
+    cached = _roster_cache.get(key)
+    if cached is not None:
+        return cached
+    try:
+        res = await _http().get(
+            f"{BASE}/mythic-plus/run-details",
+            params={"season": season, "id": run_id},
+            timeout=8.0,
+        )
+    except httpx.HTTPError:
+        return []
+    if res.status_code != 200:
+        return []
+    roles: list[dict] = []
+    for member in res.json().get("roster") or []:
+        character = member.get("character") or {}
+        name = (character.get("name") or "").strip()
+        realm = ((character.get("realm") or {}).get("slug") or "").strip()
+        spec = (character.get("spec") or {})
+        slug = str(spec.get("slug") or "").lower() or None
+        role = _spec_role(member)
+        if name and role:
+            roles.append({"name": name, "realm": realm, "role": role, "spec": slug})
+    _roster_cache[key] = roles
+    return roles

@@ -1,3 +1,4 @@
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
@@ -12,8 +13,9 @@ from app.models.point_transaction import PointTransaction
 from app.models.processed_run import ProcessedRun
 from app.models.user import User
 from app.models.enums import EventCategory
-from app.services import dungeons, mplus_sync
+from app.services import blizzard, dungeons, mplus_sync, raiderio
 from app.services import points as points_service
+from app.services.bio_questions import has_public_sheet
 from app.services.blizzard import BlizzardError
 from app.services.seasons import current_season
 
@@ -87,7 +89,19 @@ def _load_tx(db: Session, tx_id: UUID) -> tuple[PointTransaction, User | None, C
     return row
 
 
-def _public_player(tx: PointTransaction, user: User | None, character: Character | None) -> dict:
+def _sheet_path(character: Character | None) -> str | None:
+    if character is None or not has_public_sheet(character):
+        return None
+    return f"/personajes/{quote(character.realm, safe='')}/{quote(character.name, safe='')}"
+
+
+def _public_player(
+    tx: PointTransaction,
+    user: User | None,
+    character: Character | None,
+    role: str | None = None,
+    spec: str | None = None,
+) -> dict:
     counted = points_service.effective_amount(tx)
     return {
         "character_name": character.name if character else None,
@@ -96,15 +110,13 @@ def _public_player(tx: PointTransaction, user: User | None, character: Character
         "points": counted,
         "amount": tx.amount,
         "weekly_capped": tx.weekly_capped,
+        "role": role,
+        "spec": spec,
+        "profile_path": _sheet_path(character),
     }
 
 
-@router.get("/mythic-plus")
-def public_mythic_plus(
-    db: Session = Depends(get_db),
-    limit: int = Query(default=40, ge=1, le=80),
-):
-    """Míticas+ puntuadas de la temporada, para el tablón. Sin datos de administración."""
+def _season_runs(db: Session, *, limit: int | None, run_id: UUID | None) -> list[ProcessedRun]:
     season = current_season(db)
     run_query = (
         db.query(ProcessedRun)
@@ -116,15 +128,19 @@ def public_mythic_plus(
     )
     if season is not None:
         run_query = run_query.filter(PointTransaction.season_id == season.id)
-    runs = (
-        run_query.order_by(ProcessedRun.completed_at.desc())
-        .distinct()
-        .limit(limit)
-        .all()
-    )
+    if run_id is not None:
+        run_query = run_query.filter(ProcessedRun.id == run_id)
+    run_query = run_query.order_by(ProcessedRun.completed_at.desc()).distinct()
+    if limit is not None:
+        run_query = run_query.limit(limit)
+    return run_query.all()
+
+
+def _public_board(db: Session, runs: list[ProcessedRun], roles: dict | None = None) -> list[dict]:
+    """roles: processed_run_id -> {(nombre, reino): tank|healer|dps}."""
     if not runs:
         return []
-
+    roles = roles or {}
     ids = [run.id for run in runs]
     rows = (
         db.query(PointTransaction, User, Character)
@@ -139,8 +155,18 @@ def public_mythic_plus(
     )
     players: dict = {run.id: [] for run in runs}
     for tx, user, character in rows:
-        if tx.processed_run_id in players:
-            players[tx.processed_run_id].append(_public_player(tx, user, character))
+        if tx.processed_run_id not in players:
+            continue
+        role = None
+        spec = None
+        if character is not None:
+            info = roles.get(tx.processed_run_id, {}).get(
+                blizzard.character_key(character.name, character.realm)
+            )
+            if isinstance(info, dict):
+                role = info.get("role")
+                spec = info.get("spec")
+        players[tx.processed_run_id].append(_public_player(tx, user, character, role, spec))
 
     board = []
     for run in runs:
@@ -160,6 +186,44 @@ def public_mythic_plus(
             }
         )
     return board
+
+
+async def _roles_for(run: ProcessedRun) -> dict[tuple[str, str], dict]:
+    external = run.external_id or ""
+    if ":" not in external:
+        return {}
+    season, raw_id = external.split(":", 1)
+    try:
+        roster = await raiderio.roster_roles(season, int(raw_id))
+    except ValueError:
+        return {}
+    return {
+        blizzard.character_key(item["name"], item["realm"]): {
+            "role": item["role"],
+            "spec": item.get("spec"),
+        }
+        for item in roster
+    }
+
+
+@router.get("/mythic-plus")
+def public_mythic_plus(
+    db: Session = Depends(get_db),
+    limit: int = Query(default=40, ge=1, le=80),
+):
+    """Míticas+ puntuadas de la temporada, para el tablón. Sin datos de administración."""
+    return _public_board(db, _season_runs(db, limit=limit, run_id=None))
+
+
+@router.get("/mythic-plus/{run_id}")
+async def public_mythic_plus_detail(run_id: UUID, db: Session = Depends(get_db)):
+    """Detalle de una mítica puntuada, con la función de Raider.io y el enlace a la ficha si es pública."""
+    runs = _season_runs(db, limit=None, run_id=run_id)
+    if not runs:
+        raise HTTPException(404, "Mítica no encontrada")
+    run = runs[0]
+    board = _public_board(db, [run], {run.id: await _roles_for(run)})
+    return board[0]
 
 
 @router.post("/sync-mythic-plus")
