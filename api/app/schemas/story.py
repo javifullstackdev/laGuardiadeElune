@@ -50,7 +50,8 @@ class StoryReject(BaseModel):
     reason: str | None = None
 
 
-class StorySubtitleIn(BaseModel):
+class StoryHeadingIn(BaseModel):
+    title: str
     subtitle: str | None = None
 
 
