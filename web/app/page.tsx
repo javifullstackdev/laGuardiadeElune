@@ -63,7 +63,7 @@ export default async function Home() {
                 </Link>
               </div>
               <ul className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain md:grid md:grid-cols-4 md:overflow-visible md:overscroll-auto">
-                {tablon.map((tile) => (
+                {tablon.map((tile, index) => (
                   <li
                     key={tile.post.id}
                     className={
@@ -72,7 +72,7 @@ export default async function Home() {
                         : "w-full md:w-auto md:min-w-0"
                     }
                   >
-                    <PostTile post={tile.post} href={tile.href} />
+                    <PostTile post={tile.post} href={tile.href} mood={index !== 2} />
                   </li>
                 ))}
               </ul>
@@ -177,7 +177,7 @@ function homeTablon(posts: Post[], orders: CraftBoardCard[], runs: MythicRun[]) 
   return row;
 }
 
-function PostTile({ post, href }: { post: Post; href?: string }) {
+function PostTile({ post, href, mood = false }: { post: Post; href?: string; mood?: boolean }) {
   const cat = getCategoryStyle(post.category);
   const subtitle = postSubtitle(post);
 
@@ -193,11 +193,12 @@ function PostTile({ post, href }: { post: Post; href?: string }) {
               src={post.cover_url}
               alt={`Portada: ${post.title}`}
               draggable={false}
-              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 select-none pointer-events-none [-webkit-user-drag:none]"
+              className={`w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 select-none pointer-events-none [-webkit-user-drag:none]${mood ? " tablon-cover-mood" : ""}`}
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />
           )}
+          {mood ? <div className="tablon-cover-veil pointer-events-none absolute inset-0" aria-hidden /> : null}
           {post.category && (
             <span className={`absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm ${cat.flag}`}>
               {cat.label}

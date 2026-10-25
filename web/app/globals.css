@@ -960,3 +960,13 @@ html[data-elune-intro="playing"] nav {
     filter: drop-shadow(0 0 6px rgba(246, 231, 168, 0.9));
   }
 }
+
+/* Miniaturas del tablón de inicio: bajo contraste y tono apagado. La portada del artículo no usa esta clase. */
+.tablon-cover-mood {
+  filter: contrast(0.78) saturate(0.46) brightness(0.68);
+}
+
+.tablon-cover-veil {
+  background:
+    linear-gradient(180deg, rgba(6, 7, 12, 0.42) 0%, rgba(6, 7, 12, 0.14) 46%, rgba(6, 7, 12, 0.5) 100%);
+}
