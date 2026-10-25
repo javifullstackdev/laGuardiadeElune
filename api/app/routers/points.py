@@ -11,9 +11,11 @@ from app.models.character import Character
 from app.models.point_transaction import PointTransaction
 from app.models.processed_run import ProcessedRun
 from app.models.user import User
+from app.models.enums import EventCategory
 from app.services import dungeons, mplus_sync
 from app.services import points as points_service
 from app.services.blizzard import BlizzardError
+from app.services.seasons import current_season
 
 router = APIRouter(prefix="/points", tags=["points"])
 
@@ -83,6 +85,81 @@ def _load_tx(db: Session, tx_id: UUID) -> tuple[PointTransaction, User | None, C
     if not row:
         raise HTTPException(404, "Asignación no encontrada")
     return row
+
+
+def _public_player(tx: PointTransaction, user: User | None, character: Character | None) -> dict:
+    counted = points_service.effective_amount(tx)
+    return {
+        "character_name": character.name if character else None,
+        "character_realm": character.realm if character else None,
+        "username": (user.display_name or user.username) if user else "—",
+        "points": counted,
+        "amount": tx.amount,
+        "weekly_capped": tx.weekly_capped,
+    }
+
+
+@router.get("/mythic-plus")
+def public_mythic_plus(
+    db: Session = Depends(get_db),
+    limit: int = Query(default=40, ge=1, le=80),
+):
+    """Míticas+ puntuadas de la temporada, para el tablón. Sin datos de administración."""
+    season = current_season(db)
+    run_query = (
+        db.query(ProcessedRun)
+        .join(PointTransaction, PointTransaction.processed_run_id == ProcessedRun.id)
+        .filter(
+            PointTransaction.active.is_(True),
+            PointTransaction.event_category == EventCategory.MYTHIC_PLUS,
+        )
+    )
+    if season is not None:
+        run_query = run_query.filter(PointTransaction.season_id == season.id)
+    runs = (
+        run_query.order_by(ProcessedRun.completed_at.desc())
+        .distinct()
+        .limit(limit)
+        .all()
+    )
+    if not runs:
+        return []
+
+    ids = [run.id for run in runs]
+    rows = (
+        db.query(PointTransaction, User, Character)
+        .outerjoin(User, User.id == PointTransaction.user_id)
+        .outerjoin(Character, Character.id == PointTransaction.character_id)
+        .filter(
+            PointTransaction.processed_run_id.in_(ids),
+            PointTransaction.active.is_(True),
+            PointTransaction.event_category == EventCategory.MYTHIC_PLUS,
+        )
+        .all()
+    )
+    players: dict = {run.id: [] for run in runs}
+    for tx, user, character in rows:
+        if tx.processed_run_id in players:
+            players[tx.processed_run_id].append(_public_player(tx, user, character))
+
+    board = []
+    for run in runs:
+        shown = dungeons.present(run.dungeon, run.dungeon_slug)
+        roster = players[run.id]
+        roster.sort(key=lambda player: (-player["points"], player["character_name"] or player["username"]))
+        board.append(
+            {
+                "id": str(run.id),
+                "dungeon": shown["name"],
+                "dungeon_image_url": shown["image_url"],
+                "mythic_level": run.mythic_level,
+                "timed": run.timed,
+                "completed_at": run.completed_at.isoformat(),
+                "guild_characters": _guild_names(run),
+                "players": roster,
+            }
+        )
+    return board
 
 
 @router.post("/sync-mythic-plus")

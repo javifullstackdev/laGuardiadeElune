@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import PostTile from "../components/PostTile";
+import MythicRunCard from "../components/MythicRunCard";
 import { CATEGORIES, getCategoryStyle, type Post } from "@/lib/posts";
 import { boardToPost, type CraftBoardCard } from "@/lib/craft-board";
+import type { MythicRun } from "@/lib/mythic-board";
 
 import { apiUrl } from "@/lib/api";
 
@@ -19,12 +21,15 @@ export default async function PostsPage({
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category } = await searchParams;
-  const [res, boardRes] = await Promise.all([
+  const showRuns = category === "miticas";
+  const [res, boardRes, mythicRes] = await Promise.all([
     fetch(apiUrl("/posts/"), { cache: "no-store" }),
     fetch(apiUrl("/craft-orders/board"), { cache: "no-store" }),
+    showRuns ? fetch(apiUrl("/points/mythic-plus"), { cache: "no-store" }) : Promise.resolve(null),
   ]);
   const posts: Post[] = res.ok ? await res.json() : [];
   const board: CraftBoardCard[] = boardRes.ok ? await boardRes.json() : [];
+  const runs: MythicRun[] = mythicRes?.ok ? await mythicRes.json() : [];
   const orders = category && category !== "pedidos" ? [] : Array.isArray(board) ? board : [];
   const filtered = category === "pedidos"
     ? []
@@ -35,6 +40,7 @@ export default async function PostsPage({
     ...orders.map((card) => ({ post: boardToPost(card), href: "/pedidos" as const })),
     ...filtered.map((post) => ({ post, href: undefined })),
   ];
+  const mythicRuns = Array.isArray(runs) ? runs : [];
   const active = category ? getCategoryStyle(category) : null;
 
   return (
@@ -50,9 +56,11 @@ export default async function PostsPage({
           {active ? active.label : "Tablón"}
         </h1>
         <p className="text-gray-400 mt-2 text-sm">
-          {active
-            ? `Publicaciones de ${active.label.toLowerCase()}.`
-            : "Todas las novedades, guías y crónicas de la hermandad."}
+          {category === "miticas"
+            ? "Las míticas+ de la hermandad: quién participó y cuántos puntos ganó."
+            : active
+              ? `Publicaciones de ${active.label.toLowerCase()}.`
+              : "Todas las novedades, guías y crónicas de la hermandad."}
         </p>
 
         <div className="flex flex-wrap gap-2 mt-6 mb-8">
@@ -77,11 +85,23 @@ export default async function PostsPage({
           ))}
         </div>
 
-        {cards.length === 0 ? (
+        {mythicRuns.length > 0 && (
+          <ul className="space-y-4 mb-8">
+            {mythicRuns.map((run) => (
+              <li key={run.id}>
+                <MythicRunCard run={run} />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {cards.length === 0 && mythicRuns.length === 0 ? (
           <p className="text-gray-500 py-16 text-center">
-            Aún no hay publicaciones en esta sección.
+            {category === "miticas"
+              ? "Aún no hay míticas publicadas."
+              : "Aún no hay publicaciones en esta sección."}
           </p>
-        ) : (
+        ) : cards.length > 0 ? (
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {cards.map((card) => (
               <li key={card.post.id}>
@@ -89,7 +109,7 @@ export default async function PostsPage({
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
       </div>
     </main>
   );
