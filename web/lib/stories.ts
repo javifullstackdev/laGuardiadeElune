@@ -4,6 +4,7 @@ export type StoryPublic = {
   id: string;
   slug?: string | null;
   title: string;
+  subtitle?: string | null;
   status?: "pending" | "approved" | "rejected";
   biography: string | null;
   personality: string | null;
@@ -26,6 +27,7 @@ export type StoryMine = {
   slug?: string | null;
   status: "pending" | "approved" | "rejected";
   title: string;
+  subtitle?: string | null;
   rejection_reason: string | null;
   submitted_at: string;
   published_at: string | null;
@@ -39,6 +41,7 @@ export type StoryMine = {
 export type StoryPending = {
   id: string;
   title: string;
+  subtitle?: string | null;
   biography: string | null;
   personality: string | null;
   appearance: string | null;

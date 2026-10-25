@@ -11,6 +11,7 @@ class CharacterStory(Base):
     character_id = Column(UUID(as_uuid=True), ForeignKey("characters.id", ondelete="CASCADE"), nullable=False)
     author_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title = Column(String(255), nullable=False)
+    subtitle = Column(String(80), nullable=True)
     slug = Column(String(255), unique=True, index=True, nullable=True)
     cover_url = Column(String(1000), nullable=True)
     biography = Column(Text, nullable=True)

@@ -50,10 +50,15 @@ class StoryReject(BaseModel):
     reason: str | None = None
 
 
+class StorySubtitleIn(BaseModel):
+    subtitle: str | None = None
+
+
 class StoryPublic(BaseModel):
     id: UUID
     slug: str | None = None
     title: str
+    subtitle: str | None = None
     status: str
     biography: str | None
     personality: str | None
@@ -78,6 +83,7 @@ class StoryMine(BaseModel):
     slug: str | None = None
     status: str
     title: str
+    subtitle: str | None = None
     rejection_reason: str | None = None
     submitted_at: datetime
     published_at: datetime | None = None
@@ -91,6 +97,7 @@ class StoryMine(BaseModel):
 class StoryPending(BaseModel):
     id: UUID
     title: str
+    subtitle: str | None = None
     biography: str | None
     personality: str | None
     appearance: str | None

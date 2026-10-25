@@ -2,9 +2,12 @@
 
 import { useContext, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { ParchmentScrollContext } from "@/app/components/ui/parchment-scroll";
+import { fitToOneLine } from "@/lib/fit-line";
 
 export default function Parchment({
   title,
+  subtitle,
+  fitTitle = false,
   titleFont = "quest",
   author,
   actions,
@@ -13,6 +16,9 @@ export default function Parchment({
   children,
 }: {
   title?: string;
+  subtitle?: string | null;
+  /** Encoge el título para que quepa en una sola línea. Las fichas siguen partiendo línea. */
+  fitTitle?: boolean;
   titleFont?: "quest" | "display";
   author?: string;
   actions?: ReactNode;
@@ -53,8 +59,34 @@ export default function Parchment({
     };
   }, [onScrollProgress]);
 
+  useLayoutEffect(() => {
+    const heading = titleRef.current;
+    if (!heading || !fitTitle) return;
+
+    let frame = 0;
+    const fit = () => {
+      if (heading.clientWidth < 8) return;
+      const max = Number.parseFloat(getComputedStyle(heading).getPropertyValue("--title-max")) || 32;
+      const min = Number.parseFloat(getComputedStyle(heading).getPropertyValue("--title-min")) || 12;
+      fitToOneLine(heading, max, min);
+    };
+    const schedule = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(fit);
+    };
+
+    fit();
+    const observer = new ResizeObserver(schedule);
+    observer.observe(heading);
+    void document.fonts?.ready.then(schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
+  }, [title, fitTitle]);
+
   // La cabecera es absoluta y el desvanecido del cuerpo se calcula para un título de una línea:
-  // si el título se parte en varias, publicamos la altura extra para que el texto no pise la línea.
+  // si el título se parte en varias, o hay subtítulo, publicamos la altura extra para que el texto no pise la línea.
   useLayoutEffect(() => {
     const sheet = rootRef.current;
     const heading = titleRef.current;
@@ -70,18 +102,29 @@ export default function Parchment({
       heading.parentElement?.appendChild(probe);
       const oneLine = probe.offsetHeight;
       probe.remove();
-      sheet.style.setProperty("--title-extra", `${Math.max(0, heading.offsetHeight - oneLine)}px`);
+      let extra = Math.max(0, heading.offsetHeight - oneLine);
+      const sub = heading.parentElement?.querySelector(".quest-parchment-subtitle");
+      if (sub instanceof HTMLElement) {
+        const style = getComputedStyle(sub);
+        extra +=
+          sub.offsetHeight +
+          (Number.parseFloat(style.marginTop) || 0) +
+          (Number.parseFloat(style.marginBottom) || 0);
+      }
+      sheet.style.setProperty("--title-extra", `${extra}px`);
     };
 
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(heading);
+    const sub = heading.parentElement?.querySelector(".quest-parchment-subtitle");
+    if (sub) observer.observe(sub);
     void document.fonts?.ready.then(measure);
     return () => {
       cancelled = true;
       observer.disconnect();
     };
-  }, [title, titleFont]);
+  }, [title, subtitle, titleFont, fitTitle]);
 
   useLayoutEffect(() => {
     const root = bodyRef.current;
@@ -143,9 +186,10 @@ export default function Parchment({
         />
       </div>
       <header
-        className={`quest-parchment-head${titleFont === "display" ? " quest-parchment-head-display" : ""}`}
+        className={`quest-parchment-head${titleFont === "display" ? " quest-parchment-head-display" : ""}${fitTitle ? " quest-parchment-head-fit" : ""}`}
       >
         {title ? <h2 ref={titleRef}>{title}</h2> : null}
+        {subtitle ? <p className="quest-parchment-subtitle">{subtitle}</p> : null}
         <div className="quest-parchment-rule" />
       </header>
       <div ref={bodyRef} className="quest-parchment-body scrollbar-none" lang="es">
