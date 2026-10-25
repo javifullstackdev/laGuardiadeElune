@@ -5,6 +5,7 @@ import FadeUp from "./components/FadeUp";
 import { HERO_SLIDES, type HeroSlide } from "@/lib/hero";
 import { getCategoryStyle, postSubtitle, formatDate, postHref} from "@/lib/posts";
 import { boardToPost, type CraftBoardCard } from "@/lib/craft-board";
+import { mythicToPost, type MythicRun } from "@/lib/mythic-board";
 import StoryTile from "./components/StoryTile";
 import WikiTile from "./components/WikiTile";
 import type { StoryPublic } from "@/lib/stories";
@@ -22,16 +23,18 @@ type Post = {
 };
 
 export default async function Home() {
-  const [postsRes, storiesRes, wikiRes, heroRes, boardRes] = await Promise.all([
+  const [postsRes, storiesRes, wikiRes, heroRes, boardRes, mythicRes] = await Promise.all([
     fetch(apiUrl("/posts/"), { cache: "no-store" }),
     fetch(apiUrl("/stories/"), { cache: "no-store" }),
     fetch(apiUrl("/wiki/"), { cache: "no-store" }),
     fetch(apiUrl("/hero/"), { cache: "no-store" }),
     fetch(apiUrl("/craft-orders/board"), { cache: "no-store" }),
+    fetch(apiUrl("/points/mythic-plus?limit=1"), { cache: "no-store" }),
   ]);
   const posts: Post[] = postsRes.ok ? await postsRes.json() : [];
   const board: CraftBoardCard[] = boardRes.ok ? await boardRes.json() : [];
-  const tablon = homeTablon(posts, Array.isArray(board) ? board : []);
+  const mythics: MythicRun[] = mythicRes.ok ? await mythicRes.json() : [];
+  const tablon = homeTablon(posts, Array.isArray(board) ? board : [], Array.isArray(mythics) ? mythics : []);
   const stories: StoryPublic[] = storiesRes.ok ? await storiesRes.json() : [];
   const wiki: WikiListItem[] = wikiRes.ok ? await wikiRes.json() : [];
   const heroSlides: HeroSlide[] = heroRes.ok ? await heroRes.json() : [];
@@ -138,35 +141,20 @@ export default async function Home() {
   );
 }
 
-function homeTablon(posts: Post[], orders: CraftBoardCard[]) {
-  const pedido = orders[0]
-    ? { post: boardToPost(orders[0]), href: "/pedidos" as const }
-    : null;
-  const slots = pedido ? 3 : 4;
-  const sorted = [...posts].sort(
-    (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
-  );
-  const picked: Post[] = [];
-  const seen = new Set<string>();
-  for (const post of sorted) {
-    const key = (post.category ?? "").trim().toLowerCase() || `__${post.id}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    picked.push(post);
-    if (picked.length === slots) break;
-  }
-  if (picked.length < slots) {
-    for (const post of sorted) {
-      if (picked.some((item) => item.id === post.id)) continue;
-      picked.push(post);
-      if (picked.length === slots) break;
-    }
-  }
-  picked.sort(
-    (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
-  );
-  const row = picked.map((post) => ({ post, href: undefined as string | undefined }));
-  if (pedido) row.push(pedido);
+function latestOf(posts: Post[], category: string): Post | null {
+  return posts
+    .filter((post) => (post.category ?? "").toLowerCase() === category)
+    .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())[0] ?? null;
+}
+
+function homeTablon(posts: Post[], orders: CraftBoardCard[], runs: MythicRun[]) {
+  const row: { post: Post; href?: string }[] = [];
+  const noticia = latestOf(posts, "noticias");
+  const guia = latestOf(posts, "guias");
+  if (noticia) row.push({ post: noticia });
+  if (guia) row.push({ post: guia });
+  if (runs[0]) row.push({ post: mythicToPost(runs[0]), href: "/posts?category=miticas" });
+  if (orders[0]) row.push({ post: boardToPost(orders[0]), href: "/pedidos" });
   return row;
 }
 
