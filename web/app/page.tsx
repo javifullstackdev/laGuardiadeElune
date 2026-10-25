@@ -141,20 +141,39 @@ export default async function Home() {
   );
 }
 
+function byNewest(posts: Post[]): Post[] {
+  return [...posts].sort(
+    (a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime(),
+  );
+}
+
 function latestOf(posts: Post[], category: string): Post | null {
-  return posts
-    .filter((post) => (post.category ?? "").toLowerCase() === category)
-    .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())[0] ?? null;
+  return byNewest(posts.filter((post) => (post.category ?? "").toLowerCase() === category))[0] ?? null;
 }
 
 function homeTablon(posts: Post[], orders: CraftBoardCard[], runs: MythicRun[]) {
   const row: { post: Post; href?: string }[] = [];
+  const used = new Set<string>();
   const noticia = latestOf(posts, "noticias");
   const guia = latestOf(posts, "guias");
-  if (noticia) row.push({ post: noticia });
-  if (guia) row.push({ post: guia });
+  if (noticia) {
+    row.push({ post: noticia });
+    used.add(noticia.id);
+  }
+  if (guia) {
+    row.push({ post: guia });
+    used.add(guia.id);
+  }
   if (runs[0]) row.push({ post: mythicToPost(runs[0]), href: "/posts?category=miticas" });
-  if (orders[0]) row.push({ post: boardToPost(orders[0]), href: "/pedidos" });
+  if (orders[0]) {
+    row.push({ post: boardToPost(orders[0]), href: "/pedidos" });
+    return row;
+  }
+  const spare = byNewest(posts.filter((post) => !used.has(post.id)));
+  for (const post of spare) {
+    if (row.length >= 4) break;
+    row.push({ post });
+  }
   return row;
 }
 

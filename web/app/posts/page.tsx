@@ -5,7 +5,7 @@ import PostTile from "../components/PostTile";
 import MythicRunCard from "../components/MythicRunCard";
 import { CATEGORIES, getCategoryStyle, type Post } from "@/lib/posts";
 import { boardToPost, type CraftBoardCard } from "@/lib/craft-board";
-import type { MythicRun } from "@/lib/mythic-board";
+import { mythicToPost, type MythicRun } from "@/lib/mythic-board";
 
 import { apiUrl } from "@/lib/api";
 
@@ -21,11 +21,14 @@ export default async function PostsPage({
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category } = await searchParams;
-  const showRuns = category === "miticas";
+  const showRunCards = category === "miticas";
+  const showRunTiles = !category;
   const [res, boardRes, mythicRes] = await Promise.all([
     fetch(apiUrl("/posts/"), { cache: "no-store" }),
     fetch(apiUrl("/craft-orders/board"), { cache: "no-store" }),
-    showRuns ? fetch(apiUrl("/points/mythic-plus"), { cache: "no-store" }) : Promise.resolve(null),
+    showRunCards || showRunTiles
+      ? fetch(apiUrl("/points/mythic-plus"), { cache: "no-store" })
+      : Promise.resolve(null),
   ]);
   const posts: Post[] = res.ok ? await res.json() : [];
   const board: CraftBoardCard[] = boardRes.ok ? await boardRes.json() : [];
@@ -36,11 +39,20 @@ export default async function PostsPage({
     : category
       ? posts.filter((p) => p.category?.toLowerCase() === category.toLowerCase())
       : posts;
-  const cards = [
-    ...orders.map((card) => ({ post: boardToPost(card), href: "/pedidos" as const })),
-    ...filtered.map((post) => ({ post, href: undefined })),
-  ];
   const mythicRuns = Array.isArray(runs) ? runs : [];
+  const cards = [
+    ...orders.map((card) => {
+      const post = boardToPost(card);
+      return { post, href: "/pedidos" as string | undefined, at: post.published_at };
+    }),
+    ...(showRunTiles
+      ? mythicRuns.map((run) => {
+          const post = mythicToPost(run);
+          return { post, href: "/posts?category=miticas" as string | undefined, at: post.published_at };
+        })
+      : []),
+    ...filtered.map((post) => ({ post, href: undefined as string | undefined, at: post.published_at })),
+  ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
   const active = category ? getCategoryStyle(category) : null;
 
   return (
@@ -85,7 +97,7 @@ export default async function PostsPage({
           ))}
         </div>
 
-        {mythicRuns.length > 0 && (
+        {showRunCards && mythicRuns.length > 0 && (
           <ul className="space-y-4 mb-8">
             {mythicRuns.map((run) => (
               <li key={run.id}>
@@ -95,7 +107,7 @@ export default async function PostsPage({
           </ul>
         )}
 
-        {cards.length === 0 && mythicRuns.length === 0 ? (
+        {cards.length === 0 && !(showRunCards && mythicRuns.length > 0) ? (
           <p className="text-gray-500 py-16 text-center">
             {category === "miticas"
               ? "Aún no hay míticas publicadas."
@@ -104,7 +116,7 @@ export default async function PostsPage({
         ) : cards.length > 0 ? (
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {cards.map((card) => (
-              <li key={card.post.id}>
+              <li key={`${card.href ?? "post"}-${card.post.id}`}>
                 <PostTile post={card.post} href={card.href} />
               </li>
             ))}
