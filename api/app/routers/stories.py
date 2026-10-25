@@ -407,6 +407,43 @@ def _reassign_published(db: Session, char: Character, removed_id) -> None:
     char.published_story_id = None
 
 
+@router.post("/{story_id}/cover")
+async def replace_story_cover(
+    story_id: str,
+    cover: UploadFile = File(...),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Cambia la portada de una historia ya publicada."""
+    row = (
+        db.query(CharacterStory, Character, User)
+        .join(Character, Character.id == CharacterStory.character_id)
+        .join(User, User.id == CharacterStory.author_id)
+        .filter(CharacterStory.id == story_id)
+        .first()
+    )
+    if not row:
+        raise HTTPException(404, "Historia no encontrada")
+    story, char, author = row
+    if story.status != "approved":
+        raise HTTPException(409, "Solo se puede cambiar la imagen de una historia publicada")
+    if not cover.filename:
+        raise HTTPException(400, "Falta la imagen")
+    new_path = await _save_cover(story.id, cover)
+    _remove_cover_file(story)
+    story.cover_url = new_path
+    notify(
+        db,
+        user_id=author.id,
+        kind="eremita_story",
+        title="El Eremita ha actualizado tu historia",
+        body=f"La imagen de «{story.title}» ya es la nueva.",
+        href=f"/lore/{quote(story.slug or str(story.id), safe='')}",
+    )
+    db.commit()
+    return {"cover_url": _cover_url(story, char)}
+
+
 @router.delete("/{story_id}", status_code=204)
 def delete_story(
     story_id: str,

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import StoryReviewPanel from "./StoryReviewPanel";
+import StoryCoverButton from "./StoryCoverButton";
 import StoryDeleteButton from "./StoryDeleteButton";
 import type { StoryPending, StoryPublic } from "@/lib/stories";
 import { storyHref } from "@/lib/stories";
@@ -53,7 +54,7 @@ export default async function AdminStoriesPage() {
         <section>
           <h2 className="text-lg font-semibold mb-1">Publicadas</h2>
           <p className="text-sm text-gray-500 mb-5">
-            Solo el Eremita o un administrador puede eliminar una historia publicada.
+            Puedes cambiar la imagen de una historia ya publicada. Solo el Eremita o un administrador puede eliminarla.
           </p>
           {publishedStories.length === 0 ? (
             <p className="text-gray-500">No hay historias publicadas.</p>
@@ -79,6 +80,7 @@ export default async function AdminStoriesPage() {
                       {story.published_at ? ` · ${formatDate(story.published_at)}` : ""}
                     </p>
                   </div>
+                  <StoryCoverButton storyId={story.id} coverUrl={story.cover_url} />
                   <StoryDeleteButton storyId={story.id} />
                 </li>
               ))}
