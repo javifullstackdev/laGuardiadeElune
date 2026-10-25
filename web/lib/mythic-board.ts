@@ -1,5 +1,7 @@
 import type { Post } from "@/lib/posts";
 
+export type MythicRole = "tank" | "healer" | "dps";
+
 export type MythicPlayer = {
   character_name: string | null;
   character_realm: string | null;
@@ -7,6 +9,9 @@ export type MythicPlayer = {
   points: number;
   amount: number;
   weekly_capped: boolean;
+  role?: MythicRole | null;
+  spec?: string | null;
+  profile_path?: string | null;
 };
 
 export type MythicRun = {
@@ -19,6 +24,10 @@ export type MythicRun = {
   guild_characters: string[];
   players: MythicPlayer[];
 };
+
+export function mythicHref(id: string): string {
+  return `/posts/miticas/${id}`;
+}
 
 export function mythicToPost(run: MythicRun): Post {
   const level = run.mythic_level != null ? `+${run.mythic_level}` : "";

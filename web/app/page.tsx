@@ -5,7 +5,7 @@ import FadeUp from "./components/FadeUp";
 import { HERO_SLIDES, type HeroSlide } from "@/lib/hero";
 import { getCategoryStyle, postSubtitle, formatDate, postHref} from "@/lib/posts";
 import { boardToPost, type CraftBoardCard } from "@/lib/craft-board";
-import { mythicToPost, type MythicRun } from "@/lib/mythic-board";
+import { mythicHref, mythicToPost, type MythicRun } from "@/lib/mythic-board";
 import StoryTile from "./components/StoryTile";
 import WikiTile from "./components/WikiTile";
 import type { StoryPublic } from "@/lib/stories";
@@ -164,7 +164,7 @@ function homeTablon(posts: Post[], orders: CraftBoardCard[], runs: MythicRun[]) 
     row.push({ post: guia });
     used.add(guia.id);
   }
-  if (runs[0]) row.push({ post: mythicToPost(runs[0]), href: "/posts?category=miticas" });
+  if (runs[0]) row.push({ post: mythicToPost(runs[0]), href: mythicHref(runs[0].id) });
   if (orders[0]) {
     row.push({ post: boardToPost(orders[0]), href: "/pedidos" });
     return row;

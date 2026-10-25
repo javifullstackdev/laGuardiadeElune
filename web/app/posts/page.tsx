@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import PostTile from "../components/PostTile";
-import MythicRunCard from "../components/MythicRunCard";
 import { CATEGORIES, getCategoryStyle, type Post } from "@/lib/posts";
 import { boardToPost, type CraftBoardCard } from "@/lib/craft-board";
-import { mythicToPost, type MythicRun } from "@/lib/mythic-board";
+import { mythicHref, mythicToPost, type MythicRun } from "@/lib/mythic-board";
 
 import { apiUrl } from "@/lib/api";
 
@@ -21,12 +20,11 @@ export default async function PostsPage({
   searchParams: Promise<{ category?: string }>;
 }) {
   const { category } = await searchParams;
-  const showRunCards = category === "miticas";
-  const showRunTiles = !category;
+  const showMythicTiles = !category || category === "miticas";
   const [res, boardRes, mythicRes] = await Promise.all([
     fetch(apiUrl("/posts/"), { cache: "no-store" }),
     fetch(apiUrl("/craft-orders/board"), { cache: "no-store" }),
-    showRunCards || showRunTiles
+    showMythicTiles
       ? fetch(apiUrl("/points/mythic-plus"), { cache: "no-store" })
       : Promise.resolve(null),
   ]);
@@ -45,10 +43,10 @@ export default async function PostsPage({
       const post = boardToPost(card);
       return { post, href: "/pedidos" as string | undefined, at: post.published_at };
     }),
-    ...(showRunTiles
+    ...(showMythicTiles
       ? mythicRuns.map((run) => {
           const post = mythicToPost(run);
-          return { post, href: "/posts?category=miticas" as string | undefined, at: post.published_at };
+          return { post, href: mythicHref(run.id), at: post.published_at };
         })
       : []),
     ...filtered.map((post) => ({ post, href: undefined as string | undefined, at: post.published_at })),
@@ -97,23 +95,13 @@ export default async function PostsPage({
           ))}
         </div>
 
-        {showRunCards && mythicRuns.length > 0 && (
-          <ul className="space-y-4 mb-8">
-            {mythicRuns.map((run) => (
-              <li key={run.id}>
-                <MythicRunCard run={run} />
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {cards.length === 0 && !(showRunCards && mythicRuns.length > 0) ? (
+        {cards.length === 0 ? (
           <p className="text-gray-500 py-16 text-center">
             {category === "miticas"
               ? "Aún no hay míticas publicadas."
               : "Aún no hay publicaciones en esta sección."}
           </p>
-        ) : cards.length > 0 ? (
+        ) : (
           <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {cards.map((card) => (
               <li key={`${card.href ?? "post"}-${card.post.id}`}>
@@ -121,7 +109,7 @@ export default async function PostsPage({
               </li>
             ))}
           </ul>
-        ) : null}
+        )}
       </div>
     </main>
   );
