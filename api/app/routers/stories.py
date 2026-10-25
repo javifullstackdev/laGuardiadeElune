@@ -13,7 +13,7 @@ from app.models.user import User
 from app.models.character import Character
 from app.models.character_story import CharacterStory, ContentLike
 from app.schemas.story import (
-    StoryMentionIn, StoryReject, StoryApprove, StoryPublic, StoryMine, StoryPending, StorySubtitleIn,
+    StoryMentionIn, StoryReject, StoryApprove, StoryPublic, StoryMine, StoryPending, StoryHeadingIn,
 )
 from app.services.claims import (
     awaiting_relations, claims_out, replace_claims,
@@ -389,6 +389,15 @@ def reject_story(
     )
 
 
+def _clean_title(value: str | None) -> str:
+    text = " ".join((value or "").split())
+    if not text:
+        raise HTTPException(400, "El título no puede estar vacío")
+    if len(text) > 255:
+        raise HTTPException(400, "El título no puede superar 255 caracteres")
+    return text
+
+
 def _clean_subtitle(value: str | None) -> str | None:
     text = " ".join((value or "").split())
     if not text:
@@ -460,22 +469,40 @@ async def replace_story_cover(
     return {"cover_url": _cover_url(story, char)}
 
 
-@router.post("/{story_id}/subtitle")
-def set_story_subtitle(
+@router.post("/{story_id}/heading")
+def set_story_heading(
     story_id: str,
-    body: StorySubtitleIn,
+    body: StoryHeadingIn,
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """Cambia el subtítulo de una historia ya publicada."""
-    story = db.query(CharacterStory).filter(CharacterStory.id == story_id).first()
-    if not story:
+    """Cambia el título y el subtítulo de una historia ya publicada. El enlace no cambia."""
+    row = (
+        db.query(CharacterStory, User)
+        .join(User, User.id == CharacterStory.author_id)
+        .filter(CharacterStory.id == story_id)
+        .first()
+    )
+    if not row:
         raise HTTPException(404, "Historia no encontrada")
+    story, author = row
     if story.status != "approved":
-        raise HTTPException(409, "Solo se puede cambiar el subtítulo de una historia publicada")
+        raise HTTPException(409, "Solo se puede cambiar el título de una historia publicada")
+    new_title = _clean_title(body.title)
+    title_changed = new_title != story.title
+    story.title = new_title
     story.subtitle = _clean_subtitle(body.subtitle)
+    if title_changed:
+        notify(
+            db,
+            user_id=author.id,
+            kind="eremita_story",
+            title="El Eremita ha actualizado tu historia",
+            body=f"El título ahora es «{story.title}».",
+            href=f"/lore/{quote(story.slug or str(story.id), safe='')}",
+        )
     db.commit()
-    return {"subtitle": story.subtitle}
+    return {"title": story.title, "subtitle": story.subtitle}
 
 
 @router.delete("/{story_id}", status_code=204)
