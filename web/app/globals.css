@@ -495,6 +495,18 @@ html[data-elune-intro="playing"] nav {
   }
 }
 
+@media (min-width: 1440px) {
+  .story-prose {
+    font-size: 1.45rem;
+    line-height: 2.12;
+    letter-spacing: 0.012em;
+  }
+
+  .story-prose p {
+    margin-bottom: 1.9em;
+  }
+}
+
 .story-read-text {
   font-family: var(--font-story);
 }
@@ -562,7 +574,7 @@ html[data-elune-intro="playing"] nav {
   background: inherit;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1440px) {
   .story-scene[data-mode="comfort"][data-settled="true"] .story-chrome {
     background: linear-gradient(
       to right,
@@ -820,8 +832,10 @@ html[data-elune-intro="playing"] nav {
     font-size: 1.08rem;
     line-height: 1.95;
   }
+}
 
-  /* Ficha móvil: pergamino centrado, laterales fuera, tope bajo la navbar */
+/* Pergamino a pantalla completa en móvil y tablet, incluido iPad Pro 13 (1376px) */
+@media (max-width: 1439px) {
   .wiki-mobile-lore .quest-parchment {
     --parch-w: 178vw;
     /* Texto centrado en el viewport: overhang + margen de lectura */
@@ -909,6 +923,29 @@ html[data-elune-intro="playing"] nav {
 
   .wiki-mobile-lore .quest-parchment-body section+section {
     margin-top: 3rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1439px) {
+  .wiki-mobile-lore .quest-parchment {
+    --chrome-side: calc((var(--parch-w) - 100vw) / 2 + 3.5rem);
+  }
+
+  .wiki-mobile-lore .quest-parchment-head h2 {
+    font-size: 1.75rem;
+  }
+
+  .wiki-mobile-lore .quest-parchment-head-fit h2 {
+    --title-max: 30;
+  }
+
+  .wiki-mobile-lore .quest-parchment-body p {
+    font-size: 1.28rem;
+    line-height: 2.05;
+  }
+
+  .wiki-mobile-lore .quest-parchment-body h2 {
+    font-size: 1.35rem;
   }
 }
 

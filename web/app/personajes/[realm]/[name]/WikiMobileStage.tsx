@@ -81,15 +81,15 @@ function SlideHeading({
       }}
     >
       {prefixTitle ? (
-        <span className="block font-quest text-[1.15rem] font-semibold tracking-wide opacity-90">
+        <span className="block font-quest text-[1.15rem] md:text-[1.4rem] font-semibold tracking-wide opacity-90">
           {prefixTitle}
         </span>
       ) : null}
-      <span className="mt-1 block font-quest-display text-[2rem] font-bold leading-tight tracking-wide">
+      <span className="mt-1 block font-quest-display text-[2rem] md:text-[2.75rem] font-bold leading-tight tracking-wide">
         {displayName}
       </span>
       {title ? (
-        <span className="mt-1.5 block font-quest text-[1.2rem] font-semibold leading-snug tracking-wide text-[#e4ddd0]">
+        <span className="mt-1.5 block font-quest text-[1.2rem] md:text-[1.5rem] font-semibold leading-snug tracking-wide text-[#e4ddd0]">
           {title}
         </span>
       ) : null}
@@ -478,7 +478,7 @@ export default function WikiMobileStage({
     <section
       ref={stageRef}
       id="wiki-cover"
-      className="sm:hidden relative h-[calc(100dvh-3rem)] overflow-hidden touch-pan-y"
+      className="min-[1440px]:hidden relative h-[calc(100dvh-3rem)] overflow-hidden touch-pan-y"
     >
       <div
         className="flex h-full"
@@ -498,7 +498,7 @@ export default function WikiMobileStage({
             <CoverArt url={slide.coverUrl} label={slide.displayName} />
 
             <div
-              className={`absolute top-14 inset-x-0 bottom-0 z-20 flex flex-col justify-end px-4 pb-7 transition-opacity duration-300 ${
+              className={`absolute top-14 inset-x-0 bottom-0 z-20 flex flex-col justify-end px-4 md:px-8 pb-7 md:pb-10 transition-opacity duration-300 ${
                 loreOpen && slide.current
                   ? "opacity-0 pointer-events-none"
                   : "opacity-100"

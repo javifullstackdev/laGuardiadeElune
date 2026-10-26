@@ -142,8 +142,8 @@ export function PanningCover({
         }}
         draggable={false}
       />
-      <div className="absolute inset-0 sm:hidden" style={{ background: STORY_FADE_MOBILE }} />
-      <div className="absolute inset-0 hidden sm:block" style={{ background: STORY_FADE_DESKTOP }} />
+      <div className="absolute inset-0 min-[1440px]:hidden" style={{ background: STORY_FADE_MOBILE }} />
+      <div className="absolute inset-0 hidden min-[1440px]:block" style={{ background: STORY_FADE_DESKTOP }} />
     </div>
   );
 }

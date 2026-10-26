@@ -92,7 +92,7 @@ export default async function PostsPage({
               : "Aún no hay publicaciones en esta sección."}
           </p>
         ) : (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <ul className="grid grid-cols-1 lg:grid-cols-4 gap-3">
             {cards.map((card) => (
               <li key={`${card.href ?? "post"}-${card.post.id}`}>
                 <PostTile post={card.post} href={card.href} />
