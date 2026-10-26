@@ -46,7 +46,7 @@ export default function PersonajesList({ items }: { items: WikiListItem[] }) {
           Ningún personaje coincide con “{query.trim()}”.
         </p>
       ) : (
-        <ul className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <ul className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-3">
           {filtered.map((item) => (
             <li key={`${item.name}-${item.realm}`}>
               <WikiTile item={item} />

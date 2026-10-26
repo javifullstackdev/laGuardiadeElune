@@ -37,15 +37,15 @@ export default async function Home() {
 
   const wikiListClass =
     wikiGrid.length > 1
-      ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:overflow-visible sm:overscroll-auto"
-      : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3";
+      ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain lg:grid lg:grid-cols-4 lg:overflow-visible lg:overscroll-auto"
+      : "grid grid-cols-1 lg:grid-cols-4 gap-3";
   const wikiItemClass =
-    wikiGrid.length > 1 ? "w-[80%] shrink-0 snap-start sm:w-full h-full" : "h-full";
+    wikiGrid.length > 1 ? "w-[80%] shrink-0 snap-start md:w-[min(72%,26rem)] lg:w-full h-full" : "h-full";
 
   return (
     <main className="relative min-h-screen">
       <HomeReveal>
-        <div className="flex flex-col sm:min-h-[calc(100svh-3rem)]">
+        <div className="flex flex-col lg:min-h-[calc(100svh-3rem)]">
           <HomeHero slides={heroSlides.length > 0 ? heroSlides : HERO_SLIDES} />
 
           {tablon.length > 0 && (
@@ -56,14 +56,14 @@ export default async function Home() {
                   Ver todos
                 </Link>
               </div>
-              <ul className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain md:grid md:grid-cols-4 md:overflow-visible md:overscroll-auto">
+              <ul className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain lg:grid lg:grid-cols-4 lg:overflow-visible lg:overscroll-auto">
                 {tablon.map((post) => (
                   <li
                     key={post.id}
                     className={
                       tablon.length > 1
-                        ? "w-[80%] shrink-0 snap-start md:w-auto md:min-w-0"
-                        : "w-full md:w-auto md:min-w-0"
+                        ? "w-[80%] shrink-0 snap-start md:w-[min(72%,26rem)] lg:w-auto lg:min-w-0"
+                        : "w-full lg:w-auto lg:min-w-0"
                     }
                   >
                     <PostTile post={post} />
@@ -109,8 +109,8 @@ export default async function Home() {
             <ul
               className={
                 storyGrid.length > 1
-                  ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain md:grid md:grid-cols-4 md:overflow-visible md:overscroll-auto"
-                  : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+                  ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain lg:grid lg:grid-cols-4 lg:overflow-visible lg:overscroll-auto"
+                  : "grid grid-cols-1 lg:grid-cols-4 gap-3"
               }
             >
               {storyGrid.map((story, i) => (
@@ -118,7 +118,7 @@ export default async function Home() {
                   key={story.id}
                   className={
                     storyGrid.length > 1
-                      ? "w-[80%] shrink-0 snap-start md:w-auto md:min-w-0"
+                      ? "w-[80%] shrink-0 snap-start md:w-[min(72%,26rem)] lg:w-auto lg:min-w-0"
                       : undefined
                   }
                 >

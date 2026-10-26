@@ -343,7 +343,7 @@ export default function StoryReader({
               <PanningCover
                 src={story.cover_url}
                 alt=""
-                className="absolute inset-0 sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[58%]"
+                className="absolute inset-0 min-[1440px]:inset-y-0 min-[1440px]:right-0 min-[1440px]:left-auto min-[1440px]:w-[58%]"
                 opacity={0.55}
                 focusY={0.18}
               />
@@ -352,7 +352,7 @@ export default function StoryReader({
 
           <header
             ref={chromeRef}
-            className="story-chrome pointer-events-none relative z-30 px-4 pt-3 pb-3 sm:pb-4 sm:pt-6 lg:pl-[clamp(25rem,28vw,32rem)] lg:pr-20"
+            className="story-chrome pointer-events-none relative z-30 px-4 pt-3 pb-3 sm:pb-4 sm:pt-6 min-[1440px]:pl-[clamp(25rem,28vw,32rem)] min-[1440px]:pr-20"
           >
             {look !== "comfort" ? <h1 className="sr-only">{story.title}</h1> : null}
             <div className="flex items-start justify-between gap-3 md:gap-4">
@@ -378,7 +378,7 @@ export default function StoryReader({
             : null}
 
           <div className="story-parchment-move">
-              <div className="absolute inset-0 sm:hidden">
+              <div className="absolute inset-0 min-[1440px]:hidden">
                 {hasLore ? (
                   <div className={`wiki-mobile-lore pointer-events-auto absolute inset-0 overflow-hidden ${entranceClass}`}>
                     <StoryParchment story={story} actions={shareActions} isHordeChar={isHordeStory} />
@@ -391,7 +391,7 @@ export default function StoryReader({
                   </div>
                 )}
               </div>
-              <div className="hidden h-full flex-col px-4 sm:flex lg:pl-[clamp(25rem,28vw,32rem)] lg:pr-20">
+              <div className="hidden h-full flex-col px-4 min-[1440px]:flex min-[1440px]:pl-[clamp(25rem,28vw,32rem)] min-[1440px]:pr-20">
                 <div className="shrink-0" style={{ height: "var(--story-chrome, 5.5rem)" }} />
                 {hasLore ? (
                   <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:items-stretch">
@@ -403,8 +403,8 @@ export default function StoryReader({
               </div>
           </div>
 
-          <div ref={comfortRef} className="story-comfort relative z-10 pb-16 lg:pl-[clamp(25rem,28vw,32rem)] lg:pr-20" inert={look !== "comfort"}>
-            <div className="mx-auto w-full max-w-[76rem] px-6 sm:px-8 lg:px-0">
+          <div ref={comfortRef} className="story-comfort relative z-10 pb-16 min-[1440px]:pl-[clamp(25rem,28vw,32rem)] min-[1440px]:pr-20" inert={look !== "comfort"}>
+            <div className="mx-auto w-full max-w-[76rem] px-6 sm:max-[1439px]:px-8 min-[1440px]:px-0">
             <div ref={leadRef} className="story-read-lead bg-[#030712] pb-8">
               <div className="mb-5 flex flex-wrap items-center gap-3">
                 <span className="rounded-full border border-purple-400/30 bg-purple-500/15 px-2 py-0.5 text-xs font-medium text-purple-200">

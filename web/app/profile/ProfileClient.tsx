@@ -640,7 +640,7 @@ function CharacterDetail({
       )}
 
       <header
-        className="relative z-10 shrink-0 px-4 pt-5 pb-3 sm:pr-8 sm:pl-[var(--fact-pad)] sm:pt-[max(2rem,calc(140px+3.75rem))] lg:pt-[max(2rem,calc(220px+7rem))]"
+        className="relative z-10 shrink-0 px-4 pt-5 pb-3 min-[1440px]:pr-8 min-[1440px]:pl-[var(--fact-pad)] min-[1440px]:pt-[max(2rem,calc(220px+7rem))]"
         style={factStyle}
       >
         <div className="flex items-center gap-3">
@@ -679,7 +679,7 @@ function CharacterDetail({
 
       {/* Barra de pestañas fija (solo scroll horizontal) */}
       <div
-        className="relative z-20 shrink-0 px-4 sm:pr-8 sm:pl-[var(--fact-pad)] bg-transparent"
+        className="relative z-20 shrink-0 px-4 min-[1440px]:pr-8 min-[1440px]:pl-[var(--fact-pad)] bg-transparent"
         style={factStyle}
       >
         <div
@@ -719,7 +719,7 @@ function CharacterDetail({
         >
           {tabs.map((t) => {
             const active = t.key === tab;
-            const panelPad = "px-4 sm:pr-8 sm:pl-[var(--fact-pad)]";
+            const panelPad = "px-4 min-[1440px]:pr-8 min-[1440px]:pl-[var(--fact-pad)]";
             return (
               <div
                 key={t.key}

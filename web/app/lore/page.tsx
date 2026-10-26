@@ -36,7 +36,7 @@ export default async function LorePage() {
             Aún no hay historias publicadas.
           </p>
         ) : (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-8">
+          <ul className="grid grid-cols-1 lg:grid-cols-4 gap-3 mt-8">
             {stories.map((story) => (
               <li key={story.id}>
                 <StoryTile story={story} />

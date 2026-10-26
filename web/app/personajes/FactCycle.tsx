@@ -225,7 +225,7 @@ function FactCycleDeck({ facts }: { facts: FactChip[] }) {
 
   return (
     <div className="flex w-full justify-center">
-      <div className="w-[min(24rem,calc(100vw-2.5rem))] shrink-0">
+      <div className="w-[min(24rem,calc(100vw-2.5rem))] md:w-[min(28rem,calc(100vw-4rem))] shrink-0">
         <div ref={rootRef} className="overflow-hidden touch-pan-y">
           <div
             className={`flex ${dragging ? "" : "transition-transform duration-300 ease-out motion-reduce:transition-none"}`}

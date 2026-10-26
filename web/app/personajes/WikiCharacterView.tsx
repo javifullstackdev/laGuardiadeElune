@@ -149,7 +149,7 @@ export default function WikiCharacterView({
     <div className="relative text-white">
       {char.cover_url && (
         <div
-          className="fixed inset-y-0 -right-48 w-[58%] pointer-events-none select-none hidden sm:block"
+          className="fixed inset-y-0 -right-48 w-[58%] pointer-events-none select-none hidden min-[1440px]:block"
           style={{ zIndex: 0 }}
           aria-hidden
         >
@@ -186,11 +186,11 @@ export default function WikiCharacterView({
         {lore}
       </WikiMobileStage>
 
-      <div className="relative z-10 hidden sm:block h-[calc(100dvh-3rem)] overflow-hidden">
+      <div className="relative z-10 hidden min-[1440px]:block h-[calc(100dvh-3rem)] overflow-hidden">
         <div className="h-full flex flex-col px-4 pt-6 lg:pl-[clamp(25rem,28vw,32rem)] lg:pr-20">
           <Breadcrumb className="mb-4 shrink-0" items={crumbs} onBack={onDismiss} />
 
-          <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:items-stretch gap-5 lg:gap-2]">
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:items-stretch gap-5 lg:gap-2">
             {hasLore && (
               <div className="min-h-0 shrink-0 lg:self-end animate-parchment-up story-large-parchment">
                 <LoreParchment char={char} actions={shareActions} />
@@ -217,7 +217,7 @@ export default function WikiCharacterView({
             <h2 className="text-xs uppercase tracking-widest text-gray-500 mb-4">
               Aparecen en sus historias
             </h2>
-            <ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <ul className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {char.related.map((rel) => {
                 const inner = (
                   <>

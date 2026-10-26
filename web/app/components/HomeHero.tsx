@@ -185,13 +185,13 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
   const thumbs = slides.slice(0, 4).map((slide, i) => ({ slide, i }));
 
   return (
-    <section className="bg-transparent flex flex-col px-3 sm:px-6 lg:px-8 pt-3 sm:pt-5 lg:pt-6 pb-0">
+    <section className="bg-transparent flex flex-col px-3 md:px-4 lg:px-8 pt-3 md:pt-4 lg:pt-6 pb-0">
       <div className="flex flex-col w-full">
-        {/* Banner: ~50% del viewport en desktop para enseñar contenido debajo */}
+        {/* Banner: en móvil y tablet es una franja; en escritorio ocupa media pantalla */}
         <div
           ref={bannerRef}
           id="home-carousel"
-          className="relative rounded-2xl overflow-hidden h-[220px] sm:h-[50svh] touch-pan-y"
+          className="relative rounded-2xl overflow-hidden h-[220px] md:h-[340px] lg:h-[50svh] touch-pan-y"
         >
           <div
             className="flex h-full"
@@ -214,23 +214,23 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
           </div>
 
           <div className="absolute inset-0 z-[2] bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
-          <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/70 via-black/15 to-transparent sm:from-black/50 sm:via-transparent sm:to-black/10" />
+          <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/70 via-black/15 to-transparent lg:from-black/50 lg:via-transparent lg:to-black/10" />
 
-          {/* Copy: en móvil solo título + CTA (sin descripción, para ver la imagen) */}
+          {/* Copy: en móvil y tablet solo título + CTA (sin descripción, para ver la imagen) */}
           <Link
             href={current.href || "#tablon"}
-            className="absolute z-[3] inset-y-0 left-0 flex flex-col justify-end sm:justify-center max-w-lg px-5 pb-8 sm:px-12 sm:pb-0 lg:px-16 group/hero-copy"
+            className="absolute z-[3] inset-y-0 left-0 flex flex-col justify-end lg:justify-center max-w-lg px-5 pb-8 md:px-8 md:pb-10 lg:px-16 lg:pb-0 group/hero-copy"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <h1
-              className={`font-quest-display font-bold leading-tight text-white group-hover/hero-copy:text-white/95 text-2xl sm:text-4xl lg:text-[2.6rem] ${
-                current.kind === "story" ? "line-clamp-2 sm:line-clamp-none" : ""
+              className={`font-quest-display font-bold leading-tight text-white group-hover/hero-copy:text-white/95 text-2xl md:text-3xl lg:text-[2.6rem] ${
+                current.kind === "story" ? "line-clamp-2 lg:line-clamp-none" : ""
               }`}
             >
               {current.title}
             </h1>
             {current.subtitle ? (
-              <p className="mt-2 sm:mt-3 text-sm sm:text-base text-gray-200/90 leading-relaxed hidden sm:block">
+              <p className="mt-3 text-base text-gray-200/90 leading-relaxed hidden lg:block">
                 {current.subtitle}
               </p>
             ) : null}
@@ -247,7 +247,7 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                 onClick={() => go(-1)}
                 onPointerDown={(e) => e.stopPropagation()}
                 aria-label="Anterior"
-                className="hidden sm:flex absolute z-[4] left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md bg-black/35 hover:bg-black/55 text-white items-center justify-center backdrop-blur-sm"
+                className="hidden lg:flex absolute z-[4] left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md bg-black/35 hover:bg-black/55 text-white items-center justify-center backdrop-blur-sm"
               >
                 <ChevronLeft />
               </button>
@@ -256,7 +256,7 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                 onClick={() => go(1)}
                 onPointerDown={(e) => e.stopPropagation()}
                 aria-label="Siguiente"
-                className="hidden sm:flex absolute z-[4] right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md bg-black/35 hover:bg-black/55 text-white items-center justify-center backdrop-blur-sm"
+                className="hidden lg:flex absolute z-[4] right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-md bg-black/35 hover:bg-black/55 text-white items-center justify-center backdrop-blur-sm"
               >
                 <ChevronRight />
               </button>
@@ -268,13 +268,13 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
             onClick={() => setPaused((v) => !v)}
             onPointerDown={(e) => e.stopPropagation()}
             aria-label={paused ? "Reanudar carrusel" : "Pausar carrusel"}
-            className="hidden sm:flex absolute z-[4] left-4 bottom-4 w-9 h-9 rounded-md bg-black/45 hover:bg-black/65 text-white items-center justify-center backdrop-blur-sm"
+            className="hidden lg:flex absolute z-[4] left-4 bottom-4 w-9 h-9 rounded-md bg-black/45 hover:bg-black/65 text-white items-center justify-center backdrop-blur-sm"
           >
             {paused ? <IconPlay /> : <IconPause />}
           </button>
 
           {slides.length > 1 && (
-            <div className="sm:hidden absolute z-[4] inset-x-0 bottom-3 flex justify-center gap-1.5">
+            <div className="lg:hidden absolute z-[4] inset-x-0 bottom-3 flex justify-center gap-1.5">
               {slides.map((slide, i) => (
                 <button
                   key={slide.id ?? `${slide.src}-${i}`}
@@ -289,7 +289,7 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
           )}
         </div>
 
-        <div className="relative z-[5] -mt-7 sm:-mt-9 mb-1 sm:mb-2 px-4 sm:px-16 lg:px-24 hidden sm:block shrink-0">
+        <div className="relative z-[5] -mt-7 lg:-mt-9 mb-1 lg:mb-2 px-4 lg:px-24 hidden lg:block shrink-0">
           {/* ~2/3 del ancho del carrusel (antes 50%; un poco más grandes) */}
           <div className="w-2/3 max-w-full mx-auto">
             <div

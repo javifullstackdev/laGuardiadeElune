@@ -7,6 +7,8 @@ import { useLogoChrome } from "./logo-chrome";
 
 const MAX = 460;
 const GUTTER = 16;
+/** El sello de fondo solo existe en escritorio ancho. El iPad Pro 13 (1032 / 1376) se queda con el wordmark de la navbar. */
+const DESKTOP_MIN = 1440;
 const DEFAULT_BOX = {
   mobile: false,
   size: MAX,
@@ -14,8 +16,7 @@ const DEFAULT_BOX = {
 };
 
 export function getWatermarkBox(innerWidth: number, innerHeight = 800) {
-  const mobile = innerWidth < 640;
-  // Móvil: cabe bajo la nav (3rem) con margen y deja hueco al carrusel (~220px).
+  const mobile = innerWidth < DESKTOP_MIN;
   const size = mobile
     ? Math.round(Math.min(innerWidth * 0.72, innerHeight * 0.32, 280))
     : Math.min(MAX, innerWidth - GUTTER * 2);
@@ -132,17 +133,7 @@ export default function HomeLogo() {
       const logoEl = asideRef.current;
 
       if (mobile) {
-        if (!onHome) {
-          // Historias, ranking, etc.: sin watermark; wordmark en la navbar.
-          setCovered(true);
-          return;
-        }
-        const banner = document.getElementById("home-carousel");
-        if (!banner) {
-          setCovered(false);
-          return;
-        }
-        setCovered(banner.getBoundingClientRect().top < window.innerHeight * 0.48);
+        setCovered(true);
         return;
       }
 
@@ -204,9 +195,9 @@ export default function HomeLogo() {
   }, [mobile, onHome, onProfile, left, size, ready, mounted, pathname]);
 
   useEffect(() => {
-    // Wordmark en nav solo cuando el watermark de fondo está listo pero oculto por solape
-    setWatermarkHidden(ready && covered);
-  }, [covered, ready, setWatermarkHidden]);
+    // En móvil y tablet el wordmark de la navbar es el único logo.
+    setWatermarkHidden(mobile || (ready && covered));
+  }, [mobile, covered, ready, setWatermarkHidden]);
 
   const visible = ready && !covered;
 
@@ -214,7 +205,7 @@ export default function HomeLogo() {
     <aside
       ref={asideRef}
       aria-hidden
-      className="pointer-events-none fixed z-0 left-1/2 -translate-x-1/2 top-[calc(3rem+0.5rem)] translate-y-0 sm:left-[var(--wm-left)] sm:translate-x-0 sm:top-[calc(6rem+140px)] sm:-translate-y-1/2 lg:top-[calc(8rem+220px)]"
+      className="pointer-events-none fixed z-0 hidden min-[1440px]:block left-[var(--wm-left)] top-[calc(8rem+220px)] -translate-y-1/2"
       style={{ ["--wm-left" as string]: `${left}px` }}
     >
       <div
