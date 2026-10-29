@@ -4,8 +4,8 @@ import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWatermarkBox } from "../components/HomeLogo";
-import PathPicker from "../onboarding/PathPicker";
 import PublishStoryPanel from "./PublishStoryPanel";
+import ProfileHome from "./ProfileHome";
 import FichaPreview from "./FichaPreview";
 import ClaimsInbox from "./ClaimsInbox";
 import Mailbox from "./Mailbox";
@@ -16,6 +16,7 @@ import { getEntitlements } from "@/lib/entitlements";
 import { classLabel, raceLabel, factionLabel, factionColor, classColor, realmLabel, genderLabel } from "@/lib/wow";
 
 import { publicApiUrl } from "@/lib/api";
+import type { Mission } from "@/lib/missions";
 import {
   BUCKET_LABEL, CATEGORY_LABEL, PATH_LABEL,
   type Bucket, type CapStatus, type Season, type Transaction,
@@ -88,6 +89,7 @@ type PointsSummary = {
   season: Season | null;
   path: string | null;
   points_cap: CapStatus | null;
+  hybrid_resplit_pending?: boolean;
 };
 
 type RelationData = {
@@ -149,31 +151,35 @@ export default function ProfileClient({
   user,
   characters: initialChars,
   transactions,
+  missions,
   bnetTokenExpired = false,
 }: {
   user: User;
   characters: Character[];
   transactions: Transaction[];
+  missions: Mission[];
   bnetTokenExpired?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [characters, setCharacters] = useState<Character[]>(initialChars);
-  const [selected, setSelected] = useState<Character | null>(initialChars[0] ?? null);
+  const [selected, setSelected] = useState<Character | null>(null);
+  const [startTab, setStartTab] = useState<"bio" | "stories">("bio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     setCharacters(initialChars);
     setSelected((prev) => {
-      if (!prev) return initialChars[0] ?? null;
+      if (!prev) return null;
       return initialChars.find((c) =>
         c.name === prev.name && c.realm === prev.realm && (c.game ?? "retail") === (prev.game ?? "retail")
-      ) ?? initialChars[0] ?? null;
+      ) ?? null;
     });
   }, [initialChars]);
 
   function handleSelect(char: Character) {
     const fresh = characters.find((c) => c.name === char.name && c.realm === char.realm) ?? char;
+    setStartTab("bio");
     setSelected(fresh);
     setSidebarOpen(false); // cerrar sidebar en mobile al seleccionar
   }
@@ -314,22 +320,12 @@ export default function ProfileClient({
     };
   }, [sidebarOpen]);
 
-  const mustPickPath = Boolean(
-    user.season && !user.path && characters.some((c) => c.is_main)
-  );
-  if (mustPickPath) {
-    return (
-      <div className="min-h-[calc(100vh-3rem)] flex items-center justify-center px-4 py-16 text-white">
-        <div className="w-full max-w-lg">
-          <h1 className="text-2xl font-bold text-center">Elige tu itinerario</h1>
-          <p className="text-sm text-gray-400 text-center mt-2 mb-6">
-            Ya tienes personaje principal. Para {user.season?.name} hay que elegir itinerario
-            antes de usar el perfil. Solo se puede cambiar cuando empiece la siguiente temporada.
-          </p>
-          <PathPicker currentPath={null} seasonName={user.season?.name ?? ""} />
-        </div>
-      </div>
-    );
+  function openMission(key: string) {
+    const target = characters.find((c) => c.is_main) ?? characters[0];
+    if (!target) return;
+    setStartTab(key === "publish_first_story" ? "stories" : "bio");
+    setSelected(target);
+    setSidebarOpen(false);
   }
 
   return (
@@ -348,6 +344,8 @@ export default function ProfileClient({
         {selected ? (
           <div className="flex-1 min-h-0 overflow-hidden">
             <CharacterDetail
+              key={`${selected.name}-${selected.realm}-${startTab}`}
+              initialTab={startTab}
               char={selected}
               transactions={transactions}
               points={user}
@@ -360,22 +358,14 @@ export default function ProfileClient({
             />
           </div>
         ) : (
-          <div className="flex-1 min-h-0 relative">
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="md:hidden absolute top-4 right-4 z-20 w-11 h-11 rounded-full border-2 border-white/25 bg-gray-800 overflow-hidden shadow-lg"
-              aria-label="Cambiar de personaje"
-            >
-              {user.avatar_url ? (
-                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <span className="flex h-full items-center justify-center text-xs font-bold text-gray-400">
-                  {user.username.slice(0, 2).toUpperCase()}
-                </span>
-              )}
-            </button>
-            <EmptyState hasBnet={user.has_blizzard} />
+          <div className="flex-1 min-h-0">
+            <ProfileHome
+              user={user}
+              missions={missions}
+              hasCharacter={characters.length > 0}
+              onOpenMission={openMission}
+              onOpenCharacters={() => setSidebarOpen(true)}
+            />
           </div>
         )}
       </main>
@@ -456,6 +446,18 @@ export default function ProfileClient({
         <Mailbox>
           <BirthdaySection birthday={user.birthday} isAdmin={user.role === "admin" || user.role === "officer"} />
           <div className="flex-1 overflow-y-auto scrollbar-none p-3">
+            <button
+              type="button"
+              onClick={() => {
+                setSelected(null);
+                setSidebarOpen(false);
+              }}
+              className={`w-full text-left px-3 py-2 mb-2 rounded-lg text-sm font-medium transition-colors ${
+                selected === null ? "bg-gray-700 text-white ring-1 ring-gray-600" : "text-gray-300 hover:bg-gray-800"
+              }`}
+            >
+              Inicio
+            </button>
             {characters.length === 0 ? (
               <p className="text-gray-500 text-sm px-2">Sin personajes</p>
             ) : (
@@ -484,8 +486,9 @@ type DetailTab = "bio" | "details" | "points" | "achievements" | "titles" | "sto
 
 function CharacterDetail({
   char, transactions, points, onSetMain, isPending, onFavoriteTitleChange, onFavoritePrefixChange, onDetailsPatch,
-  onOpenCharacters,
+  onOpenCharacters, initialTab = "bio",
 }: {
+  initialTab?: DetailTab;
   char: Character;
   transactions: Transaction[];
   points: PointsSummary;
@@ -496,7 +499,7 @@ function CharacterDetail({
   onDetailsPatch: (p: CharPatch) => void;
   onOpenCharacters?: () => void;
 }) {
-  const [tab, setTab] = useState<DetailTab>("bio");
+  const [tab, setTab] = useState<DetailTab>(initialTab);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const color = classColor(char.wow_class);
@@ -935,7 +938,9 @@ function PointsTab({ transactions, points }: { transactions: Transaction[]; poin
 function TransactionRow({ t }: { t: Transaction }) {
   const partial = t.weekly_capped && t.counted_amount < t.amount;
   const counted = t.weekly_capped ? t.counted_amount : t.amount;
-  const note = !t.weekly_capped
+  const note = t.event_category === "mission"
+    ? null
+    : !t.weekly_capped
     ? "Ajuste de admin"
     : counted === 0
     ? "No cuenta: sin margen de " + BUCKET_LABEL[t.bucket].toLowerCase()
@@ -2226,21 +2231,6 @@ function LoreInput({
         placeholder={placeholder}
         className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-gray-500"
       />
-    </div>
-  );
-}
-
-function EmptyState({ hasBnet }: { hasBnet: boolean }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-64 text-center p-8">
-      <p className="text-gray-400 mb-4">
-        {hasBnet ? "Selecciona un personaje del panel derecho" : "Conecta tu cuenta de Battle.net para ver tus personajes"}
-      </p>
-      {!hasBnet && (
-        <Link href={publicApiUrl("/auth/blizzard/login")} className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm font-medium">
-          Conectar Battle.net
-        </Link>
-      )}
     </div>
   );
 }

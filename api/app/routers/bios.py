@@ -21,6 +21,7 @@ from app.schemas.bio import (
 )
 from app.services.bio_questions import QUESTIONS, formatted_answers, has_public_sheet
 from app.services.character_images import publish_character_image, reference_paths
+from app.services.missions import grant_ready
 from app.services.notifications import notify
 from app.urls import static_url
 
@@ -297,6 +298,7 @@ async def publish_bio(
         body=notice,
         href=f"/personajes/{quote(char.realm, safe='')}/{quote(char.name, safe='')}",
     )
+    grant_ready(db, author)
     db.commit()
     db.refresh(char)
     return _pending_out(char, author, _pending_refs(db, [char.id]).get(char.id, []))

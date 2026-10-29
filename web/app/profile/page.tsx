@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import ProfileClient from "./ProfileClient";
+import type { Mission } from "@/lib/missions";
 
 import { apiUrl } from "@/lib/api";
 export default async function ProfilePage() {
@@ -13,7 +14,10 @@ export default async function ProfilePage() {
     "Cache-Control": "no-store",
   };
 
-  // 1. Obtener usuario y personajes en paralelo
+  // Las misiones pueden sumar puntos; el usuario se lee después para traer el total ya actualizado.
+  const missionsRes = await fetch(apiUrl("/users/me/missions"), { headers, cache: "no-store" });
+  const missions: Mission[] = missionsRes.ok ? await missionsRes.json() : [];
+
   const [userRes, charsRes, txRes] = await Promise.all([
     fetch(apiUrl("/users/me"),           { headers, cache: "no-store" }),
     fetch(apiUrl("/characters/my"),      { headers, cache: "no-store" }),
@@ -79,6 +83,7 @@ export default async function ProfilePage() {
       user={user}
       characters={sorted}
       transactions={transactions}
+      missions={missions}
       bnetTokenExpired={bnetTokenExpired}
     />
   );
