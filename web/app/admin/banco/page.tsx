@@ -36,8 +36,9 @@ export default async function AdminBancoPage() {
           <h1 className="text-2xl font-bold">Banco</h1>
         </div>
         <p className="text-sm text-gray-400 mb-8 max-w-2xl">
-          Valida ingresos (puntos de campaña con tope), marca retiradas entregadas y ajusta el valor
-          de cada objeto — por unidad, por 10 o por 100 — según oferta y demanda.
+          Publica los materiales que la hermandad necesita, los puntos de cada uno y, si quieres, un
+          cupo. Al aceptar un ingreso, esa cantidad se resta del cupo y se otorgan los puntos de la
+          tarifa publicada.
         </p>
         <BankAdmin
           queue={Array.isArray(queue) ? queue : []}

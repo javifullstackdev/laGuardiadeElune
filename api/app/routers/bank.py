@@ -55,6 +55,32 @@ def _award_points(catalog: BankItem | None, quantity: int) -> int:
     return catalog.points * (quantity // _lot(catalog.lot_size))
 
 
+def _remaining(item: BankItem) -> int | None:
+    """None si el material no tiene cupo. Si lo tiene, lo que aún se puede aceptar."""
+    if item.quantity_limit is None:
+        return None
+    return max(0, item.quantity_limit - (item.quantity_filled or 0))
+
+
+def _is_open(item: BankItem) -> bool:
+    left = _remaining(item)
+    return left is None or left > 0
+
+
+def _pending_deposit_qty(db: Session, item_id: int, grade: str) -> int:
+    total = (
+        db.query(func.coalesce(func.sum(BankRequest.quantity), 0))
+        .filter(
+            BankRequest.blizzard_item_id == item_id,
+            BankRequest.material_grade == grade,
+            BankRequest.kind == "deposit",
+            BankRequest.status == "pending",
+        )
+        .scalar()
+    )
+    return int(total or 0)
+
+
 def _grade_label(raw: str | None) -> str | None:
     return GRADE_ES.get(_grade(raw))
 
@@ -83,11 +109,14 @@ class CatalogWrite(BaseModel):
     crafting_label: str | None = Field(default=None, max_length=120)
     points: int = Field(ge=0, le=5000)
     lot_size: int = 1
+    # None = sin cupo. El número es el total que se puede ingresar, no lo que queda.
+    quantity_limit: int | None = Field(default=None, ge=0, le=1_000_000)
 
 
 class CatalogPoints(BaseModel):
     points: int = Field(ge=0, le=5000)
     lot_size: int | None = None
+    quantity_limit: int | None = Field(default=None, ge=0, le=1_000_000)
 
 
 class ResolveBody(BaseModel):
@@ -122,7 +151,12 @@ def _catalog_map(db: Session, keys: list[tuple[int, str]]) -> dict[tuple[int, st
 
 def _demand(db: Session) -> dict[tuple[int, str], dict[str, int]]:
     rows = (
-        db.query(BankRequest.blizzard_item_id, BankRequest.material_grade, BankRequest.kind, func.count())
+        db.query(
+            BankRequest.blizzard_item_id,
+            BankRequest.material_grade,
+            BankRequest.kind,
+            func.coalesce(func.sum(BankRequest.quantity), 0),
+        )
         .filter(BankRequest.status == "pending")
         .group_by(BankRequest.blizzard_item_id, BankRequest.material_grade, BankRequest.kind)
         .all()
@@ -153,8 +187,11 @@ def serialize_item(item: BankItem, demand: dict[tuple[int, str], dict[str, int]]
         "crafting_label": item.crafting_label,
         "points": item.points,
         "lot_size": _lot(item.lot_size),
-        "pending_deposits": stats["deposits"],
-        "pending_withdrawals": stats["withdrawals"],
+        "quantity_limit": item.quantity_limit,
+        "quantity_filled": item.quantity_filled or 0,
+        "remaining": _remaining(item),
+        "pending_deposit_qty": stats["deposits"],
+        "pending_withdrawal_qty": stats["withdrawals"],
     }
 
 
@@ -199,6 +236,9 @@ def serialize_request(
         "estimated_points": row.estimated_points,
         "current_points": live if scores else 0,
         "lot_size": _lot(catalog.lot_size) if catalog else 1,
+        "quantity_limit": catalog.quantity_limit if catalog else None,
+        "remaining": _remaining(catalog) if catalog else None,
+        "published": catalog is not None,
         "awarded_points": row.awarded_points,
         "admin_note": row.admin_note,
         "username": _username(row.user),
@@ -242,26 +282,63 @@ def _own_character(db: Session, user: User, name: str | None, realm: str | None)
 
 def _create_request(db: Session, user: User, body: ItemPick, kind: str) -> BankRequest:
     grade = _grade(body.material_grade)
-    catalog = _catalog_lookup(db, body.blizzard_item_id, grade)
+    if kind == "deposit":
+        catalog = (
+            db.query(BankItem)
+            .filter(
+                BankItem.blizzard_item_id == body.blizzard_item_id,
+                BankItem.material_grade == grade,
+            )
+            .with_for_update()
+            .first()
+        )
+    else:
+        catalog = _catalog_lookup(db, body.blizzard_item_id, grade)
     char_name, char_realm = _own_character(db, user, body.character_name, body.character_realm)
     eligible = points_service.scores_guild_bank(points_service.season_itinerary(db, user.id))
-    estimated = _award_points(catalog, body.quantity) if eligible else 0
+    if kind == "deposit":
+        if catalog is None or not _is_open(catalog):
+            raise HTTPException(400, "Ese material no está publicado")
+        left = _remaining(catalog)
+        if left is not None:
+            free = left - _pending_deposit_qty(db, catalog.blizzard_item_id, catalog.material_grade)
+            if body.quantity > free:
+                if free <= 0:
+                    raise HTTPException(400, "Lo pendiente de validar ya cubre el cupo")
+                raise HTTPException(400, f"Con lo que ya está pendiente, solo se pueden registrar {free}")
+        item_id = catalog.blizzard_item_id
+        item_name = catalog.name
+        item_quality = catalog.quality
+        item_grade = catalog.material_grade
+        item_icon = catalog.icon_url
+        item_description = catalog.description
+        crafting_label = catalog.crafting_label
+        estimated = _award_points(catalog, body.quantity) if eligible else 0
+    else:
+        item_id = body.blizzard_item_id
+        item_name = body.name.strip()
+        item_quality = body.quality
+        item_grade = grade
+        item_icon = body.icon_url
+        item_description = (body.description or (catalog.description if catalog else None) or "").strip() or None
+        crafting_label = (body.crafting_label or (catalog.crafting_label if catalog else None) or "").strip() or None
+        estimated = None
     row = BankRequest(
         user_id=user.id,
         character_name=char_name,
         character_realm=char_realm,
         kind=kind,
         status="pending",
-        blizzard_item_id=body.blizzard_item_id,
-        item_name=body.name.strip(),
-        item_quality=body.quality,
-        material_grade=grade,
-        item_icon_url=body.icon_url,
-        item_description=(body.description or (catalog.description if catalog else None) or "").strip() or None,
-        crafting_label=(body.crafting_label or (catalog.crafting_label if catalog else None) or "").strip() or None,
+        blizzard_item_id=item_id,
+        item_name=item_name,
+        item_quality=item_quality,
+        material_grade=item_grade,
+        item_icon_url=item_icon,
+        item_description=item_description,
+        crafting_label=crafting_label,
         quantity=body.quantity,
         note=(body.note or "").strip() or None,
-        estimated_points=estimated if kind == "deposit" else None,
+        estimated_points=estimated,
     )
     db.add(row)
     db.commit()
@@ -271,9 +348,10 @@ def _create_request(db: Session, user: User, body: ItemPick, kind: str) -> BankR
 
 @router.get("/items")
 def list_catalog(_: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Materiales publicados que aún aceptan ingresos. El cupo cubierto no aparece."""
     demand = _demand(db)
     rows = db.query(BankItem).order_by(BankItem.name, BankItem.material_grade).all()
-    return [serialize_item(row, demand) for row in rows]
+    return [serialize_item(row, demand) for row in rows if _is_open(row)]
 
 
 @router.get("/items/search")
@@ -403,6 +481,7 @@ def upsert_item(
         item.crafting_label = body.crafting_label.strip() or None
     item.points = body.points
     item.lot_size = _parse_lot(body.lot_size)
+    item.quantity_limit = body.quantity_limit
     db.commit()
     db.refresh(item)
     return serialize_item(item, _demand(db))
@@ -421,6 +500,7 @@ def update_item_points(
     item.points = body.points
     if body.lot_size is not None:
         item.lot_size = _parse_lot(body.lot_size)
+    item.quantity_limit = body.quantity_limit
     db.commit()
     db.refresh(item)
     return serialize_item(item, _demand(db))
@@ -441,11 +521,26 @@ def approve_deposit(
     if row.status != "pending":
         raise HTTPException(400, "Esta solicitud ya se resolvió")
 
-    catalog = _catalog_lookup(db, row.blizzard_item_id, row.material_grade)
+    catalog = (
+        db.query(BankItem)
+        .filter(
+            BankItem.blizzard_item_id == row.blizzard_item_id,
+            BankItem.material_grade == _grade(row.material_grade),
+        )
+        .with_for_update()
+        .first()
+    )
+    if catalog is None:
+        raise HTTPException(400, "Ese material ya no está publicado")
+    left = _remaining(catalog)
+    if left is not None and row.quantity > left:
+        if left <= 0:
+            raise HTTPException(400, "El cupo de este material ya está cubierto")
+        raise HTTPException(400, f"Solo quedan {left}. Rechaza la solicitud o sube el cupo")
+
     path = points_service.season_itinerary(db, row.user_id)
     eligible = points_service.scores_guild_bank(path)
-    suggested = _award_points(catalog, row.quantity)
-    amount = suggested if body.amount is None else body.amount
+    amount = _award_points(catalog, row.quantity) if eligible else 0
     now = datetime.now(timezone.utc)
 
     tx = None
@@ -462,26 +557,14 @@ def approve_deposit(
         )
         awarded = amount
 
-    if catalog is None:
-        catalog = BankItem(
-            blizzard_item_id=row.blizzard_item_id,
-            name=row.item_name,
-            quality=row.item_quality,
-            material_grade=_grade(row.material_grade),
-            icon_url=row.item_icon_url,
-            description=row.item_description,
-            crafting_label=row.crafting_label,
-            points=(amount // row.quantity if eligible and row.quantity else 0),
-            lot_size=1,
-        )
-        db.add(catalog)
+    catalog.quantity_filled = (catalog.quantity_filled or 0) + row.quantity
 
     note = (body.note or "").strip() or None
     if not eligible:
         extra = (
             "Itinerario competitivo: ingreso sin puntos"
             if path == UserPath.COMPETITIVE
-            else "Sin itinerario de campaña/híbrido: ingreso sin puntos"
+            else "Sin itinerario de artesanía y farmeo: ingreso sin puntos"
         )
         note = f"{note} · {extra}" if note else extra
 

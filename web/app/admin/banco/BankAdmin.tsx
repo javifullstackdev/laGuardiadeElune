@@ -10,6 +10,7 @@ import {
   KIND_LABEL,
   qualityClass,
   rateLabel,
+  stockLabel,
   type BankItem,
   type BankRequest,
   type LotSize,
@@ -48,15 +49,24 @@ export default function BankAdmin({
   const [materialGrade, setMaterialGrade] = useState<MaterialGrade>("bronze");
   const [newPoints, setNewPoints] = useState("1");
   const [newLot, setNewLot] = useState<LotSize>(1);
+  const [newLimited, setNewLimited] = useState(false);
+  const [newLimit, setNewLimit] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [rates, setRates] = useState<Record<string, string>>(
     Object.fromEntries(catalog.map((item) => [item.id, String(item.points)])),
   );
   const [lots, setLots] = useState<Record<string, LotSize>>(
     Object.fromEntries(catalog.map((item) => [item.id, asLotSize(item.lot_size)])),
+  );
+  const [limited, setLimited] = useState<Record<string, boolean>>(
+    Object.fromEntries(catalog.map((item) => [item.id, item.quantity_limit != null])),
+  );
+  const [limits, setLimits] = useState<Record<string, string>>(
+    Object.fromEntries(
+      catalog.map((item) => [item.id, item.quantity_limit == null ? "" : String(item.quantity_limit)]),
+    ),
   );
 
   async function reload() {
@@ -71,7 +81,20 @@ export default function BankAdmin({
       setItems(c);
       setRates(Object.fromEntries(c.map((item: BankItem) => [item.id, String(item.points)])));
       setLots(Object.fromEntries(c.map((item: BankItem) => [item.id, asLotSize(item.lot_size)])));
+      setLimited(Object.fromEntries(c.map((item: BankItem) => [item.id, item.quantity_limit != null])));
+      setLimits(
+        Object.fromEntries(
+          c.map((item: BankItem) => [item.id, item.quantity_limit == null ? "" : String(item.quantity_limit)]),
+        ),
+      );
     }
+  }
+
+  function limitPayload(isLimited: boolean, raw: string): number | null | undefined {
+    if (!isLimited) return null;
+    const cap = Number(raw);
+    if (!Number.isFinite(cap) || cap < 0) return undefined;
+    return cap;
   }
 
   async function act(id: string, action: "approve" | "reject" | "complete") {
@@ -81,7 +104,6 @@ export default function BankAdmin({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        amount: amounts[id] === undefined || amounts[id] === "" ? null : Number(amounts[id]),
         note: notes[id]?.trim() || null,
       }),
     });
@@ -96,19 +118,33 @@ export default function BankAdmin({
 
   async function saveRate(id: string) {
     const points = Number(rates[id]);
-    if (!Number.isFinite(points) || points < 0) return;
+    const quantityLimit = limitPayload(Boolean(limited[id]), limits[id] ?? "");
+    if (!Number.isFinite(points) || points < 0 || quantityLimit === undefined) {
+      setError("Revisa los puntos y el cupo");
+      return;
+    }
     setBusy(`rate-${id}`);
+    setError(null);
     const res = await fetch(`/api/bank/admin/items/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ points, lot_size: asLotSize(lots[id]) }),
+      body: JSON.stringify({ points, lot_size: asLotSize(lots[id]), quantity_limit: quantityLimit }),
     });
     setBusy(null);
     if (res.ok) await reload();
+    else {
+      const data = await res.json().catch(() => ({}));
+      setError(apiDetail(data, "No se pudo actualizar"));
+    }
   }
 
   async function addToCatalog() {
     if (!picked) return;
+    const quantityLimit = limitPayload(newLimited, newLimit);
+    if (quantityLimit === undefined) {
+      setError("Indica el cupo, o márcalo sin límite");
+      return;
+    }
     setBusy("add");
     setError(null);
     const res = await fetch("/api/bank/admin/items", {
@@ -124,6 +160,7 @@ export default function BankAdmin({
         crafting_label: picked.crafting_label,
         points: Number(newPoints) || 0,
         lot_size: newLot,
+        quantity_limit: quantityLimit,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -135,6 +172,8 @@ export default function BankAdmin({
     setPicked(null);
     setNewPoints("1");
     setNewLot(1);
+    setNewLimited(false);
+    setNewLimit("");
     await reload();
   }
 
@@ -152,7 +191,7 @@ export default function BankAdmin({
                 : "border-transparent text-gray-400 hover:text-gray-200"
             }`}
           >
-            {id === "queue" ? `Cola (${pending.length})` : "Catálogo de puntos"}
+            {id === "queue" ? `Cola (${pending.length})` : "Materiales publicados"}
           </button>
         ))}
       </div>
@@ -196,29 +235,26 @@ export default function BankAdmin({
                     {row.note && <p className="text-sm text-gray-400 mt-1">{row.note}</p>}
                   </div>
                 </div>
-                {row.kind === "deposit" && row.scores_points && (
-                  <label className="block text-sm text-gray-400">
-                    Puntos a otorgar
-                    <span className="mt-1 flex items-center gap-2">
-                      <NumberField
-                        compact
-                        min={0}
-                        className="w-40"
-                        value={amounts[row.id] ?? String(suggested)}
-                        onChange={(v) => setAmounts((prev) => ({ ...prev, [row.id]: v }))}
-                      />
-                      <span className="text-xs text-gray-500">
-                        sugerido {suggested}
-                        {row.lot_size > 1 ? ` · lotes de ${row.lot_size}` : ""}
-                      </span>
-                    </span>
-                  </label>
-                )}
-                {row.kind === "deposit" && !row.scores_points && (
+                {row.kind === "deposit" && !row.published && (
                   <p className="text-sm text-amber-400/90">
-                    {row.path === "competitive"
-                      ? "Itinerario competitivo: se valida el ingreso, sin puntos."
-                      : "Sin itinerario Campaña/Híbrido: se valida el ingreso, sin puntos."}
+                    Este material ya no está publicado. Rechaza la solicitud.
+                  </p>
+                )}
+                {row.kind === "deposit" && row.published && (
+                  <p className="text-sm text-gray-300">
+                    {row.scores_points ? (
+                      <>
+                        Se otorgarán <span className="text-yellow-400 font-medium">{suggested} pts</span>
+                        {row.lot_size > 1 ? ` · lotes de ${row.lot_size}` : ""}.{" "}
+                      </>
+                    ) : row.path === "competitive" ? (
+                      "Itinerario competitivo: se valida el ingreso, sin puntos. "
+                    ) : (
+                      "Sin itinerario de artesanía y farmeo: se valida el ingreso, sin puntos. "
+                    )}
+                    {row.quantity_limit == null
+                      ? "Este material no tiene cupo."
+                      : `El cupo baja en ${row.quantity} (quedan ${row.remaining ?? 0}).`}
                   </p>
                 )}
                 <label className="block text-sm text-gray-400">
@@ -234,11 +270,11 @@ export default function BankAdmin({
                   {row.kind === "deposit" ? (
                     <button
                       type="button"
-                      disabled={busy === `${row.id}-approve`}
+                      disabled={busy === `${row.id}-approve` || !row.published}
                       onClick={() => act(row.id, "approve")}
                       className="px-3 py-1.5 rounded-lg bg-yellow-500/90 text-black text-sm font-medium disabled:opacity-50"
                     >
-                      Aceptar y dar puntos
+                      {row.scores_points ? "Aceptar y dar puntos" : "Aceptar ingreso"}
                     </button>
                   ) : (
                     <button
@@ -268,10 +304,10 @@ export default function BankAdmin({
       {tab === "catalog" && (
         <div className="space-y-8">
           <section className="rounded-xl border border-gray-800 bg-gray-900 p-5 space-y-4 max-w-xl">
-            <h2 className="font-semibold">Añadir o actualizar objeto</h2>
+            <h2 className="font-semibold">Publicar material</h2>
             <p className="text-sm text-gray-400">
-              El valor puede ser por unidad, por 10 o por 100. El resto que no complete lote no
-              suma. Cámbialo cuando sobre o falte material.
+              Elige el objeto y su calidad. Los puntos pueden ser por unidad, por 10 o por 100. Si
+              pones cupo, al aceptar un ingreso esa cantidad se resta de lo que ven los miembros.
             </p>
             <ItemPicker
               catalog={items}
@@ -285,10 +321,24 @@ export default function BankAdmin({
                 if (hit) {
                   setNewPoints(String(hit.points));
                   setNewLot(asLotSize(hit.lot_size));
+                  setNewLimited(hit.quantity_limit != null);
+                  setNewLimit(hit.quantity_limit == null ? "" : String(hit.quantity_limit));
                 }
               }}
             />
-            <GradeSelect value={materialGrade} onChange={setMaterialGrade} />
+            <GradeSelect
+              value={materialGrade}
+              onChange={(grade) => {
+                setMaterialGrade(grade);
+                if (!picked) return;
+                const hit = catalogMatch(items, picked.blizzard_item_id, grade);
+                if (!hit) return;
+                setNewPoints(String(hit.points));
+                setNewLot(asLotSize(hit.lot_size));
+                setNewLimited(hit.quantity_limit != null);
+                setNewLimit(hit.quantity_limit == null ? "" : String(hit.quantity_limit));
+              }}
+            />
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-sm text-gray-400">
                 Puntos
@@ -296,13 +346,28 @@ export default function BankAdmin({
               </label>
               <LotSelect value={newLot} onChange={setNewLot} />
             </div>
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={newLimited}
+                onChange={(e) => setNewLimited(e.target.checked)}
+                className="accent-yellow-400"
+              />
+              Con cupo
+            </label>
+            {newLimited && (
+              <label className="block text-sm text-gray-400">
+                Cantidad total que se puede ingresar
+                <NumberField min={0} value={newLimit} onChange={setNewLimit} />
+              </label>
+            )}
             <button
               type="button"
               disabled={!picked || busy === "add"}
               onClick={() => addToCatalog()}
               className="px-4 py-2 rounded-lg bg-yellow-500/90 text-black text-sm font-medium disabled:opacity-50"
             >
-              Guardar en catálogo
+              Publicar
             </button>
           </section>
 
@@ -329,8 +394,10 @@ export default function BankAdmin({
                     ) : null}
                   </p>
                   <p className="text-[11px] text-gray-500">
-                    {rateLabel(item.points, item.lot_size)} · Oferta {item.pending_deposits} · Demanda{" "}
-                    {item.pending_withdrawals}
+                    {rateLabel(item.points, item.lot_size)} · {stockLabel(item)}
+                    {item.quantity_limit != null ? ` · aceptado ${item.quantity_filled}` : ""}
+                    {item.pending_deposit_qty > 0 ? ` · pendiente ${item.pending_deposit_qty}` : ""}
+                    {item.remaining === 0 ? " · cubierto" : ""}
                   </p>
                 </div>
                 <NumberField
@@ -345,6 +412,24 @@ export default function BankAdmin({
                   value={asLotSize(lots[item.id] ?? item.lot_size)}
                   onChange={(lot) => setLots((prev) => ({ ...prev, [item.id]: lot }))}
                 />
+                <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(limited[item.id])}
+                    onChange={(e) => setLimited((prev) => ({ ...prev, [item.id]: e.target.checked }))}
+                    className="accent-yellow-400"
+                  />
+                  Cupo
+                </label>
+                {limited[item.id] && (
+                  <NumberField
+                    compact
+                    min={0}
+                    className="w-24"
+                    value={limits[item.id] ?? ""}
+                    onChange={(v) => setLimits((prev) => ({ ...prev, [item.id]: v }))}
+                  />
+                )}
                 <button
                   type="button"
                   disabled={busy === `rate-${item.id}`}

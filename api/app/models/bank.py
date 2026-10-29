@@ -25,6 +25,9 @@ class BankItem(Base):
     # Puntos por lote: 1 = unidad, 10 o 100 para mats baratos
     points = Column(Integer, nullable=False, server_default="0")
     lot_size = Column(Integer, nullable=False, server_default="1")
+    # None = sin cupo. Si hay cupo, quantity_filled crece al aceptar cada ingreso.
+    quantity_limit = Column(Integer, nullable=True)
+    quantity_filled = Column(Integer, nullable=False, server_default="0")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 

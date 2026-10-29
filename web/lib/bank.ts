@@ -14,8 +14,13 @@ export type BankItem = {
   crafting_label: string | null;
   points: number;
   lot_size: LotSize;
-  pending_deposits: number;
-  pending_withdrawals: number;
+  /** null = sin cupo */
+  quantity_limit: number | null;
+  quantity_filled: number;
+  /** null si no hay cupo; si lo hay, lo que aún se puede aceptar */
+  remaining: number | null;
+  pending_deposit_qty: number;
+  pending_withdrawal_qty: number;
 };
 
 export type BankHit = {
@@ -46,6 +51,9 @@ export type BankRequest = {
   estimated_points: number | null;
   current_points: number | null;
   lot_size: LotSize;
+  quantity_limit: number | null;
+  remaining: number | null;
+  published: boolean;
   awarded_points: number | null;
   admin_note: string | null;
   username: string;
@@ -108,6 +116,11 @@ export function rateLabel(points: number, lotSize: number = 1): string {
   const lot = asLotSize(lotSize);
   const unit = points === 1 ? "pt" : "pts";
   return lot === 1 ? `${points} ${unit}/ud` : `${points} ${unit} / ${lot}`;
+}
+
+export function stockLabel(item: Pick<BankItem, "quantity_limit" | "remaining">): string {
+  if (item.quantity_limit == null || item.remaining == null) return "Sin límite";
+  return `Quedan ${item.remaining}`;
 }
 
 export const KIND_LABEL = {

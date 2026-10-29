@@ -10,6 +10,7 @@ import {
   qualityClass,
   rateLabel,
   STATUS_LABEL,
+  stockLabel,
   type BankItem,
   type BankRequest,
   type MaterialGrade,
@@ -48,6 +49,7 @@ export default function BancoClient({
   const [items, setItems] = useState(catalog);
   const [rows, setRows] = useState(initialRequests);
   const [picked, setPicked] = useState<PickedItem | null>(null);
+  const [depositId, setDepositId] = useState<string | null>(null);
   const [materialGrade, setMaterialGrade] = useState<MaterialGrade>("bronze");
   const [quantity, setQuantity] = useState("1");
   const [note, setNote] = useState("");
@@ -61,10 +63,21 @@ export default function BancoClient({
   const [ok, setOk] = useState<string | null>(null);
 
   const qty = Math.max(1, Number(quantity) || 1);
-  const catalogHit = picked ? catalogMatch(items, picked.blizzard_item_id, materialGrade) : undefined;
+  const depositItem = items.find((item) => item.id === depositId);
+  const catalogHit =
+    tab === "deposit"
+      ? depositItem
+      : picked
+        ? catalogMatch(items, picked.blizzard_item_id, materialGrade)
+        : undefined;
   const lotSize = catalogHit?.lot_size ?? 1;
-  const estimate = catalogHit ? pointsForQuantity(catalogHit.points, qty, lotSize) : null;
+  const estimate = catalogHit && tab === "deposit" ? pointsForQuantity(catalogHit.points, qty, lotSize) : null;
   const leftover = catalogHit && lotSize > 1 ? qty % lotSize : 0;
+  const depositFree =
+    depositItem?.remaining == null
+      ? 5000
+      : Math.max(0, depositItem.remaining - depositItem.pending_deposit_qty);
+  const depositMax = depositItem ? Math.max(depositFree, 1) : 5000;
 
   async function reload() {
     const [catRes, reqRes] = await Promise.all([
@@ -78,7 +91,20 @@ export default function BancoClient({
   }
 
   async function submit(kind: "deposit" | "withdrawal") {
-    if (!picked) {
+    if (kind === "deposit") {
+      if (!depositItem) {
+        setError("Elige un material publicado");
+        return;
+      }
+      if (depositFree <= 0) {
+        setError("Lo pendiente de validar ya cubre el cupo");
+        return;
+      }
+      if (qty > depositFree) {
+        setError(`Con lo que ya está pendiente, solo se pueden registrar ${depositFree}`);
+        return;
+      }
+    } else if (!picked) {
       setError("Elige un objeto");
       return;
     }
@@ -89,17 +115,31 @@ export default function BancoClient({
       ? character.split("::")
       : [undefined, undefined];
     const path = kind === "deposit" ? "/api/bank/deposits" : "/api/bank/withdrawals";
+    const source =
+      kind === "deposit" && depositItem
+        ? {
+            blizzard_item_id: depositItem.blizzard_item_id,
+            name: depositItem.name,
+            quality: depositItem.quality,
+            material_grade: depositItem.material_grade,
+            icon_url: depositItem.icon_url,
+            description: depositItem.description,
+            crafting_label: depositItem.crafting_label,
+          }
+        : {
+            blizzard_item_id: picked!.blizzard_item_id,
+            name: picked!.name,
+            quality: picked!.quality,
+            material_grade: materialGrade,
+            icon_url: picked!.icon_url,
+            description: picked!.description,
+            crafting_label: picked!.crafting_label,
+          };
     const res = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        blizzard_item_id: picked.blizzard_item_id,
-        name: picked.name,
-        quality: picked.quality,
-        material_grade: materialGrade,
-        icon_url: picked.icon_url,
-        description: picked.description,
-        crafting_label: picked.crafting_label,
+        ...source,
         quantity: qty,
         note: note.trim() || null,
         character_name: character_name || null,
@@ -113,6 +153,7 @@ export default function BancoClient({
       return;
     }
     setPicked(null);
+    setDepositId(null);
     setQuantity("1");
     setNote("");
     setOk(kind === "deposit" ? "Ingreso registrado. Pendiente de validación." : "Retirada solicitada.");
@@ -167,20 +208,80 @@ export default function BancoClient({
 
       {tab !== "history" && (
         <form onSubmit={onSubmit(tab)} className="max-w-xl space-y-4">
-          <ItemPicker
-            catalog={items}
-            value={picked}
-            onChange={(item) => {
-              setPicked(item);
-              if (item?.material_grade) setMaterialGrade(item.material_grade);
-              else if (item?.crafting_label) setMaterialGrade("bronze");
-            }}
-          />
+          {tab === "deposit" ? (
+            <div className="space-y-2">
+              <p className="text-sm text-gray-400">Materiales publicados</p>
+              {items.length === 0 && (
+                <p className="text-sm text-gray-500">
+                  Todavía no hay materiales publicados. Cuando un administrador los habilite, aparecerán aquí.
+                </p>
+              )}
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {items.map((item) => {
+                  const selected = depositId === item.id;
+                  return (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDepositId(item.id);
+                          setQuantity("1");
+                        }}
+                        className={`w-full flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left ${
+                          selected
+                            ? "border-yellow-400 bg-yellow-500/10"
+                            : "border-gray-800 bg-gray-900 hover:border-gray-600"
+                        }`}
+                      >
+                        {item.icon_url ? (
+                          <img src={item.icon_url} alt="" className="w-8 h-8 rounded" />
+                        ) : (
+                          <div className="w-8 h-8 rounded bg-gray-800" />
+                        )}
+                        <span className="min-w-0 flex-1">
+                          <span className={`block text-sm truncate ${qualityClass(item.quality)}`}>
+                            {item.name}
+                            {item.material_grade !== "none" ? (
+                              <>
+                                {" · "}
+                                <GradeBadge grade={item.material_grade} />
+                              </>
+                            ) : null}
+                          </span>
+                          <span className="block text-[11px] text-gray-500">
+                            {rateLabel(item.points, item.lot_size)} · {stockLabel(item)}
+                            {item.pending_deposit_qty > 0 ? ` · ${item.pending_deposit_qty} en validación` : ""}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ) : (
+            <>
+              <ItemPicker
+                catalog={items}
+                value={picked}
+                onChange={(item) => {
+                  setPicked(item);
+                  if (item?.material_grade) setMaterialGrade(item.material_grade);
+                  else if (item?.crafting_label) setMaterialGrade("bronze");
+                }}
+              />
+              <GradeSelect value={materialGrade} onChange={setMaterialGrade} />
+            </>
+          )}
           <div className="grid grid-cols-2 gap-3">
-            <GradeSelect value={materialGrade} onChange={setMaterialGrade} />
             <label className="block text-sm text-gray-400">
               Cantidad
-              <NumberField min={1} max={5000} value={quantity} onChange={setQuantity} />
+              <NumberField
+                min={1}
+                max={tab === "deposit" ? depositMax : 5000}
+                value={quantity}
+                onChange={setQuantity}
+              />
             </label>
             {characters.length > 0 && (
               <label className="block text-sm text-gray-400">
@@ -211,17 +312,22 @@ export default function BancoClient({
           </label>
           {tab === "deposit" && (
             <p className="text-sm text-gray-400">
-              {!scoresBankPoints ? (
-                "Solo Campaña e Híbrido suman puntos por ingresos. Competitivo puede aportar, sin puntos."
-              ) : estimate != null ? (
+              {!depositItem ? (
+                "Elige un material publicado."
+              ) : !scoresBankPoints ? (
                 <>
-                  Estimado: <span className="text-yellow-400 font-medium">{estimate} pts</span>
-                  {lotSize > 1 ? ` · ${rateLabel(catalogHit!.points, lotSize)}` : ""}
-                  {leftover ? ` (${leftover} no llegan a lote)` : ""}
-                  . Puede cambiar al validar.
+                  Con tu itinerario este ingreso no suma puntos.
+                  {depositItem.remaining == null
+                    ? " No hay cupo."
+                    : ` Si se acepta, el cupo baja en ${qty}.`}
                 </>
               ) : (
-                "Este objeto aún no tiene puntos en el catálogo; el admin los fijará al validar."
+                <>
+                  Si se acepta: <span className="text-yellow-400 font-medium">{estimate} pts</span>
+                  {lotSize > 1 ? ` · ${rateLabel(depositItem.points, lotSize)}` : ""}
+                  {leftover ? ` (${leftover} no llegan a lote)` : ""}
+                  {depositItem.remaining == null ? ". Sin cupo." : `. El cupo baja en ${qty}.`}
+                </>
               )}
             </p>
           )}
@@ -229,7 +335,7 @@ export default function BancoClient({
           {ok && <p className="text-sm text-emerald-400">{ok}</p>}
           <button
             type="submit"
-            disabled={busy || !picked}
+            disabled={busy || (tab === "deposit" ? !depositItem || depositFree <= 0 : !picked)}
             className="px-4 py-2 rounded-lg bg-yellow-500/90 hover:bg-yellow-400 text-black text-sm font-medium disabled:opacity-50"
           >
             {busy ? "Enviando…" : tab === "deposit" ? "Registrar ingreso" : "Solicitar retirada"}
