@@ -24,12 +24,12 @@ export type Transaction = {
 
 export const BUCKET_LABEL: Record<Bucket, string> = {
   competitive: "Competitivo",
-  campaign: "Campaña",
+  campaign: "Artesanía y farmeo",
 };
 
 export const PATH_LABEL: Record<string, string> = {
   competitive: "Competitivo",
-  campaign: "Campaña",
+  campaign: "Artesanía y farmeo de materiales",
   hybrid: "Híbrido",
 };
 
@@ -47,4 +47,5 @@ export const CATEGORY_LABEL: Record<string, string> = {
   delves: "Profundidades",
   reputation: "Reputación",
   guild_bank: "Banco de hermandad",
+  mission: "Misión",
 };

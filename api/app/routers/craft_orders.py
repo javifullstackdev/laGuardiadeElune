@@ -57,7 +57,7 @@ def _score_collected(db: Session, row: CraftOrder) -> None:
         note = (
             "Itinerario competitivo: fabricación sin puntos"
             if path and path.value == "competitive"
-            else "Sin itinerario de campaña/híbrido: fabricación sin puntos"
+            else "Sin itinerario de artesanía y farmeo: fabricación sin puntos"
         )
     tx = None
     if eligible and amount > 0:

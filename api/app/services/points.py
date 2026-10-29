@@ -1,20 +1,21 @@
 """
 Motor de puntos. Las funciones no hacen commit: lo hace quien las llama.
 
-- Competitivo: M+, raid y JcJ. Campaña: todo lo demás (eventos, lore, logros,
-  paseo en el tiempo, housing, farmeo, profesiones, profundidades, reputaciones).
-- Cada semana (reset de WoW EU) suma tope según el itinerario de la temporada:
-  500 competitivos, 500 de campaña o 250 + 250 en híbrido. El tope no usado se
-  acumula: en la semana N desde que la temporada puntúa (points_start_at) caben
-  N × tope menos lo ya contado. Antes de points_start_at no se puntúa nada.
-  Los puntos que pasan del tope no se acumulan: se pierden.
+- Competitivo: M+, raid y JcJ. Artesanía y farmeo: todo lo demás (banco,
+  profesiones, eventos, lore, logros, paseo en el tiempo, housing, farmeo,
+  profundidades, reputaciones).
+- Cada semana (reset de WoW EU) suma un tope de 500 del itinerario elegido.
+  El tope no usado se acumula: en la semana N desde que la temporada puntúa
+  (points_start_at) caben N × tope menos lo ya contado. Antes de points_start_at
+  no se puntúa nada. Los puntos que pasan del tope no se acumulan: se pierden.
 - Se llena por orden cronológico; el evento que cruza el tope cuenta en parte.
-- Lo que da o quita un admin (weekly_capped = false) siempre cuenta y no consume tope.
+- Lo que da o quita un admin, y las misiones (weekly_capped = false), siempre cuenta
+  y no consume tope. No depende del itinerario.
 - Sin itinerario elegido no cuenta ningún evento con tope. El jugador lo fija
   al tener main; un admin puede corregirlo y se recalcula la temporada.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
@@ -23,6 +24,7 @@ from app.models.enums import EventCategory
 from app.models.point_transaction import PointTransaction
 from app.models.season import Season
 from app.models.user import User, UserPath
+from app.models.user_season_path import UserSeasonPath
 from app.services import seasons as season_service
 from app.services.weeks import week_start
 
@@ -32,7 +34,17 @@ WEEKLY_CAP = 500
 WEEKLY_CAPS = {
     UserPath.COMPETITIVE: {"competitive": WEEKLY_CAP, "campaign": 0},
     UserPath.CAMPAIGN: {"competitive": 0, "campaign": WEEKLY_CAP},
+    # Ya no se puede elegir. Sigue aquí para no reescribir temporadas ya cerradas.
     UserPath.HYBRID: {"competitive": WEEKLY_CAP // 2, "campaign": WEEKLY_CAP // 2},
+}
+
+_RESPLIT_KEEP = {
+    UserPath.COMPETITIVE: EventCategory.MYTHIC_PLUS,
+    UserPath.CAMPAIGN: EventCategory.GUILD_BANK,
+}
+_RESPLIT_NOTE = {
+    UserPath.COMPETITIVE: "Cambio de itinerario: se conservan los puntos de míticas+.",
+    UserPath.CAMPAIGN: "Cambio de itinerario: se conservan los puntos del banco.",
 }
 
 
@@ -78,13 +90,73 @@ def season_itinerary(db: Session, user_id, at: datetime | None = None) -> UserPa
 
 
 def scores_campaign(path: UserPath | None) -> bool:
-    """Campaña e híbrido puntúan banco y artesanía. Competitivo, no."""
-    return path in (UserPath.CAMPAIGN, UserPath.HYBRID)
+    """Artesanía y farmeo puntúa banco y encargos. Competitivo, no."""
+    return path == UserPath.CAMPAIGN
 
 
 def scores_guild_bank(path: UserPath | None) -> bool:
-    """Solo Campaña e Híbrido puntúan por meter materiales al banco. Competitivo, no."""
+    """Solo artesanía y farmeo puntúa por meter materiales al banco. Competitivo, no."""
     return scores_campaign(path)
+
+
+def release_hybrid_itinerary(db: Session, user: User, season: Season) -> bool:
+    """Quita el híbrido de esta temporada para que el jugador vuelva a elegir."""
+    choice = season_service.season_path(db, user.id, season.id)
+    if choice is None or choice.path != UserPath.HYBRID:
+        return False
+    user.hybrid_resplit_pending = True
+    db.delete(choice)
+    db.flush()
+    recalculate_season(db, user.id, season)
+    return True
+
+
+def release_current_hybrid_itineraries(db: Session) -> int:
+    """Suelta a quien tenga híbrido en la temporada en curso. No hace commit."""
+    season = season_service.current_season(db)
+    if season is None:
+        return 0
+    rows = (
+        db.query(UserSeasonPath)
+        .filter(
+            UserSeasonPath.season_id == season.id,
+            UserSeasonPath.path == UserPath.HYBRID,
+        )
+        .all()
+    )
+    for choice in rows:
+        user = db.query(User).filter(User.id == choice.user_id).first()
+        if user is not None:
+            release_hybrid_itinerary(db, user, season)
+    return len(rows)
+
+
+def settle_hybrid_resplit(db: Session, user: User, season: Season, path: UserPath) -> None:
+    """
+    Al dejar el híbrido, competitivo conserva las míticas+ de la temporada y
+    artesanía y farmeo solo el banco. El resto de eventos con tope se anula.
+    """
+    if not user.hybrid_resplit_pending:
+        return
+    keep = _RESPLIT_KEEP[path]
+    rows = (
+        db.query(PointTransaction)
+        .filter(
+            PointTransaction.user_id == user.id,
+            PointTransaction.season_id == season.id,
+            PointTransaction.weekly_capped.is_(True),
+            PointTransaction.active.is_(True),
+            PointTransaction.event_category != keep,
+        )
+        .all()
+    )
+    for tx in rows:
+        gained = effective_amount(tx)
+        tx.active = False
+        tx.admin_note = _RESPLIT_NOTE[path]
+        apply_user_delta(db, user.id, -gained)
+    user.hybrid_resplit_pending = False
+    db.flush()
 
 
 def record_capped_event(
@@ -124,6 +196,36 @@ def record_capped_event(
     db.add(tx)
     db.flush()
     recalculate_season(db, user_id, season)
+    return tx
+
+
+def record_uncapped_event(
+    db: Session,
+    *,
+    user_id,
+    amount: int,
+    reason: str,
+    category: EventCategory,
+    occurred_at: datetime | None = None,
+) -> PointTransaction:
+    """Puntos que cuentan siempre: no miran el itinerario ni el tope semanal."""
+    if amount == 0:
+        raise ValueError("La cantidad no puede ser 0")
+    when = occurred_at or datetime.now(timezone.utc)
+    season = season_service.current_season(db, at=when)
+    tx = PointTransaction(
+        user_id=user_id,
+        amount=amount,
+        reason=reason,
+        event_category=category,
+        occurred_at=when,
+        week_start=week_start(when),
+        season_id=season.id if season else None,
+        weekly_capped=False,
+    )
+    db.add(tx)
+    db.flush()
+    apply_user_delta(db, user_id, amount)
     return tx
 
 

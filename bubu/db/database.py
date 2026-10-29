@@ -48,7 +48,7 @@ class Database:
             return await conn.fetchrow(
                 """
                 INSERT INTO users (id, discord_id, username, guild_title, total_points, role, path)
-                VALUES (gen_random_uuid(), $1, $2, 'Miembro', 0, 'MEMBER', 'HYBRID')
+                VALUES (gen_random_uuid(), $1, $2, 'Miembro', 0, 'MEMBER', 'COMPETITIVE')
                 ON CONFLICT (discord_id) DO UPDATE SET username = EXCLUDED.username
                 RETURNING *
                 """,

@@ -7,8 +7,8 @@ const PATHS = [
   {
     value: "COMPETITIVE",
     name: "Competitivo",
-    description: "M+ y Raids",
-    detail: "Top 8 actividades competitivas por semana",
+    description: "Participa en míticas+ y raid con miembros de la Guardia y ayudáos unos a otros a avanzar.",
+    detail: "Hasta 500 puntos por semana entre míticas+, raid y JcJ.",
     border: "border-red-500/40",
     activeBorder: "border-red-500",
     glow: "bg-red-500/10",
@@ -16,33 +16,24 @@ const PATHS = [
   },
   {
     value: "CAMPAIGN",
-    name: "Campaña",
-    description: "Rol, lore y logros",
-    detail: "Top 8 actividades de campaña por semana",
+    name: "Artesanía y farmeo de materiales",
+    description: "Farmea materiales y craftea ítems con tus profesiones.",
+    detail: "Hasta 500 puntos por semana. Cuentan el banco y la artesanía.",
     border: "border-purple-500/40",
     activeBorder: "border-purple-500",
     glow: "bg-purple-500/10",
     textColor: "text-purple-400",
-  },
-  {
-    value: "HYBRID",
-    name: "Híbrido",
-    description: "Todo en todas partes",
-    detail: "4 mejores competitivos + 4 mejores campaña/semana",
-    border: "border-blue-500/40",
-    activeBorder: "border-blue-500",
-    glow: "bg-blue-500/10",
-    textColor: "text-blue-400",
-    recommended: true,
   },
 ];
 
 export default function PathPicker({
   currentPath,
   seasonName,
+  resplitPending = false,
 }: {
   currentPath: string | null;
   seasonName: string;
+  resplitPending?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -87,16 +78,9 @@ export default function PathPicker({
           >
             {/* Texto */}
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <p className={`font-semibold text-sm ${isSelected ? p.textColor : "text-gray-200"}`}>
-                  {p.name}
-                </p>
-                {p.recommended && !locked && (
-                  <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                    Recomendado
-                  </span>
-                )}
-              </div>
+              <p className={`font-semibold text-sm ${isSelected ? p.textColor : "text-gray-200"}`}>
+                {p.name}
+              </p>
               <p className="text-xs text-gray-400 mt-0.5">{p.description}</p>
               <p className="text-xs text-gray-600 mt-0.5">{p.detail}</p>
             </div>
@@ -116,6 +100,13 @@ export default function PathPicker({
           </button>
         );
       })}
+
+      {!locked && resplitPending && (
+        <p className="text-xs text-gray-400">
+          Tenías híbrido. Si eliges Competitivo, de esta temporada se quedan los puntos de míticas+.
+          Si eliges Artesanía y farmeo de materiales, solo los del banco. Lo demás deja de contar.
+        </p>
+      )}
 
       {locked ? (
         <p className="text-xs text-gray-500">
