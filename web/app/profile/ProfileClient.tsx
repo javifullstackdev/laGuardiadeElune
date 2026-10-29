@@ -322,10 +322,17 @@ export default function ProfileClient({
     };
   }, [sidebarOpen]);
 
-  function openMission(key: string) {
-    const target = selected ?? characters.find((c) => c.is_main) ?? characters[0];
-    if (target && selected !== target) setSelected(target);
-    setTab(key === "publish_first_story" ? "stories" : "bio");
+  function openMission(mission: Mission) {
+    const wanted = mission.character;
+    const target = wanted
+      ? characters.find((c) =>
+          c.name === wanted.name
+          && c.realm === wanted.realm
+          && (c.game ?? "retail") === (wanted.game ?? "retail")
+        )
+      : selected ?? characters.find((c) => c.is_main) ?? characters[0];
+    if (target) setSelected(target);
+    setTab(mission.key === "publish_first_story" ? "stories" : "bio");
     setSidebarOpen(false);
   }
 
