@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWatermarkBox } from "../components/HomeLogo";
 import PublishStoryPanel from "./PublishStoryPanel";
-import ProfileHome from "./ProfileHome";
+import ProfileHome, { PROFILE_SECTIONS, type ProfileSection } from "./ProfileHome";
 import FichaPreview from "./FichaPreview";
 import ClaimsInbox from "./ClaimsInbox";
 import Mailbox from "./Mailbox";
@@ -164,7 +164,7 @@ export default function ProfileClient({
   const [isPending, startTransition] = useTransition();
   const [characters, setCharacters] = useState<Character[]>(initialChars);
   const [selected, setSelected] = useState<Character | null>(null);
-  const [startTab, setStartTab] = useState<"bio" | "stories">("bio");
+  const [startTab, setStartTab] = useState<ProfileSection>("bio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -320,12 +320,16 @@ export default function ProfileClient({
     };
   }, [sidebarOpen]);
 
-  function openMission(key: string) {
+  function openCharacter(tab: ProfileSection) {
     const target = characters.find((c) => c.is_main) ?? characters[0];
     if (!target) return;
-    setStartTab(key === "publish_first_story" ? "stories" : "bio");
+    setStartTab(tab);
     setSelected(target);
     setSidebarOpen(false);
+  }
+
+  function openMission(key: string) {
+    openCharacter(key === "publish_first_story" ? "stories" : "bio");
   }
 
   return (
@@ -355,15 +359,20 @@ export default function ProfileClient({
               onFavoritePrefixChange={(t) => handleFavoritePrefixChange(selected, t)}
               onDetailsPatch={(p) => handleDetailsPatch(selected, p)}
               onOpenCharacters={() => setSidebarOpen(true)}
+              onGoHome={() => {
+                setSelected(null);
+                setSidebarOpen(false);
+              }}
             />
           </div>
         ) : (
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <ProfileHome
               user={user}
               missions={missions}
               hasCharacter={characters.length > 0}
               onOpenMission={openMission}
+              onOpenSection={openCharacter}
               onOpenCharacters={() => setSidebarOpen(true)}
             />
           </div>
@@ -482,11 +491,11 @@ export default function ProfileClient({
 
 // ── Detalle del personaje ─────────────────────────────────────────────────
 
-type DetailTab = "bio" | "details" | "points" | "achievements" | "titles" | "stories" | "relations" | "professions";
+type DetailTab = ProfileSection;
 
 function CharacterDetail({
   char, transactions, points, onSetMain, isPending, onFavoriteTitleChange, onFavoritePrefixChange, onDetailsPatch,
-  onOpenCharacters, initialTab = "bio",
+  onOpenCharacters, onGoHome, initialTab = "bio",
 }: {
   initialTab?: DetailTab;
   char: Character;
@@ -498,6 +507,7 @@ function CharacterDetail({
   onFavoritePrefixChange: (t: TitleData | null) => void;
   onDetailsPatch: (p: CharPatch) => void;
   onOpenCharacters?: () => void;
+  onGoHome?: () => void;
 }) {
   const [tab, setTab] = useState<DetailTab>(initialTab);
   const [dragX, setDragX] = useState(0);
@@ -509,16 +519,7 @@ function CharacterDetail({
     ["--fact-pad" as string]: `${factPad}px`,
   };
 
-  const tabs: { key: DetailTab; label: string }[] = [
-    { key: "bio", label: "Bio" },
-    { key: "details", label: "Datos" },
-    { key: "points", label: "Puntos" },
-    { key: "achievements", label: "Logros" },
-    { key: "titles", label: "Títulos" },
-    { key: "stories", label: "Historias" },
-    { key: "relations", label: "Relaciones" },
-    { key: "professions", label: "Profesiones" },
-  ];
+  const tabs = PROFILE_SECTIONS;
   const tabIndex = tabs.findIndex((t) => t.key === tab);
   const tabIndexRef = useRef(tabIndex);
   tabIndexRef.current = tabIndex;
@@ -689,6 +690,15 @@ function CharacterDetail({
           ref={tabBarRef}
           className="flex gap-1 border-b border-gray-800 overflow-x-auto overscroll-x-contain scrollbar-none touch-pan-x -mx-4 px-4 sm:mx-0 sm:px-0"
         >
+          {onGoHome && (
+            <button
+              type="button"
+              onClick={onGoHome}
+              className="px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors -mb-px border-b-2 border-transparent text-gray-500 hover:text-gray-300 whitespace-nowrap shrink-0"
+            >
+              Inicio
+            </button>
+          )}
           {tabs.map((t) => (
             <button
               key={t.key}

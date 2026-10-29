@@ -19,6 +19,27 @@ const MISSION_COPY: Record<string, { review: string; open: string; see: string }
   },
 };
 
+export type ProfileSection =
+  | "bio"
+  | "details"
+  | "points"
+  | "achievements"
+  | "titles"
+  | "stories"
+  | "relations"
+  | "professions";
+
+export const PROFILE_SECTIONS: { key: ProfileSection; label: string }[] = [
+  { key: "bio", label: "Bio" },
+  { key: "details", label: "Datos" },
+  { key: "points", label: "Puntos" },
+  { key: "achievements", label: "Logros" },
+  { key: "titles", label: "Títulos" },
+  { key: "stories", label: "Historias" },
+  { key: "relations", label: "Relaciones" },
+  { key: "professions", label: "Profesiones" },
+];
+
 type HomeUser = {
   username: string;
   avatar_url: string | null;
@@ -34,19 +55,43 @@ export default function ProfileHome({
   missions,
   hasCharacter,
   onOpenMission,
+  onOpenSection,
   onOpenCharacters,
 }: {
   user: HomeUser;
   missions: Mission[];
   hasCharacter: boolean;
   onOpenMission: (key: string) => void;
+  onOpenSection: (section: ProfileSection) => void;
   onOpenCharacters: () => void;
 }) {
   const pending = missions.filter((m) => m.status !== "done");
   const done = missions.filter((m) => m.status === "done");
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full flex flex-col">
+      <div className="shrink-0 px-4 sm:px-8">
+        <div className="flex gap-1 border-b border-gray-800 overflow-x-auto overscroll-x-contain scrollbar-none touch-pan-x -mx-4 px-4 sm:mx-0 sm:px-0">
+          <button
+            type="button"
+            className="px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium -mb-px border-b-2 border-yellow-400 text-white whitespace-nowrap shrink-0"
+          >
+            Inicio
+          </button>
+          {PROFILE_SECTIONS.map((section) => (
+            <button
+              key={section.key}
+              type="button"
+              disabled={!hasCharacter}
+              onClick={() => onOpenSection(section.key)}
+              className="px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium -mb-px border-b-2 border-transparent text-gray-500 hover:text-gray-300 whitespace-nowrap shrink-0 disabled:opacity-40 disabled:hover:text-gray-500"
+            >
+              {section.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
         <div className="flex items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3 min-w-0">
@@ -169,6 +214,7 @@ export default function ProfileHome({
             </ul>
           )}
         </section>
+      </div>
       </div>
     </div>
   );
