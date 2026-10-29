@@ -50,3 +50,4 @@ class EventCategory(enum.Enum):
     DELVES = "delves"
     REPUTATION = "reputation"
     GUILD_BANK = "guild_bank"
+    MISSION = "mission"

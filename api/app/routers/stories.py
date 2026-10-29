@@ -18,6 +18,7 @@ from app.schemas.story import (
 from app.services.claims import (
     awaiting_relations, claims_out, replace_claims,
 )
+from app.services.missions import grant_ready
 from app.services.notifications import notify
 from app.services.slugs import is_uuid, unique_slug
 from app.services.surnames import visible_surname
@@ -320,6 +321,7 @@ def approve_story(
         body=f"«{story.title}» ya está en la web.",
         href=f"/lore/{quote(story.slug or str(story.id), safe='')}",
     )
+    grant_ready(db, author)
     db.commit()
     return StoryPending(
         id=story.id,
