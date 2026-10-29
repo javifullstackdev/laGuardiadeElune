@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useRef } from "react";
+import { useState, useTransition, useEffect, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useWatermarkBox } from "../components/HomeLogo";
@@ -163,23 +163,25 @@ export default function ProfileClient({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [characters, setCharacters] = useState<Character[]>(initialChars);
-  const [selected, setSelected] = useState<Character | null>(null);
-  const [startTab, setStartTab] = useState<ProfileSection>("bio");
+  const [selected, setSelected] = useState<Character | null>(
+    () => initialChars.find((c) => c.is_main) ?? initialChars[0] ?? null,
+  );
+  const [tab, setTab] = useState<DetailTab>("inicio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     setCharacters(initialChars);
     setSelected((prev) => {
-      if (!prev) return null;
+      const fallback = initialChars.find((c) => c.is_main) ?? initialChars[0] ?? null;
+      if (!prev) return fallback;
       return initialChars.find((c) =>
         c.name === prev.name && c.realm === prev.realm && (c.game ?? "retail") === (prev.game ?? "retail")
-      ) ?? null;
+      ) ?? fallback;
     });
   }, [initialChars]);
 
   function handleSelect(char: Character) {
     const fresh = characters.find((c) => c.name === char.name && c.realm === char.realm) ?? char;
-    setStartTab("bio");
     setSelected(fresh);
     setSidebarOpen(false); // cerrar sidebar en mobile al seleccionar
   }
@@ -320,16 +322,11 @@ export default function ProfileClient({
     };
   }, [sidebarOpen]);
 
-  function openCharacter(tab: ProfileSection) {
-    const target = characters.find((c) => c.is_main) ?? characters[0];
-    if (!target) return;
-    setStartTab(tab);
-    setSelected(target);
-    setSidebarOpen(false);
-  }
-
   function openMission(key: string) {
-    openCharacter(key === "publish_first_story" ? "stories" : "bio");
+    const target = selected ?? characters.find((c) => c.is_main) ?? characters[0];
+    if (target && selected !== target) setSelected(target);
+    setTab(key === "publish_first_story" ? "stories" : "bio");
+    setSidebarOpen(false);
   }
 
   return (
@@ -348,8 +345,9 @@ export default function ProfileClient({
         {selected ? (
           <div className="flex-1 min-h-0 overflow-hidden">
             <CharacterDetail
-              key={`${selected.name}-${selected.realm}-${startTab}`}
-              initialTab={startTab}
+              key={`${selected.name}-${selected.realm}`}
+              tab={tab}
+              onTabChange={setTab}
               char={selected}
               transactions={transactions}
               points={user}
@@ -359,21 +357,23 @@ export default function ProfileClient({
               onFavoritePrefixChange={(t) => handleFavoritePrefixChange(selected, t)}
               onDetailsPatch={(p) => handleDetailsPatch(selected, p)}
               onOpenCharacters={() => setSidebarOpen(true)}
-              onGoHome={() => {
-                setSelected(null);
-                setSidebarOpen(false);
-              }}
+              home={
+                <ProfileHome
+                  user={user}
+                  missions={missions}
+                  hasCharacter
+                  onOpenMission={openMission}
+                />
+              }
             />
           </div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-8 sm:px-8">
             <ProfileHome
               user={user}
               missions={missions}
-              hasCharacter={characters.length > 0}
+              hasCharacter={false}
               onOpenMission={openMission}
-              onOpenSection={openCharacter}
-              onOpenCharacters={() => setSidebarOpen(true)}
             />
           </div>
         )}
@@ -455,18 +455,6 @@ export default function ProfileClient({
         <Mailbox>
           <BirthdaySection birthday={user.birthday} isAdmin={user.role === "admin" || user.role === "officer"} />
           <div className="flex-1 overflow-y-auto scrollbar-none p-3">
-            <button
-              type="button"
-              onClick={() => {
-                setSelected(null);
-                setSidebarOpen(false);
-              }}
-              className={`w-full text-left px-3 py-2 mb-2 rounded-lg text-sm font-medium transition-colors ${
-                selected === null ? "bg-gray-700 text-white ring-1 ring-gray-600" : "text-gray-300 hover:bg-gray-800"
-              }`}
-            >
-              Inicio
-            </button>
             {characters.length === 0 ? (
               <p className="text-gray-500 text-sm px-2">Sin personajes</p>
             ) : (
@@ -491,13 +479,15 @@ export default function ProfileClient({
 
 // ── Detalle del personaje ─────────────────────────────────────────────────
 
-type DetailTab = ProfileSection;
+type DetailTab = "inicio" | ProfileSection;
 
 function CharacterDetail({
   char, transactions, points, onSetMain, isPending, onFavoriteTitleChange, onFavoritePrefixChange, onDetailsPatch,
-  onOpenCharacters, onGoHome, initialTab = "bio",
+  onOpenCharacters, tab, onTabChange, home,
 }: {
-  initialTab?: DetailTab;
+  tab: DetailTab;
+  onTabChange: (tab: DetailTab) => void;
+  home: ReactNode;
   char: Character;
   transactions: Transaction[];
   points: PointsSummary;
@@ -507,9 +497,7 @@ function CharacterDetail({
   onFavoritePrefixChange: (t: TitleData | null) => void;
   onDetailsPatch: (p: CharPatch) => void;
   onOpenCharacters?: () => void;
-  onGoHome?: () => void;
 }) {
-  const [tab, setTab] = useState<DetailTab>(initialTab);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const color = classColor(char.wow_class);
@@ -519,7 +507,10 @@ function CharacterDetail({
     ["--fact-pad" as string]: `${factPad}px`,
   };
 
-  const tabs = PROFILE_SECTIONS;
+  const tabs: { key: DetailTab; label: string }[] = [
+    { key: "inicio", label: "Inicio" },
+    ...PROFILE_SECTIONS,
+  ];
   const tabIndex = tabs.findIndex((t) => t.key === tab);
   const tabIndexRef = useRef(tabIndex);
   tabIndexRef.current = tabIndex;
@@ -581,7 +572,7 @@ function CharacterDetail({
       if (axis === "x" && Math.abs(dx) > width * 0.18) {
         const next = tabIndexRef.current + (dx < 0 ? 1 : -1);
         if (next >= 0 && next < tabs.length) {
-          setTab(tabs[next].key);
+          onTabChange(tabs[next].key);
         }
       }
       dragXRef.current = 0;
@@ -690,21 +681,12 @@ function CharacterDetail({
           ref={tabBarRef}
           className="flex gap-1 border-b border-gray-800 overflow-x-auto overscroll-x-contain scrollbar-none touch-pan-x -mx-4 px-4 sm:mx-0 sm:px-0"
         >
-          {onGoHome && (
-            <button
-              type="button"
-              onClick={onGoHome}
-              className="px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors -mb-px border-b-2 border-transparent text-gray-500 hover:text-gray-300 whitespace-nowrap shrink-0"
-            >
-              Inicio
-            </button>
-          )}
           {tabs.map((t) => (
             <button
               key={t.key}
               type="button"
               data-tab={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => onTabChange(t.key)}
               className={`px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors -mb-px border-b-2 whitespace-nowrap shrink-0 ${tab === t.key
                 ? "text-white border-current"
                 : "border-transparent text-gray-500 hover:text-gray-300"
@@ -744,6 +726,7 @@ function CharacterDetail({
               >
                 {active || Math.abs(tabs.findIndex((x) => x.key === t.key) - tabIndex) <= 1 ? (
                   <>
+                    {t.key === "inicio" && home}
                     {t.key === "bio" && (
                       <BioTab char={char} onDetailsPatch={onDetailsPatch} />
                     )}
