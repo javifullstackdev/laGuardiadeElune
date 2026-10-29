@@ -6,6 +6,21 @@ import PathPicker from "../onboarding/PathPicker";
 import type { Mission } from "@/lib/missions";
 import { PATH_LABEL } from "@/lib/points";
 
+function missionWhen(iso: string) {
+  return new Date(iso).toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function missionKey(mission: Mission) {
+  const character = mission.character;
+  return character
+    ? `${mission.key}-${character.game}-${character.realm}-${character.name}`
+    : mission.key;
+}
+
 const MISSION_COPY: Record<string, { review: string; open: string; see: string }> = {
   publish_character_sheet: {
     review: "El Eremita está revisando tu ficha.",
@@ -59,7 +74,7 @@ export default function ProfileHome({
   user: HomeUser;
   missions: Mission[];
   hasCharacter: boolean;
-  onOpenMission: (key: string) => void;
+  onOpenMission: (mission: Mission) => void;
 }) {
   const pending = missions.filter((m) => m.status !== "done");
   const done = missions.filter((m) => m.status === "done");
@@ -116,29 +131,34 @@ export default function ProfileHome({
           ) : (
             <ul className="space-y-3">
               {pending.map((mission) => (
-                <li key={mission.key} className="rounded-xl border border-gray-800 bg-gray-900/40 px-4 py-4">
-                  <div className="flex items-baseline justify-between gap-3">
+                <li key={missionKey(mission)} className="rounded-xl border border-gray-800 bg-gray-950/80 px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
                     <h3 className="font-semibold text-gray-100">{mission.title}</h3>
-                    <span className="text-sm font-bold text-yellow-400 shrink-0">+{mission.points}</span>
+                    <span className="shrink-0 rounded-md bg-yellow-400/15 px-2 py-0.5 text-base font-bold text-yellow-200">
+                      +{mission.points}
+                    </span>
                   </div>
+                  {mission.subject && (
+                    <p className="text-sm font-medium text-gray-100 mt-2">{mission.subject}</p>
+                  )}
                   <p className="text-sm text-gray-400 mt-2">{mission.description}</p>
                   {mission.status === "review" ? (
                     <div className="mt-3">
                       <p className="text-sm text-amber-300/90">{MISSION_COPY[mission.key]?.review}</p>
-                      {hasCharacter && (
+                      {(mission.character || hasCharacter) && (
                         <button
                           type="button"
-                          onClick={() => onOpenMission(mission.key)}
+                          onClick={() => onOpenMission(mission)}
                           className="mt-2 text-sm text-gray-300 underline hover:text-white"
                         >
                           {MISSION_COPY[mission.key]?.see}
                         </button>
                       )}
                     </div>
-                  ) : hasCharacter ? (
+                  ) : mission.character || hasCharacter ? (
                     <button
                       type="button"
-                      onClick={() => onOpenMission(mission.key)}
+                      onClick={() => onOpenMission(mission)}
                       className="mt-3 px-3 py-1.5 rounded-lg bg-yellow-500/90 hover:bg-yellow-400 text-black text-sm font-medium"
                     >
                       {MISSION_COPY[mission.key]?.open}
@@ -153,14 +173,39 @@ export default function ProfileHome({
                   )}
                 </li>
               ))}
-              {done.map((mission) => (
-                <li key={mission.key} className="rounded-xl border border-gray-800/70 px-4 py-3">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <h3 className="text-sm font-medium text-gray-400">{mission.title}</h3>
-                    <span className="text-xs text-gray-500 shrink-0">Cumplida · +{mission.points}</span>
-                  </div>
-                </li>
-              ))}
+              {done.map((mission) => {
+                const sheetHref = mission.character
+                  ? `/personajes/${encodeURIComponent(mission.character.realm)}/${encodeURIComponent(mission.character.name)}`
+                  : null;
+                const className = "block w-full text-left rounded-xl border border-gray-800 bg-gray-950/80 px-4 py-4 hover:border-gray-600 transition-colors";
+                const body = (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="font-semibold text-gray-100">{mission.title}</h3>
+                      <span className="shrink-0 rounded-md bg-yellow-400/15 px-2 py-0.5 text-base font-bold text-yellow-200">
+                        +{mission.points}
+                      </span>
+                    </div>
+                    {mission.subject && (
+                      <p className="text-sm font-medium text-gray-100 mt-2">{mission.subject}</p>
+                    )}
+                    {mission.completed_at && (
+                      <p className="text-sm text-gray-400 mt-1">Cumplida el {missionWhen(mission.completed_at)}</p>
+                    )}
+                  </>
+                );
+                return (
+                  <li key={missionKey(mission)}>
+                    {sheetHref ? (
+                      <Link href={sheetHref} className={className}>{body}</Link>
+                    ) : (
+                      <button type="button" onClick={() => onOpenMission(mission)} className={className}>
+                        {body}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
