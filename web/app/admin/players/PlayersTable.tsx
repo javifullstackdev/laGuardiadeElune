@@ -187,8 +187,7 @@ function BirthdayCell({ player }: { player: Player }) {
 
 const PATH_OPTIONS = [
   { value: "competitive", label: "Competitivo" },
-  { value: "campaign", label: "Campaña" },
-  { value: "hybrid", label: "Híbrido" },
+  { value: "campaign", label: "Artesanía y farmeo de materiales" },
 ];
 
 function PathCell({ player }: { player: Player }) {

@@ -41,6 +41,9 @@ async def get_me(
         token_expired = expires <= datetime.now(timezone.utc)
 
     season = season_service.current_season(db)
+    if season and points_service.release_hybrid_itinerary(db, current_user, season):
+        db.commit()
+        db.refresh(current_user)
     choice = season_service.season_path(db, current_user.id, season.id) if season else None
 
     return {
@@ -59,6 +62,7 @@ async def get_me(
         "avatar_url": current_user.avatar_url,
         "role": current_user.role.value,
         "path": choice.path.value if choice else None,
+        "hybrid_resplit_pending": bool(current_user.hybrid_resplit_pending),
         "points_cap": (
             points_service.cap_status(
                 db, current_user.id, season, choice.path, datetime.now(timezone.utc)
@@ -203,8 +207,14 @@ def get_my_transactions(
 
 
 def _parse_path(raw: str) -> UserPath:
+    key = str(raw).upper()
+    if key == "HYBRID":
+        raise HTTPException(
+            status_code=400,
+            detail="El itinerario híbrido ya no existe. Elige competitivo o artesanía y farmeo de materiales.",
+        )
     try:
-        return UserPath[str(raw).upper()]
+        return UserPath[key]
     except KeyError:
         raise HTTPException(status_code=400, detail=f"Itinerario '{raw}' no válido")
 
@@ -215,14 +225,19 @@ def _save_season_path(db: Session, user: User, path: UserPath, *, overwrite: boo
     if not season:
         raise HTTPException(409, "Todavía no hay una temporada en curso")
     choice = season_service.season_path(db, user.id, season.id)
+    if choice and choice.path == UserPath.HYBRID:
+        points_service.release_hybrid_itinerary(db, user, season)
+        choice = None
     if choice and not overwrite:
         raise HTTPException(409, f"Ya elegiste itinerario para «{season.name}»")
     if choice:
         choice.path = path
     else:
         db.add(UserSeasonPath(user_id=user.id, season_id=season.id, path=path))
+    user.path = path
     try:
         db.flush()
+        points_service.settle_hybrid_resplit(db, user, season, path)
         points_service.recalculate_season(db, user.id, season)
         db.commit()
     except IntegrityError:

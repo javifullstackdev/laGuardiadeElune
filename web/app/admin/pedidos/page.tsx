@@ -33,7 +33,7 @@ export default async function AdminPedidosPage() {
         </div>
         <p className="text-sm text-gray-400 mb-8 max-w-2xl">
           Cada pedido recogido da estos puntos al artesano. El valor por defecto es 50. Quien va por
-          competitivo, o no tiene itinerario de campaña, queda a cero.
+          competitivo, o no tiene itinerario de artesanía y farmeo, queda a cero.
         </p>
         <CraftPointsAdmin
           pointsPerOrder={queue?.points_per_order ?? 50}

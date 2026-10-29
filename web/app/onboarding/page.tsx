@@ -154,7 +154,16 @@ export default async function BienvenidaPage() {
                 Todavía no hay una temporada en curso. Podrás elegir itinerario cuando empiece.
               </p>
             ) : (
-              <PathPicker currentPath={user.path} seasonName={user.season.name} />
+              <>
+                <p className="text-sm text-gray-400 mt-2">
+                  ¿De qué forma vas a ayudar en la Guardia esta temporada?
+                </p>
+                <PathPicker
+                  currentPath={user.path}
+                  seasonName={user.season.name}
+                  resplitPending={Boolean(user.hybrid_resplit_pending)}
+                />
+              </>
             )}
           </StepCard>
 

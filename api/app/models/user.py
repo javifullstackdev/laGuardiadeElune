@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, DateTime, Integer, Date, Enum, Text, func
+from sqlalchemy import Boolean, Column, String, DateTime, Integer, Date, Enum, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 
@@ -27,7 +27,10 @@ class User(Base):
     birthday = Column(Date, nullable=True)
     avatar_url = Column(String(255), nullable=True)
     role = Column(Enum(UserRole), nullable=False, default=UserRole.MEMBER)
-    path = Column(Enum(UserPath), nullable=False, default=UserPath.HYBRID)
+    path = Column(Enum(UserPath), nullable=False, default=UserPath.COMPETITIVE)
+    # Tenía híbrido en la temporada en curso. Al elegir de nuevo se queda solo
+    # con míticas+ (competitivo) o con el banco (artesanía y farmeo).
+    hybrid_resplit_pending = Column(Boolean, nullable=False, server_default="false", default=False)
     # Battle.net — se rellena cuando el usuario conecta su cuenta
     blizzard_id = Column(String(255), nullable=True, unique=True)
     blizzard_battletag = Column(String(255), nullable=True)
