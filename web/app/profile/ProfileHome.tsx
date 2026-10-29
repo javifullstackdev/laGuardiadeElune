@@ -6,14 +6,6 @@ import PathPicker from "../onboarding/PathPicker";
 import type { Mission } from "@/lib/missions";
 import { PATH_LABEL } from "@/lib/points";
 
-function missionWhen(iso: string) {
-  return new Date(iso).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
 function missionKey(mission: Mission) {
   const character = mission.character;
   return character
@@ -77,7 +69,6 @@ export default function ProfileHome({
   onOpenMission: (mission: Mission) => void;
 }) {
   const pending = missions.filter((m) => m.status !== "done");
-  const done = missions.filter((m) => m.status === "done");
 
   return (
     <div className="space-y-4">
@@ -126,8 +117,8 @@ export default function ProfileHome({
 
         <section>
           <h2 className="text-xs uppercase tracking-wider text-gray-500 mb-4">Misiones</h2>
-          {pending.length === 0 && done.length === 0 ? (
-            <p className="text-sm text-gray-500">No hay misiones ahora mismo.</p>
+          {pending.length === 0 ? (
+            <p className="text-sm text-gray-500">No hay misiones pendientes.</p>
           ) : (
             <ul className="space-y-3">
               {pending.map((mission) => (
@@ -173,39 +164,6 @@ export default function ProfileHome({
                   )}
                 </li>
               ))}
-              {done.map((mission) => {
-                const sheetHref = mission.character
-                  ? `/personajes/${encodeURIComponent(mission.character.realm)}/${encodeURIComponent(mission.character.name)}`
-                  : null;
-                const className = "block w-full text-left rounded-xl border border-gray-800 bg-gray-950/80 px-4 py-4 hover:border-gray-600 transition-colors";
-                const body = (
-                  <>
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-semibold text-gray-100">{mission.title}</h3>
-                      <span className="shrink-0 rounded-md bg-yellow-400/15 px-2 py-0.5 text-base font-bold text-yellow-200">
-                        +{mission.points}
-                      </span>
-                    </div>
-                    {mission.subject && (
-                      <p className="text-sm font-medium text-gray-100 mt-2">{mission.subject}</p>
-                    )}
-                    {mission.completed_at && (
-                      <p className="text-sm text-gray-400 mt-1">Cumplida el {missionWhen(mission.completed_at)}</p>
-                    )}
-                  </>
-                );
-                return (
-                  <li key={missionKey(mission)}>
-                    {sheetHref ? (
-                      <Link href={sheetHref} className={className}>{body}</Link>
-                    ) : (
-                      <button type="button" onClick={() => onOpenMission(mission)} className={className}>
-                        {body}
-                      </button>
-                    )}
-                  </li>
-                );
-              })}
             </ul>
           )}
         </section>
