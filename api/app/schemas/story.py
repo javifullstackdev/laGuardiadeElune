@@ -55,6 +55,12 @@ class StoryHeadingIn(BaseModel):
     subtitle: str | None = None
 
 
+class StoryBodyIn(BaseModel):
+    biography: str
+    personality: str | None = None
+    appearance: str | None = None
+
+
 class StoryPublic(BaseModel):
     id: UUID
     slug: str | None = None

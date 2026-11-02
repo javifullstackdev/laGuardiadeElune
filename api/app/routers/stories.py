@@ -13,7 +13,7 @@ from app.models.user import User
 from app.models.character import Character
 from app.models.character_story import CharacterStory, ContentLike
 from app.schemas.story import (
-    StoryMentionIn, StoryReject, StoryApprove, StoryPublic, StoryMine, StoryPending, StoryHeadingIn,
+    StoryMentionIn, StoryReject, StoryApprove, StoryPublic, StoryMine, StoryPending, StoryHeadingIn, StoryBodyIn,
 )
 from app.services.claims import (
     awaiting_relations, claims_out, replace_claims,
@@ -505,6 +505,64 @@ def set_story_heading(
         )
     db.commit()
     return {"title": story.title, "subtitle": story.subtitle}
+
+
+def _clean_body(value: str | None, *, required: bool) -> str | None:
+    text = (value or "").strip()
+    if not text:
+        if required:
+            raise HTTPException(400, "La historia es demasiado corta")
+        return None
+    if required and len(" ".join(text.split())) < 80:
+        raise HTTPException(400, "La historia es demasiado corta")
+    return text
+
+
+@router.post("/{story_id}/body")
+def set_story_body(
+    story_id: str,
+    body: StoryBodyIn,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Cambia el texto de una historia ya publicada. El enlace no cambia."""
+    row = (
+        db.query(CharacterStory, User)
+        .join(User, User.id == CharacterStory.author_id)
+        .filter(CharacterStory.id == story_id)
+        .first()
+    )
+    if not row:
+        raise HTTPException(404, "Historia no encontrada")
+    story, author = row
+    if story.status != "approved":
+        raise HTTPException(409, "Solo se puede cambiar el texto de una historia publicada")
+    biography = _clean_body(body.biography, required=True)
+    personality = _clean_body(body.personality, required=False)
+    appearance = _clean_body(body.appearance, required=False)
+    changed = (
+        biography != story.biography
+        or personality != story.personality
+        or appearance != story.appearance
+    )
+    story.biography = biography
+    story.personality = personality
+    story.appearance = appearance
+    if changed:
+        notify(
+            db,
+            user_id=author.id,
+            kind="eremita_story",
+            title="El Eremita ha actualizado tu historia",
+            body=f"El texto de «{story.title}» ya es el nuevo.",
+            href=f"/lore/{quote(story.slug or str(story.id), safe='')}",
+        )
+    db.commit()
+    return {
+        "biography": story.biography,
+        "personality": story.personality,
+        "appearance": story.appearance,
+    }
 
 
 @router.delete("/{story_id}", status_code=204)

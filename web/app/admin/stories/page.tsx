@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import StoryReviewPanel from "./StoryReviewPanel";
+import StoryBodyField from "./StoryBodyField";
 import StoryCoverButton from "./StoryCoverButton";
 import StoryHeadingField from "./StoryHeadingField";
 import StoryDeleteButton from "./StoryDeleteButton";
@@ -54,7 +55,7 @@ export default async function AdminStoriesPage() {
         <section>
           <h2 className="text-lg font-semibold mb-1">Publicadas</h2>
           <p className="text-sm text-gray-500 mb-5">
-            Puedes cambiar el título, el subtítulo y la imagen de una historia ya publicada. El enlace se queda igual. Solo el Eremita o un administrador puede eliminarla.
+            Puedes cambiar el título, el subtítulo, el texto y la imagen de una historia ya publicada. El enlace se queda igual. Solo el Eremita o un administrador puede eliminarla.
           </p>
           {publishedStories.length === 0 ? (
             <p className="text-gray-500">No hay historias publicadas.</p>
@@ -79,6 +80,12 @@ export default async function AdminStoriesPage() {
                       {story.author_username}
                       {story.published_at ? ` · ${formatDate(story.published_at)}` : ""}
                     </p>
+                    <StoryBodyField
+                      storyId={story.id}
+                      biography={story.biography}
+                      personality={story.personality}
+                      appearance={story.appearance}
+                    />
                   </div>
                   <div className="flex items-center gap-2 shrink-0 pt-0.5">
                     <StoryCoverButton storyId={story.id} coverUrl={story.cover_url} />
