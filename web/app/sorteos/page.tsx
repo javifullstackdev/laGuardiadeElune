@@ -33,10 +33,7 @@ export default async function SorteosPage() {
         <header className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-quest-display font-bold">Sorteos</h1>
           <p className="text-gray-400 mt-2 text-sm sm:text-base max-w-2xl">
-            Peña entre miembros de la hermandad. Quien organiza compra el décimo y aquí se apunta
-            quien quiere una parte igual. Mientras la lista sigue abierta, el importe es una
-            estimación. Se fija al cerrarla. El Bizum se hace el día indicado, a la cuenta de quien
-            lo compró. Esta web no cobra.
+            Sorteos de la hermandad
           </p>
         </header>
         <SorteosClient
