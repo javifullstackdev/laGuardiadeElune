@@ -30,6 +30,7 @@ export default async function Navbar() {
           { href: "/ranking", label: "Ranking" },
           { href: "/banco", label: "Banco" },
           { href: "/pedidos", label: "Pedidos" },
+          { href: "/sorteos", label: "Sorteos" },
           { href: "/profile", label: "Perfil", badge: unread },
           ...(isAdmin ? [{ href: "/admin", label: "Admin" }] : []),
           { href: "/api/auth/logout", label: "Salir" },

@@ -90,6 +90,14 @@ const SECTIONS = [
     badge:       "bg-teal-500/20 text-teal-300",
     adminOnly:   true,
   },
+  {
+    href:        "/sorteos",
+    title:       "Sorteos",
+    description: "Abrir una peña, cerrar la lista y marcar los Bizum de un décimo compartido.",
+    color:       "border-amber-500/40 hover:border-amber-400",
+    badge:       "bg-amber-500/20 text-amber-300",
+    adminOnly:   true,
+  },
 ];
 
 export default async function AdminPage() {

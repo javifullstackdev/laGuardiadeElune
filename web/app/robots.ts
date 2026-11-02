@@ -23,6 +23,8 @@ export default function robots(): MetadataRoute.Robots {
           "/pedidos/",
           "/ranking",
           "/ranking/",
+          "/sorteos",
+          "/sorteos/",
         ],
       },
     ],
