@@ -40,7 +40,7 @@ export async function generateMetadata({
     title: story.title,
     description,
     path: `/lore/${story.slug ?? story.id}`,
-    image: story.cover_url,
+    image: story.og_image_url || story.cover_url,
     type: "article",
     publishedTime: story.published_at,
   });

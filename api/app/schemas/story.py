@@ -79,6 +79,7 @@ class StoryPublic(BaseModel):
     character_faction: str | None = None
     character_race: str | None = None
     cover_url: str | None = None
+    og_image_url: str | None = None
     author_username: str
     like_count: int = 0
     relations: list[StoryRelationOut] = []
