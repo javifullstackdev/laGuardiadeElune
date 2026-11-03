@@ -53,6 +53,7 @@ class StoryReject(BaseModel):
 class StoryHeadingIn(BaseModel):
     title: str
     subtitle: str | None = None
+    slug: str | None = None
 
 
 class StoryBodyIn(BaseModel):

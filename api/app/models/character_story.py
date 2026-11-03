@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, UniqueConstraint, Boolean, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from app.database import Base
 
 
@@ -13,6 +13,7 @@ class CharacterStory(Base):
     title = Column(String(255), nullable=False)
     subtitle = Column(String(80), nullable=True)
     slug = Column(String(255), unique=True, index=True, nullable=True)
+    slug_aliases = Column(ARRAY(String(255)), nullable=False, server_default="{}")
     cover_url = Column(String(1000), nullable=True)
     biography = Column(Text, nullable=True)
     personality = Column(Text, nullable=True)

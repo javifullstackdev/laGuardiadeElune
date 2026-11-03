@@ -55,7 +55,7 @@ export default async function AdminStoriesPage() {
         <section>
           <h2 className="text-lg font-semibold mb-1">Publicadas</h2>
           <p className="text-sm text-gray-500 mb-5">
-            Puedes cambiar el título, el subtítulo, el texto y la imagen de una historia ya publicada. El enlace se queda igual. Solo el Eremita o un administrador puede eliminarla.
+            Puedes cambiar el título, el subtítulo, el enlace, el texto y la imagen de una historia ya publicada. Si cambias el enlace, el anterior sigue abriendo la historia. Solo el Eremita o un administrador puede eliminarla.
           </p>
           {publishedStories.length === 0 ? (
             <p className="text-gray-500">No hay historias publicadas.</p>
@@ -71,6 +71,7 @@ export default async function AdminStoriesPage() {
                       storyId={story.id}
                       title={story.title}
                       subtitle={story.subtitle ?? null}
+                      slug={story.slug ?? null}
                       href={storyHref(story)}
                     />
                     <p className="text-sm text-gray-500 truncate">

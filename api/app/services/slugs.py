@@ -23,11 +23,28 @@ def is_uuid(value: str) -> bool:
     return True
 
 
-def unique_slug(db, model, title: str | None, fallback: str = "contenido") -> str:
+def _slug_taken(db, model, candidate: str, exclude_id=None) -> bool:
+    if candidate in RESERVED_SLUGS:
+        return True
+    query = db.query(model.id).filter(model.slug == candidate)
+    if exclude_id is not None:
+        query = query.filter(model.id != exclude_id)
+    if query.first() is not None:
+        return True
+    aliases = getattr(model, "slug_aliases", None)
+    if aliases is None:
+        return False
+    query = db.query(model.id).filter(aliases.any(candidate))
+    if exclude_id is not None:
+        query = query.filter(model.id != exclude_id)
+    return query.first() is not None
+
+
+def unique_slug(db, model, title: str | None, fallback: str = "contenido", exclude_id=None) -> str:
     base = slugify(title, fallback)
     candidate = base
     suffix = 2
-    while candidate in RESERVED_SLUGS or db.query(model.id).filter(model.slug == candidate).first() is not None:
+    while _slug_taken(db, model, candidate, exclude_id):
         candidate = f"{base}-{suffix}"
         suffix += 1
     return candidate

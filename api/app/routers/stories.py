@@ -5,7 +5,7 @@ import json
 import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
 from sqlalchemy.orm import Session
-from sqlalchemy import func as sa_func
+from sqlalchemy import func as sa_func, or_
 
 from app.database import get_db
 from app.dependencies import get_current_user, get_optional_user, require_admin
@@ -20,7 +20,7 @@ from app.services.claims import (
 )
 from app.services.missions import grant_ready
 from app.services.notifications import notify
-from app.services.slugs import is_uuid, unique_slug
+from app.services.slugs import RESERVED_SLUGS, is_uuid, slugify, unique_slug
 from app.services.surnames import visible_surname
 from app.urls import static_url
 
@@ -190,7 +190,11 @@ def get_story(
         db.query(CharacterStory, Character, User)
         .join(Character, Character.id == CharacterStory.character_id)
         .join(User, User.id == CharacterStory.author_id)
-        .filter((CharacterStory.id if is_uuid(story_id) else CharacterStory.slug) == story_id)
+        .filter(
+            CharacterStory.id == story_id
+            if is_uuid(story_id)
+            else or_(CharacterStory.slug == story_id, CharacterStory.slug_aliases.any(story_id))
+        )
         .first()
     )
     if not row:
@@ -478,7 +482,7 @@ def set_story_heading(
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """Cambia el título y el subtítulo de una historia ya publicada. El enlace no cambia."""
+    """Cambia el título, el subtítulo y el enlace de una historia ya publicada."""
     row = (
         db.query(CharacterStory, User)
         .join(User, User.id == CharacterStory.author_id)
@@ -494,6 +498,7 @@ def set_story_heading(
     title_changed = new_title != story.title
     story.title = new_title
     story.subtitle = _clean_subtitle(body.subtitle)
+    _apply_story_slug(db, story, body.slug, story.title)
     if title_changed:
         notify(
             db,
@@ -504,7 +509,35 @@ def set_story_heading(
             href=f"/lore/{quote(story.slug or str(story.id), safe='')}",
         )
     db.commit()
-    return {"title": story.title, "subtitle": story.subtitle}
+    return {"title": story.title, "subtitle": story.subtitle, "slug": story.slug}
+
+
+def _apply_story_slug(db: Session, story: CharacterStory, raw: str | None, title: str) -> None:
+    text = (raw or "").strip()
+    if text:
+        slug = slugify(text, "")
+        if not slug:
+            raise HTTPException(400, "El enlace no es válido")
+        if is_uuid(slug) or slug in RESERVED_SLUGS:
+            raise HTTPException(400, "Ese enlace está reservado")
+        taken = (
+            db.query(CharacterStory.id)
+            .filter(
+                CharacterStory.id != story.id,
+                or_(CharacterStory.slug == slug, CharacterStory.slug_aliases.any(slug)),
+            )
+            .first()
+        )
+        if taken:
+            raise HTTPException(400, "Ese enlace ya lo usa otra historia")
+    else:
+        slug = unique_slug(db, CharacterStory, title, "historia", exclude_id=story.id)
+    previous = story.slug
+    aliases = [item for item in (story.slug_aliases or []) if item and item != slug]
+    if previous and previous != slug and previous not in aliases:
+        aliases.append(previous)
+    story.slug = slug
+    story.slug_aliases = aliases
 
 
 def _clean_body(value: str | None, *, required: bool) -> str | None:
