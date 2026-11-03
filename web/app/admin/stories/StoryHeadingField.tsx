@@ -7,15 +7,19 @@ export default function StoryHeadingField({
   storyId,
   title,
   subtitle,
+  slug,
   href,
 }: {
   storyId: string;
   title: string;
   subtitle: string | null;
+  slug: string | null;
   href: string;
 }) {
   const [titleValue, setTitleValue] = useState(title);
   const [subtitleValue, setSubtitleValue] = useState(subtitle ?? "");
+  const [slugValue, setSlugValue] = useState(slug ?? "");
+  const [viewHref, setViewHref] = useState(href);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -33,6 +37,7 @@ export default function StoryHeadingField({
       body: JSON.stringify({
         title: nextTitle,
         subtitle: subtitleValue.trim() || null,
+        slug: slugValue.trim(),
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -43,6 +48,10 @@ export default function StoryHeadingField({
     }
     if (typeof data.title === "string") setTitleValue(data.title);
     setSubtitleValue(typeof data.subtitle === "string" ? data.subtitle : "");
+    if (typeof data.slug === "string") {
+      setSlugValue(data.slug);
+      setViewHref(`/lore/${data.slug}`);
+    }
     setNote("Guardado");
   }
 
@@ -57,7 +66,7 @@ export default function StoryHeadingField({
           aria-label="Título"
           className="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-sm text-gray-100 placeholder:text-gray-600"
         />
-        <Link href={href} className="text-xs text-gray-500 hover:text-yellow-400 shrink-0">
+        <Link href={viewHref} className="text-xs text-gray-500 hover:text-yellow-400 shrink-0">
           Ver
         </Link>
       </div>
@@ -69,6 +78,17 @@ export default function StoryHeadingField({
           maxLength={80}
           aria-label="Subtítulo"
           className="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200 placeholder:text-gray-600"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-gray-500 shrink-0">/lore/</span>
+        <input
+          value={slugValue}
+          onChange={(e) => setSlugValue(e.target.value)}
+          placeholder="vacío: se arma con el título"
+          maxLength={120}
+          aria-label="Enlace"
+          className="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 font-mono text-xs text-gray-200 placeholder:text-gray-600"
         />
         <button
           type="button"
