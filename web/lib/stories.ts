@@ -17,6 +17,7 @@ export type StoryPublic = {
   character_faction?: string | null;
   character_race?: string | null;
   cover_url: string | null;
+  og_image_url?: string | null;
   author_username: string;
   like_count: number;
   relations: StoryRelation[];

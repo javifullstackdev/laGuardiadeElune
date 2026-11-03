@@ -98,6 +98,7 @@ def _to_public(db: Session, story: CharacterStory, char: Character, author: User
         character_faction=char.faction,
         character_race=_race_value(char),
         cover_url=_cover_url(story, char),
+        og_image_url=_og_image_url(story),
         author_username=author.username,
         like_count=_like_count(db, story.id),
         relations=[r for r in claims_out(db, story.id) if r.status == "confirmed" or story.status != "approved"],
@@ -413,10 +414,20 @@ def _clean_subtitle(value: str | None) -> str | None:
     return text
 
 
-def _remove_cover_file(story: CharacterStory) -> None:
-    if not story.cover_url or story.cover_url.startswith("http"):
+def _remove_stored_file(relative: str | None) -> None:
+    if not relative or relative.startswith("http"):
         return
-    Path("uploads", story.cover_url).unlink(missing_ok=True)
+    Path("uploads", relative).unlink(missing_ok=True)
+
+
+def _og_image_url(story: CharacterStory) -> str | None:
+    if story.og_image_url:
+        return static_url(story.og_image_url)
+    return None
+
+
+def _remove_cover_file(story: CharacterStory) -> None:
+    _remove_stored_file(story.cover_url)
 
 
 def _reassign_published(db: Session, char: Character, removed_id) -> None:
@@ -473,6 +484,43 @@ async def replace_story_cover(
     )
     db.commit()
     return {"cover_url": _cover_url(story, char)}
+
+
+@router.post("/{story_id}/og-image")
+async def replace_story_og_image(
+    story_id: str,
+    image: UploadFile = File(...),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Imagen horizontal que WhatsApp y X muestran al compartir. No cambia la portada."""
+    story = db.query(CharacterStory).filter(CharacterStory.id == story_id).first()
+    if not story:
+        raise HTTPException(404, "Historia no encontrada")
+    if story.status != "approved":
+        raise HTTPException(409, "Solo se puede cambiar la imagen de una historia publicada")
+    if not image.filename:
+        raise HTTPException(400, "Falta la imagen")
+    new_path = await _save_cover(story.id, image)
+    _remove_stored_file(story.og_image_url)
+    story.og_image_url = new_path
+    db.commit()
+    return {"og_image_url": _og_image_url(story)}
+
+
+@router.delete("/{story_id}/og-image", status_code=204)
+def clear_story_og_image(
+    story_id: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    story = db.query(CharacterStory).filter(CharacterStory.id == story_id).first()
+    if not story:
+        raise HTTPException(404, "Historia no encontrada")
+    _remove_stored_file(story.og_image_url)
+    story.og_image_url = None
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.post("/{story_id}/heading")
@@ -620,6 +668,7 @@ def delete_story(
         ContentLike.target_id == story.id,
     ).delete(synchronize_session=False)
     _remove_cover_file(story)
+    _remove_stored_file(story.og_image_url)
     db.delete(story)
     db.commit()
     return Response(status_code=204)
