@@ -112,6 +112,20 @@ const REALM_NAME_ES: Record<string, string> = {
   "zul-jin": "Zul'jin",
 };
 
+const FOREVER_MODE_LABEL: Record<string, string> = {
+  normal: "Normal",
+  pvp: "PvP",
+  rol: "Rol",
+  "rol-pvp": "Rol PvP",
+};
+
+/** En Forever el «reino» guardado es el modo de juego. */
+export function foreverModeLabel(slug: string | null | undefined) {
+  if (!slug) return null;
+  const key = slug.trim().toLowerCase();
+  return FOREVER_MODE_LABEL[key] ?? realmLabel(key);
+}
+
 /** `dun-modr` → `Dun Modr`. */
 export function realmLabel(slug: string | null | undefined) {
   if (!slug) return null;

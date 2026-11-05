@@ -509,3 +509,93 @@ async def get_character_title_ids(realm: str, name: str) -> set[int]:
     if data is None:
         return set()
     return {t["id"] for t in data.get("titles", []) if t.get("id") is not None}
+
+
+# Modo de juego de Forever. En esa línea no hay reino: el ruleset del
+# servidor (Normal, PvP, Rol, Rol PvP) ocupa su lugar.
+_FOREVER_MODE_BY_TYPE = {
+    "NORMAL": ("normal", "Normal"),
+    "PVP": ("pvp", "PvP"),
+    "RP": ("rol", "Rol"),
+    "RPPVP": ("rol-pvp", "Rol PvP"),
+    "RP_PVP": ("rol-pvp", "Rol PvP"),
+}
+
+# El índice de reinos de Forever no siempre responde. Estos ids de EU
+# salen del perfil de cuenta (protected-character) y bastan para saber el modo.
+_FOREVER_REALM_SLUGS = {
+    6841: "camwow-eu4-realm-1-pve",
+    6842: "camwow-eu4-realm-2-pvp",
+    6855: "camwow-eu5-realm-1-pve",
+    6856: "camwow-eu5-realm-2-pvp",
+    6937: "camwow-eu4-realm-3-pve",
+    6938: "camwow-eu4-realm-4-pvp",
+    6939: "camwow-eu4-realm-5-pve",
+    6940: "camwow-eu4-realm-6-pvp",
+    6941: "camwow-eu4-realm-7-pve",
+    6942: "camwow-eu4-realm-8-pvp",
+    6943: "camwow-eu4-realm-9-rp-pvp",
+    6944: "camwow-eu4-realm-10-rp",
+    6945: "camwow-eu5-realm-3-pve",
+    6946: "camwow-eu5-realm-4-pvp",
+    6947: "camwow-eu5-realm-5-pve",
+    6948: "camwow-eu5-realm-6-pvp",
+    6949: "camwow-eu5-realm-7-pve",
+    6950: "camwow-eu5-realm-8-pvp",
+    6951: "camwow-eu5-realm-9-rp-pvp",
+    6952: "camwow-eu5-realm-10-rp",
+}
+
+_forever_mode_cache: dict[int, tuple[str, str]] = {}
+
+
+def mode_from_slug(slug: str) -> tuple[str, str] | None:
+    text = (slug or "").lower()
+    if "rp-pvp" in text:
+        return ("rol-pvp", "Rol PvP")
+    if text.endswith("-rp"):
+        return ("rol", "Rol")
+    if text.endswith("-pvp"):
+        return ("pvp", "PvP")
+    if text.endswith("-pve"):
+        return ("normal", "Normal")
+    return None
+
+
+def mode_from_realm_document(data: dict) -> tuple[str, str] | None:
+    type_code = ((data.get("type") or {}).get("type") or "").upper().replace("-", "")
+    if type_code in _FOREVER_MODE_BY_TYPE:
+        return _FOREVER_MODE_BY_TYPE[type_code]
+    return mode_from_slug(data.get("slug") or "")
+
+
+def protected_realm_id(character: dict) -> int | None:
+    """El id de reino va en protected-character/{realmId}-{characterId}."""
+    href = ((character.get("protected_character") or {}).get("href")) or ""
+    tail = href.split("protected-character/")[-1].split("?")[0]
+    realm_part = tail.split("-", 1)[0]
+    if realm_part.isdigit():
+        return int(realm_part)
+    return None
+
+
+async def forever_play_mode(realm_id: int | None) -> tuple[str, str]:
+    """Slug y etiqueta del modo. Si Blizzard no dice el ruleset, queda desconocido."""
+    if realm_id is None:
+        return ("desconocido", "Modo desconocido")
+    cached = _forever_mode_cache.get(realm_id)
+    if cached:
+        return cached
+
+    data = None
+    try:
+        data = await _get_json(f"/data/wow/realm/{realm_id}", f"dynamic-forever-{_region()}", locale=LOCALE)
+    except BlizzardError:
+        data = None
+    mode = mode_from_realm_document(data) if data else None
+    if mode is None:
+        mode = mode_from_slug(_FOREVER_REALM_SLUGS.get(realm_id, ""))
+    if mode is None:
+        mode = ("desconocido", "Modo desconocido")
+    _forever_mode_cache[realm_id] = mode
+    return mode

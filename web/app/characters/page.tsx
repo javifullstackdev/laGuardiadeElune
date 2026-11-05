@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import AddCharacterRow from "./AddCharacterRow";
-import { realmLabel } from "@/lib/wow";
+import { foreverModeLabel, realmLabel } from "@/lib/wow";
 
 import { apiUrl, publicApiUrl } from "@/lib/api";
 type MyCharacter = {
@@ -27,6 +27,8 @@ type BlizzardCharacter = {
   level: number;
   faction: string;
   blizzard_character_id: number;
+  game?: string;
+  surname?: string | null;
 };
 
 export default async function PersonajesPage({
@@ -60,9 +62,11 @@ export default async function PersonajesPage({
   const bnetError = !bnetRes.ok ? (await bnetRes.json()).detail : null;
 
   // Personajes de Blizzard aún no añadidos en ninguna línea temporal
-  const registeredKeys = new Set(myCharacters.map((c) => `${c.name}-${c.realm}`));
+  const registeredKeys = new Set(
+    myCharacters.map((c) => `${c.game ?? "retail"}|${c.name.toLowerCase()}|${c.realm.toLowerCase()}`),
+  );
   const unregistered = bnetCharacters.filter(
-    (c) => !registeredKeys.has(`${c.name}-${c.realm}`)
+    (c) => !registeredKeys.has(`${c.game ?? "retail"}|${c.name.toLowerCase()}|${c.realm.toLowerCase()}`),
   );
 
   const params = await searchParams;
@@ -116,8 +120,8 @@ export default async function PersonajesPage({
       <section>
         <h2 className="text-lg font-semibold mb-1">Importar desde Battle.net</h2>
         <p className="text-gray-500 text-sm mb-4">
-          Selecciona el juego en cada personaje. Para <strong>Warcraft Forever</strong> se requiere apellido.
-          Un mismo personaje puede registrarse en ambas líneas temporales.
+          Retail llega con su reino. Warcraft Forever llega con nombre, apellido y modo de juego
+          (Normal, PvP, Rol o Rol PvP).
         </p>
 
         {bnetError ? (
@@ -132,10 +136,12 @@ export default async function PersonajesPage({
           </div>
         ) : bnetCharacters.length === 0 ? (
           <p className="text-gray-500 text-sm">No se encontraron personajes en esta cuenta.</p>
+        ) : unregistered.length === 0 ? (
+          <p className="text-gray-500 text-sm">Todos los personajes de esta cuenta ya están añadidos.</p>
         ) : (
           <ul className="space-y-3">
-            {bnetCharacters.map((c) => (
-              <AddCharacterRow key={c.blizzard_character_id} c={c} />
+            {unregistered.map((c) => (
+              <AddCharacterRow key={`${c.game ?? "retail"}-${c.blizzard_character_id}`} c={c} />
             ))}
           </ul>
         )}
@@ -152,7 +158,9 @@ function CharacterBadge({ char }: { char: MyCharacter }) {
       {char.surname && char.surname_allowed !== false && (
         <span className="text-gray-500 text-sm">{char.surname}</span>
       )}
-      <span className="text-gray-400 text-sm">· {char.game !== "forever" ? realmLabel(char.realm) ?? char.realm : char.realm}</span>
+      <span className="text-gray-400 text-sm">
+        · {isForever ? foreverModeLabel(char.realm) ?? char.realm : realmLabel(char.realm) ?? char.realm}
+      </span>
       {char.is_main && (
         <span className="text-xs text-yellow-600 border border-yellow-400/40 rounded-full px-2 py-0.5">main</span>
       )}

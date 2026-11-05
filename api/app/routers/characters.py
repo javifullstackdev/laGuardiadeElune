@@ -104,6 +104,72 @@ def get_my_characters(
 
 # ── Personajes de Blizzard ─────────────────────────────────────────────────────
 
+async def _wow_account_characters(
+    client: httpx.AsyncClient,
+    access_token: str,
+    namespace: str,
+) -> tuple[int, list[dict]]:
+    """Lista de personajes de la cuenta. 404 significa que no hay ninguno en esa línea."""
+    try:
+        res = await client.get(
+            f"https://{BLIZZARD_REGION}.api.blizzard.com/profile/user/wow",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"namespace": namespace, "locale": "es_ES"},
+            timeout=12.0,
+        )
+    except httpx.HTTPError:
+        return 0, []
+    if res.status_code == 404:
+        return 404, []
+    if res.status_code != 200:
+        return res.status_code, []
+    characters: list[dict] = []
+    for account in res.json().get("wow_accounts", []):
+        characters.extend(account.get("characters") or [])
+    return 200, characters
+
+
+def _retail_character(char: dict) -> BlizzardCharacterOut:
+    return BlizzardCharacterOut(
+        name=char["name"],
+        realm=char["realm"]["slug"],
+        realm_name=char["realm"]["name"],
+        class_id=char["playable_class"]["id"],
+        race_id=char["playable_race"]["id"],
+        class_name=char["playable_class"]["name"],
+        race_name=char["playable_race"]["name"],
+        level=char["level"],
+        faction=char["faction"]["type"],
+        gender=(char.get("gender") or {}).get("type"),
+        blizzard_character_id=char["id"],
+        game="retail",
+    )
+
+
+async def _forever_character(char: dict) -> BlizzardCharacterOut | None:
+    name = (char.get("name") or "").strip()
+    if not name or char.get("id") is None:
+        return None
+    mode_slug, mode_label = await blizzard.forever_play_mode(blizzard.protected_realm_id(char))
+    playable_class = char.get("playable_class") or {}
+    playable_race = char.get("playable_race") or {}
+    return BlizzardCharacterOut(
+        name=name,
+        surname=(char.get("surname") or "").strip() or None,
+        realm=mode_slug,
+        realm_name=mode_label,
+        class_id=playable_class.get("id") or 0,
+        race_id=playable_race.get("id") or 0,
+        class_name=playable_class.get("name") or "",
+        race_name=playable_race.get("name") or "",
+        level=char.get("level") or 0,
+        faction=(char.get("faction") or {}).get("type") or "",
+        gender=(char.get("gender") or {}).get("type"),
+        blizzard_character_id=char["id"],
+        game="forever",
+    )
+
+
 @router.get("/blizzard", response_model=list[BlizzardCharacterOut])
 async def get_blizzard_characters(
     current_user: User = Depends(get_current_user),
@@ -111,36 +177,34 @@ async def get_blizzard_characters(
     if not current_user.blizzard_access_token:
         raise HTTPException(400, "No tienes Battle.net vinculado.")
 
+    token = current_user.blizzard_access_token
     async with httpx.AsyncClient() as client:
-        res = await client.get(
-            f"https://{BLIZZARD_REGION}.api.blizzard.com/profile/user/wow",
-            headers={"Authorization": f"Bearer {current_user.blizzard_access_token}"},
-            params={"namespace": f"profile-{BLIZZARD_REGION}", "locale": "es_ES"},
+        retail_status, retail_chars = await _wow_account_characters(
+            client, token, f"profile-{BLIZZARD_REGION}"
+        )
+        forever_status, forever_chars = await _wow_account_characters(
+            client, token, f"profile-forever-{BLIZZARD_REGION}"
         )
 
-    if res.status_code == 401:
+    if retail_status == 401 or forever_status == 401:
         raise HTTPException(401, "Tu token de Battle.net ha caducado. Reconecta tu cuenta.")
-    if res.status_code != 200:
-        raise HTTPException(400, f"Error al obtener personajes de Battle.net ({res.status_code})")
 
     characters: list[BlizzardCharacterOut] = []
-    for account in res.json().get("wow_accounts", []):
-        for char in account.get("characters", []):
-            characters.append(BlizzardCharacterOut(
-                name=char["name"],
-                realm=char["realm"]["slug"],
-                realm_name=char["realm"]["name"],
-                class_id=char["playable_class"]["id"],
-                race_id=char["playable_race"]["id"],
-                class_name=char["playable_class"]["name"],
-                race_name=char["playable_race"]["name"],
-                level=char["level"],
-                faction=char["faction"]["type"],
-                gender=(char.get("gender") or {}).get("type"),
-                blizzard_character_id=char["id"],
-            ))
+    if retail_status == 200:
+        for char in retail_chars:
+            if char.get("realm") and char.get("playable_class") and char.get("playable_race"):
+                characters.append(_retail_character(char))
+    if forever_status == 200:
+        for char in forever_chars:
+            parsed = await _forever_character(char)
+            if parsed is not None:
+                characters.append(parsed)
 
-    characters.sort(key=lambda c: (c.realm != "dun-modr", -c.level))
+    if not characters and retail_status not in (200, 404) and forever_status not in (200, 404):
+        status = retail_status or forever_status
+        raise HTTPException(400, f"Error al obtener personajes de Battle.net ({status})")
+
+    characters.sort(key=lambda c: (c.game != "retail", c.realm != "dun-modr", -c.level))
     return characters
 
 
@@ -616,8 +680,34 @@ async def add_character(
     db: Session = Depends(get_db),
 ):
     # Para Forever el apellido es obligatorio
-    if data.game == "forever" and not (data.surname or "").strip():
-        raise HTTPException(400, "Los personajes de Warcraft Forever requieren apellido.")
+    if data.game == "forever":
+        if not current_user.blizzard_access_token:
+            raise HTTPException(400, "Conecta Battle.net para importar personajes de Forever.")
+        async with httpx.AsyncClient() as client:
+            status, roster = await _wow_account_characters(
+                client, current_user.blizzard_access_token, f"profile-forever-{BLIZZARD_REGION}"
+            )
+        if status == 401:
+            raise HTTPException(401, "Tu token de Battle.net ha caducado. Reconecta tu cuenta.")
+        matched = None
+        for char in roster:
+            if data.blizzard_character_id and char.get("id") == data.blizzard_character_id:
+                matched = char
+                break
+        if matched is None:
+            raise HTTPException(403, "Este personaje de Forever no pertenece a tu cuenta de Battle.net")
+        mode_slug, _mode_label = await blizzard.forever_play_mode(blizzard.protected_realm_id(matched))
+        data.name = (matched.get("name") or data.name).strip()
+        data.surname = (matched.get("surname") or "").strip() or None
+        data.realm = mode_slug
+        data.blizzard_character_id = matched.get("id")
+        data.level = matched.get("level") or data.level
+        data.faction = (matched.get("faction") or {}).get("type") or data.faction
+        data.gender = (matched.get("gender") or {}).get("type") or data.gender
+        data.class_id = (matched.get("playable_class") or {}).get("id") or data.class_id
+        data.race_id = (matched.get("playable_race") or {}).get("id") or data.race_id
+        if not (data.surname or "").strip():
+            raise HTTPException(400, "Blizzard no ha devuelto el apellido de este personaje de Forever.")
 
     existing = (
         db.query(Character)
@@ -672,7 +762,7 @@ async def add_character(
         name=data.name,
         realm=data.realm,
         surname=(data.surname or "").strip() or None,
-        surname_allowed=not bool((data.surname or "").strip()),
+        surname_allowed=data.game == "forever" or not bool((data.surname or "").strip()),
         blizzard_character_id=blizzard_character_id,
         render_url=render_url,
         face_url=face_url,
