@@ -13,7 +13,7 @@ import ImageRequestModal from "./ImageRequestModal";
 import { mergePublicFields, PUBLIC_FIELD_LABELS, type PublicFields, type WikiCharacter } from "@/lib/wiki";
 import { type BioAnswers } from "@/lib/bio";
 import { getEntitlements } from "@/lib/entitlements";
-import { classLabel, raceLabel, factionLabel, factionColor, classColor, realmLabel, genderLabel } from "@/lib/wow";
+import { classLabel, raceLabel, factionLabel, factionColor, classColor, realmLabel, foreverModeLabel, genderLabel } from "@/lib/wow";
 
 import { publicApiUrl } from "@/lib/api";
 import type { Mission } from "@/lib/missions";
@@ -1304,7 +1304,7 @@ function DetailsTab({
     { label: "Clase", value: classLabel(char.wow_class, char.gender) },
     { label: "Facción", value: factionLabel(char.faction), color: factionColor(char.faction) },
     { label: "Género", value: genderLabel(char.gender) },
-    { label: "Reino", value: char.game !== "forever" ? realmLabel(char.realm) : char.realm },
+    { label: char.game === "forever" ? "Modo" : "Reino", value: char.game === "forever" ? foreverModeLabel(char.realm) : realmLabel(char.realm) },
   ].filter((d) => d.value);
 
   return (
@@ -2202,7 +2202,7 @@ function CharacterList({
                         <p className="text-xs truncate mt-0.5">
                           {char.favorite_title
                             ? <span className="text-yellow-500/80">{char.favorite_title.name}</span>
-                            : <span className="text-gray-500">{char.game !== "forever" ? realmLabel(char.realm) : char.realm}</span>}
+                            : <span className="text-gray-500">{char.game === "forever" ? foreverModeLabel(char.realm) : realmLabel(char.realm)}</span>}
                         </p>
                       </div>
                       {char.is_verified && <span title="Verificado" className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}

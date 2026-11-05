@@ -130,6 +130,8 @@ class BlizzardCharacterOut(BaseModel):
     faction: str
     gender: Optional[str] = None
     blizzard_character_id: int
+    game: str = "retail"
+    surname: Optional[str] = None
 
 
 class CharacterAddInput(BaseModel):
