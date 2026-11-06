@@ -75,7 +75,7 @@ type Character = {
   origin: string | null;
   age_lore: number | null;
   residence: string | null;
-  bio_status: "draft" | "pending" | "published";
+  bio_status: "draft" | "pending" | "rejected" | "published";
   bio_answers: BioAnswers;
   bio_answers_pending: boolean;
   bio_rejection_reason: string | null;
@@ -1178,6 +1178,22 @@ function BioTab({
         <p className="shrink-0 text-xs text-gray-500">Hay cambios sin guardar.</p>
       )}
       {error && <p className="shrink-0 text-red-400 text-sm">{error}</p>}
+      {!answersLocked && char.bio_status === "rejected" && (
+        <p className="shrink-0 text-sm text-red-300">
+          El Eremita ha rechazado esta ficha. Puedes reescribirla y volver a enviarla.
+          {char.bio_rejection_reason ? ` ${char.bio_rejection_reason}` : ""}
+        </p>
+      )}
+      {!answersLocked && char.bio_status === "draft" && char.bio_rejection_reason && (
+        <p className="shrink-0 text-sm text-amber-300">
+          El Eremita te ha pedido cambios. {char.bio_rejection_reason}
+        </p>
+      )}
+      {!answersLocked && char.bio_status === "published" && char.bio_rejection_reason && (
+        <p className="shrink-0 text-sm text-amber-300">
+          El Eremita no ha publicado los últimos cambios. {char.bio_rejection_reason}
+        </p>
+      )}
       {answersLocked && (
         <p className="shrink-0 text-sm text-amber-300">
           El Eremita está revisando la ficha. Cuando la publique, el texto quedará en el pergamino.
