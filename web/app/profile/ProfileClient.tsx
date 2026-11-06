@@ -168,6 +168,8 @@ export default function ProfileClient({
   );
   const [tab, setTab] = useState<DetailTab>("inicio");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
 
   useEffect(() => {
     setCharacters(initialChars);
@@ -184,6 +186,49 @@ export default function ProfileClient({
     const fresh = characters.find((c) => c.name === char.name && c.realm === char.realm) ?? char;
     setSelected(fresh);
     setSidebarOpen(false); // cerrar sidebar en mobile al seleccionar
+  }
+
+  function sameCharacter(a: Character, b: Character) {
+    return a.name === b.name && a.realm === b.realm && (a.game ?? "retail") === (b.game ?? "retail");
+  }
+
+  async function handleRemove(char: Character) {
+    const ok = window.confirm(
+      `¿Quitar a ${char.name} de tu lista? Si tenía ficha pública, deja de verse en Personajes. Puedes volver a añadirlo desde Battle.net.`,
+    );
+    if (!ok) return;
+    const key = `${char.game ?? "retail"}-${char.name}-${char.realm}`;
+    setRemoving(key);
+    setRemoveError(null);
+    const params = new URLSearchParams({
+      name: char.name,
+      realm: char.realm,
+      game: char.game ?? "retail",
+    });
+    const res = await fetch(`/api/characters/remove?${params}`, { method: "DELETE" });
+    setRemoving(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setRemoveError(typeof data.detail === "string" ? data.detail : "No se pudo quitar el personaje.");
+      return;
+    }
+    const rest = characters
+      .filter((item) => !sameCharacter(item, char))
+      .map((item) =>
+        char.is_main ? { ...item, is_main: false, is_alt: true } : item,
+      );
+    if (char.is_main && rest.length > 0) {
+      rest.sort((a, b) => a.name.localeCompare(b.name, "es"));
+      rest[0] = { ...rest[0], is_main: true, is_alt: false };
+    }
+    setCharacters(rest);
+    setSelected((prev) => {
+      if (prev && sameCharacter(prev, char)) {
+        return rest.find((item) => item.is_main) ?? rest[0] ?? null;
+      }
+      return prev;
+    });
+    router.refresh();
   }
 
   async function handleSetMain(char: Character) {
@@ -462,6 +507,7 @@ export default function ProfileClient({
         <Mailbox>
           <BirthdaySection birthday={user.birthday} isAdmin={user.role === "admin" || user.role === "officer"} />
           <div className="flex-1 overflow-y-auto scrollbar-none p-3">
+            {removeError && <p className="text-xs text-red-400 px-2 mb-2">{removeError}</p>}
             {characters.length === 0 ? (
               <p className="text-gray-500 text-sm px-2">Sin personajes</p>
             ) : (
@@ -469,6 +515,8 @@ export default function ProfileClient({
                 characters={characters}
                 selected={selected}
                 onSelect={handleSelect}
+                onRemove={handleRemove}
+                removing={removing}
               />
             )}
           </div>
@@ -2159,11 +2207,13 @@ const GAME_ACCENT: Record<string, string> = {
 };
 
 function CharacterList({
-  characters, selected, onSelect,
+  characters, selected, onSelect, onRemove, removing,
 }: {
   characters: Character[];
   selected: Character | null;
   onSelect: (c: Character) => void;
+  onRemove: (c: Character) => void;
+  removing: string | null;
 }) {
   const games = ["retail", "forever"].filter((g) => characters.some((c) => (c.game ?? "retail") === g));
 
@@ -2184,11 +2234,12 @@ function CharacterList({
               {group.map((char) => {
                 const color = classColor(char.wow_class);
                 const isActive = selected?.name === char.name && selected?.realm === char.realm && (selected?.game ?? "retail") === game;
+                const removeKey = `${game}-${char.name}-${char.realm}`;
                 return (
-                  <li key={`${char.name}-${char.realm}-${game}`}>
+                  <li key={`${char.name}-${char.realm}-${game}`} className="flex items-stretch gap-1">
                     <button
                       onClick={() => onSelect(char)}
-                      className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${isActive ? "bg-gray-700 ring-1 ring-gray-600" : "hover:bg-gray-800"
+                      className={`min-w-0 flex-1 text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${isActive ? "bg-gray-700 ring-1 ring-gray-600" : "hover:bg-gray-800"
                         }`}
                     >
                       {(char.face_display_url || char.face_url) ? (
@@ -2222,6 +2273,14 @@ function CharacterList({
                         </p>
                       </div>
                       {char.is_verified && <span title="Verificado" className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRemove(char)}
+                      disabled={removing === removeKey}
+                      className="shrink-0 self-center px-1.5 text-[10px] uppercase tracking-wider text-gray-500 hover:text-red-300 disabled:opacity-50"
+                    >
+                      {removing === removeKey ? "..." : "Quitar"}
                     </button>
                   </li>
                 );

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import AddCharacterRow from "./AddCharacterRow";
+import RemoveCharacterButton from "./RemoveCharacterButton";
 import { foreverModeLabel, realmLabel } from "@/lib/wow";
 
 import { apiUrl, publicApiUrl } from "@/lib/api";
@@ -168,8 +169,9 @@ function CharacterBadge({ char }: { char: MyCharacter }) {
         <span className="text-xs text-blue-500 border border-blue-400/30 rounded-full px-2 py-0.5">verificado</span>
       )}
       {isForever && (
-        <span className="ml-auto text-xs text-amber-600 border border-amber-400/40 rounded-full px-2 py-0.5 font-medium">Forever</span>
+        <span className="text-xs text-amber-600 border border-amber-400/40 rounded-full px-2 py-0.5 font-medium">Forever</span>
       )}
+      <RemoveCharacterButton name={char.name} realm={char.realm} game={char.game || "retail"} />
     </li>
   );
 }

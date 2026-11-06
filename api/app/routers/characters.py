@@ -734,6 +734,19 @@ async def add_character(
             Character.user_id == current_user.id
         ).update({"is_main": False, "is_alt": True})
 
+    tombstone = (
+        db.query(Character)
+        .filter(
+            Character.user_id == current_user.id,
+            Character.name == data.name,
+            Character.realm == data.realm,
+            Character.game == data.game,
+            Character.deleted_at.isnot(None),
+        )
+        .order_by(Character.deleted_at.desc())
+        .first()
+    )
+
     # Obtener render + cara del Character Media API si es Retail y hay token
     render_url = None
     face_url = None
@@ -756,26 +769,35 @@ async def add_character(
             render_url = media.get("render_url")
             face_url = media.get("face_url")
 
-    char = Character(
-        user_id=current_user.id,
-        game=data.game,
-        name=data.name,
-        realm=data.realm,
-        surname=(data.surname or "").strip() or None,
-        surname_allowed=data.game == "forever" or not bool((data.surname or "").strip()),
-        blizzard_character_id=blizzard_character_id,
-        render_url=render_url,
-        face_url=face_url,
-        wow_class=wow_class,
-        race=race,
-        level=data.level,
-        faction=data.faction,
-        gender=data.gender,
-        is_main=data.is_main,
-        is_alt=not data.is_main,
-        is_verified=is_verified,
-    )
-    db.add(char)
+    if tombstone:
+        char = tombstone
+        char.deleted_at = None
+    else:
+        char = Character(
+            user_id=current_user.id,
+            game=data.game,
+            name=data.name,
+            realm=data.realm,
+        )
+        db.add(char)
+    incoming_surname = (data.surname or "").strip() or None
+    if incoming_surname or not tombstone:
+        char.surname = incoming_surname
+        char.surname_allowed = data.game == "forever" or not bool(incoming_surname)
+    char.blizzard_character_id = blizzard_character_id or char.blizzard_character_id
+    char.render_url = render_url or char.render_url
+    char.face_url = face_url or char.face_url
+    if wow_class:
+        char.wow_class = wow_class
+    if race:
+        char.race = race
+    char.level = data.level or char.level
+    char.faction = data.faction or char.faction
+    char.gender = data.gender or char.gender
+    char.is_main = data.is_main
+    char.is_alt = not data.is_main
+    if data.game != "retail" or is_verified or not tombstone:
+        char.is_verified = is_verified
     db.commit()
     db.refresh(char)
 
@@ -1149,12 +1171,43 @@ def download_pending_image(
 @router.delete("/{name}/{realm}", status_code=204)
 def delete_character(
     name: str, realm: str,
+    game: str | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    from datetime import datetime, timezone
-    char = _get_own_character(name, realm, current_user, db)
+    """Quita el personaje de la lista del jugador. La ficha pública deja de verse."""
+    query = db.query(Character).filter(
+        Character.user_id == current_user.id,
+        Character.name == name,
+        Character.realm == realm,
+        Character.deleted_at.is_(None),
+    )
+    if game:
+        query = query.filter(Character.game == game)
+    matches = query.all()
+    if not matches:
+        raise HTTPException(404, "Personaje no encontrado")
+    if len(matches) > 1:
+        raise HTTPException(409, "Hay más de un personaje con ese nombre. Indica la línea temporal.")
+    char = matches[0]
+    was_main = bool(char.is_main)
     char.deleted_at = datetime.now(timezone.utc)
+    char.is_main = False
+    char.is_alt = True
+    if was_main:
+        nxt = (
+            db.query(Character)
+            .filter(
+                Character.user_id == current_user.id,
+                Character.deleted_at.is_(None),
+                Character.id != char.id,
+            )
+            .order_by(Character.name.asc())
+            .first()
+        )
+        if nxt:
+            nxt.is_main = True
+            nxt.is_alt = False
     db.commit()
 
 
