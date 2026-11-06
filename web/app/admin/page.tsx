@@ -93,7 +93,7 @@ const SECTIONS = [
   {
     href:        "/sorteos",
     title:       "Sorteos",
-    description: "Abrir una peña, cerrar la lista y marcar los Bizum de un décimo compartido.",
+    description: "Abrir, modificar o borrar una peña, adjuntar la imagen y marcar los Bizum.",
     color:       "border-amber-500/40 hover:border-amber-400",
     badge:       "bg-amber-500/20 text-amber-300",
     adminOnly:   true,
