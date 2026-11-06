@@ -43,7 +43,6 @@ export default async function SorteosPage() {
               ? ""
               : "No se han podido cargar los sorteos. Si acabas de actualizar el proyecto, aplica las migraciones."
           }
-          userId={me?.id ?? ""}
           isAdmin={me?.role === "admin"}
         />
       </div>
