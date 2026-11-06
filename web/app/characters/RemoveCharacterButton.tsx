@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 
 export default function RemoveCharacterButton({
   name,
@@ -40,9 +41,11 @@ export default function RemoveCharacterButton({
         type="button"
         onClick={remove}
         disabled={busy}
-        className="text-xs text-gray-500 hover:text-red-500 disabled:opacity-50"
+        aria-label={`Quitar a ${name}`}
+        title="Quitar de la lista"
+        className="rounded-md p-1.5 text-gray-500 hover:bg-red-500/10 hover:text-red-500 disabled:opacity-50"
       >
-        {busy ? "..." : "Quitar"}
+        <Trash2 size={15} strokeWidth={1.75} aria-hidden />
       </button>
       {error && <span className="text-xs text-red-500">{error}</span>}
     </span>
