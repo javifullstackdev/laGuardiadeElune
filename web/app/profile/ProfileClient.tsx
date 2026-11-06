@@ -3,6 +3,7 @@
 import { useState, useTransition, useEffect, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
 import { useWatermarkBox } from "../components/HomeLogo";
 import PublishStoryPanel from "./PublishStoryPanel";
 import ProfileHome, { PROFILE_SECTIONS, type ProfileSection } from "./ProfileHome";
@@ -2278,9 +2279,11 @@ function CharacterList({
                       type="button"
                       onClick={() => onRemove(char)}
                       disabled={removing === removeKey}
-                      className="shrink-0 self-center px-1.5 text-[10px] uppercase tracking-wider text-gray-500 hover:text-red-300 disabled:opacity-50"
+                      aria-label={`Quitar a ${char.name}`}
+                      title="Quitar de la lista"
+                      className="shrink-0 self-center rounded-md p-1.5 text-gray-500 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50"
                     >
-                      {removing === removeKey ? "..." : "Quitar"}
+                      <Trash2 size={15} strokeWidth={1.75} aria-hidden />
                     </button>
                   </li>
                 );
