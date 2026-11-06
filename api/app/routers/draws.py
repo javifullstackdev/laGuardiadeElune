@@ -253,6 +253,35 @@ def list_draws(
     return _list(db, current_user)
 
 
+def _preview(draw: GuildDraw) -> dict:
+    """Datos públicos para la vista previa al compartir. Sin Bizum ni participantes."""
+    return {
+        "id": str(draw.id),
+        "title": draw.title,
+        "summary": draw.summary,
+        "image_url": static_url(draw.image_url),
+        "draw_at": draw.draw_at.isoformat(),
+    }
+
+
+@router.get("/{draw_id}/preview")
+def preview_draw(draw_id: UUID, db: Session = Depends(get_db)):
+    draw = db.query(GuildDraw).filter(GuildDraw.id == draw_id).first()
+    if draw is None:
+        raise HTTPException(404, "Ese sorteo no existe")
+    return _preview(draw)
+
+
+@router.get("/{draw_id}")
+def get_draw(
+    draw_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    draw, entries = _load(db, draw_id)
+    return _draw_out(draw, entries, current_user)
+
+
 @router.post("")
 def create_draw(
     body: DrawIn,

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -108,12 +109,10 @@ async function send(path: string, method: string, body?: unknown) {
 export default function SorteosClient({
   initialDraws,
   loadError,
-  userId,
   isAdmin,
 }: {
   initialDraws: GuildDraw[];
   loadError: string;
-  userId: string;
   isAdmin: boolean;
 }) {
   const router = useRouter();
@@ -128,35 +127,6 @@ export default function SorteosClient({
   async function applyList(next: unknown) {
     if (Array.isArray(next)) setDraws(next as GuildDraw[]);
     router.refresh();
-  }
-
-  async function run(key: string, path: string, method: string, body?: unknown) {
-    setBusy(key);
-    setError("");
-    try {
-      await applyList(await send(path, method, body));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se ha podido guardar");
-    } finally {
-      setBusy("");
-    }
-  }
-
-  async function uploadImage(drawId: string, file: File) {
-    setBusy(`${drawId}:image`);
-    setError("");
-    try {
-      const body = new FormData();
-      body.append("file", file);
-      const res = await fetch(`/api/sorteos/${drawId}/image`, { method: "POST", body });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(detail(data, "No se ha podido guardar la imagen"));
-      await applyList(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se ha podido guardar la imagen");
-    } finally {
-      setBusy("");
-    }
   }
 
   return (
@@ -182,11 +152,17 @@ export default function SorteosClient({
                 image.append("file", file);
                 const res = await fetch(`/api/sorteos/${created.id}/image`, { method: "POST", body: image });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(detail(data, "El sorteo se ha creado, pero la imagen no"));
-                await applyList(data);
-              } else {
-                await applyList(next);
+                if (!res.ok) {
+                  await applyList(next);
+                  throw new Error(detail(data, "El sorteo se ha creado, pero la imagen no"));
+                }
               }
+              if (created) {
+                router.push(`/sorteos/${created.id}`);
+                router.refresh();
+                return;
+              }
+              await applyList(next);
             } catch (err) {
               setError(err instanceof Error ? err.message : "No se ha podido guardar");
             } finally {
@@ -201,17 +177,7 @@ export default function SorteosClient({
           Todavía no hay ningún sorteo. Cuando se abra una peña, aparecerá aquí.
         </p>
       ) : (
-        draws.map((draw) => (
-          <DrawCard
-            key={draw.id}
-            draw={draw}
-            userId={userId}
-            isAdmin={isAdmin}
-            busy={busy}
-            onRun={run}
-            onUpload={uploadImage}
-          />
-        ))
+        draws.map((draw) => <DrawSummary key={draw.id} draw={draw} />)
       )}
     </div>
   );
@@ -367,6 +333,153 @@ function CreateDraw({
   );
 }
 
+function DrawSummary({ draw }: { draw: GuildDraw }) {
+  return (
+    <Link
+      href={`/sorteos/${draw.id}`}
+      className="block overflow-hidden rounded-xl border border-white/10 hover:border-white/25"
+    >
+      {draw.image_url && (
+        <img src={draw.image_url} alt="" className="h-44 w-full bg-black/40 object-cover" />
+      )}
+      <div className="space-y-2 p-4 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-xl font-semibold">{draw.title}</h2>
+          <span className="rounded-full bg-white/5 px-2 py-1 text-xs text-gray-300">{STATUS[draw.status]}</span>
+        </div>
+        <p className="text-xs text-gray-500">
+          Sorteo {when(draw.draw_at)} · {euros(draw.price_cents)} · {draw.participant_count}{" "}
+          {draw.participant_count === 1 ? "parte" : "partes"}
+        </p>
+        {draw.summary && <p className="line-clamp-2 text-sm text-gray-400">{draw.summary}</p>}
+      </div>
+    </Link>
+  );
+}
+
+export function SorteoDetail({
+  draw: initial,
+  userId,
+  isAdmin,
+}: {
+  draw: GuildDraw;
+  userId: string;
+  isAdmin: boolean;
+}) {
+  const router = useRouter();
+  const [draw, setDraw] = useState(initial);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState("");
+
+  useEffect(() => {
+    setDraw(initial);
+  }, [initial]);
+
+  async function applyList(next: unknown) {
+    if (Array.isArray(next)) {
+      const updated = (next as GuildDraw[]).find((item) => item.id === initial.id);
+      if (!updated) {
+        router.push("/sorteos");
+        router.refresh();
+        return;
+      }
+      setDraw(updated);
+    }
+    router.refresh();
+  }
+
+  async function run(key: string, path: string, method: string, body?: unknown) {
+    setBusy(key);
+    setError("");
+    try {
+      await applyList(await send(path, method, body));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se ha podido guardar");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function uploadImage(drawId: string, file: File) {
+    setBusy(`${drawId}:image`);
+    setError("");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch(`/api/sorteos/${drawId}/image`, { method: "POST", body });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(detail(data, "No se ha podido guardar la imagen"));
+      await applyList(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se ha podido guardar la imagen");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {error}
+        </p>
+      )}
+      <DrawCard
+        page
+        draw={draw}
+        userId={userId}
+        isAdmin={isAdmin}
+        busy={busy}
+        onRun={run}
+        onUpload={uploadImage}
+      />
+    </div>
+  );
+}
+
+function DrawShare({ title, path }: { title: string; path: string }) {
+  const [url, setUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setUrl(`${window.location.origin}${path}`);
+  }, [path]);
+
+  const text = `${title} — La Guardia de Elune`;
+  const wa = url ? `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}` : "#";
+
+  async function copy() {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <a
+        href={wa}
+        target="_blank"
+        rel="noreferrer"
+        className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-gray-200"
+      >
+        WhatsApp
+      </a>
+      <button
+        type="button"
+        onClick={copy}
+        className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-gray-200"
+      >
+        {copied ? "Enlace copiado" : "Copiar enlace"}
+      </button>
+    </div>
+  );
+}
+
 function DrawCard({
   draw,
   userId,
@@ -374,6 +487,7 @@ function DrawCard({
   busy,
   onRun,
   onUpload,
+  page = false,
 }: {
   draw: GuildDraw;
   userId: string;
@@ -381,6 +495,7 @@ function DrawCard({
   busy: string;
   onRun: (key: string, path: string, method: string, body?: unknown) => void;
   onUpload: (drawId: string, file: File) => void;
+  page?: boolean;
 }) {
   const [accepted, setAccepted] = useState(false);
   const mine = draw.organizer_id === userId;
@@ -399,19 +514,24 @@ function DrawCard({
       {draw.image_url && (
         <img
           src={draw.image_url}
-          alt=""
-          className="w-full max-h-72 rounded-lg bg-black/40 object-contain"
+          alt={draw.title}
+          className={`w-full rounded-lg bg-black/40 object-contain ${page ? "max-h-[70vh]" : "max-h-72"}`}
         />
       )}
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">{draw.title}</h2>
+          {page ? (
+            <h1 className="text-3xl font-quest-display font-bold sm:text-4xl">{draw.title}</h1>
+          ) : (
+            <h2 className="text-xl font-semibold">{draw.title}</h2>
+          )}
           <p className="text-xs text-gray-500 mt-1">
             Compra {draw.organizer_name} · sorteo {when(draw.draw_at)}
           </p>
         </div>
         <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-gray-300">{STATUS[draw.status]}</span>
       </header>
+      {page && <DrawShare title={draw.title} path={`/sorteos/${draw.id}`} />}
 
       {draw.summary && <p className="text-sm text-gray-300 whitespace-pre-wrap">{draw.summary}</p>}
 
