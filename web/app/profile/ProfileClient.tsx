@@ -2273,7 +2273,6 @@ function CharacterList({
                             : <span className="text-gray-500">{char.game === "forever" ? foreverModeLabel(char.realm) : realmLabel(char.realm)}</span>}
                         </p>
                       </div>
-                      {char.is_verified && <span title="Verificado" className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />}
                     </button>
                     <button
                       type="button"
