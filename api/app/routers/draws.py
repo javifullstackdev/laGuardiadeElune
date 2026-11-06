@@ -2,10 +2,11 @@
 
 from datetime import datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP
-from uuid import UUID
+from pathlib import Path
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 
@@ -13,12 +14,17 @@ from app.database import get_db
 from app.dependencies import get_current_user, require_admin
 from app.models.draw import GuildDraw, GuildDrawEntry
 from app.models.user import User
+from app.urls import static_url
 
 router = APIRouter(prefix="/draws", tags=["draws"])
 
 MADRID = ZoneInfo("Europe/Madrid")
 MIN_SHARE_CENTS = 50
 MAX_PRICE_CENTS = 10_000
+DRAW_UPLOAD_DIR = Path("uploads/draws")
+DRAW_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+IMAGE_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
 OPEN = "open"
 CLOSED = "closed"
 DRAWN = "drawn"
@@ -130,6 +136,13 @@ def _ensure_min(shares: dict) -> None:
         )
 
 
+def _unlink_image(path: str | None) -> None:
+    if not path or path.startswith("http://") or path.startswith("https://"):
+        return
+    target = Path("uploads") / path
+    target.unlink(missing_ok=True)
+
+
 def _active(entries: list[GuildDrawEntry]) -> list[GuildDrawEntry]:
     return [entry for entry in entries if entry.dropped_at is None]
 
@@ -180,6 +193,7 @@ def _draw_out(draw: GuildDraw, entries: list[GuildDrawEntry], viewer: User) -> d
         "ticket_series": draw.ticket_series,
         "bizum_phone": draw.bizum_phone,
         "bizum_name": draw.bizum_name,
+        "image_url": static_url(draw.image_url),
         "organizer_id": str(draw.organizer_id),
         "organizer_name": _name(draw.organizer),
         "participant_count": len(shares),
@@ -288,13 +302,10 @@ def update_draw(
     db: Session = Depends(get_db),
 ):
     draw, entries = _load(db, draw_id)
-    if draw.status in {DRAWN, CANCELLED}:
-        raise HTTPException(400, "Este sorteo ya no se puede editar")
     data = body.model_dump(exclude_unset=True)
-    if draw.status == CLOSED:
-        locked = {"title", "summary", "price_euros", "draw_at", "signup_closes_at", "payment_due_at"}
-        if locked & set(data):
-            raise HTTPException(400, "Con la lista cerrada solo se puede completar el décimo y el Bizum")
+    money = {"price_euros", "draw_at", "signup_closes_at", "payment_due_at"}
+    if draw.status != OPEN and money & set(data):
+        raise HTTPException(400, "El precio y las fechas solo se cambian mientras la lista está abierta")
     if "title" in data:
         draw.title = _text(data["title"], "el título", 160, required=True)
     if "summary" in data:
@@ -373,6 +384,57 @@ def cancel_draw(
     if draw.status not in {OPEN, CLOSED}:
         raise HTTPException(400, "Este sorteo ya no se puede cancelar")
     draw.status = CANCELLED
+    db.commit()
+    return _list(db, admin)
+
+
+@router.delete("/{draw_id}")
+def delete_draw(
+    draw_id: UUID,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Borra el sorteo y su lista. Sirve para quitar una peña de prueba."""
+    draw, _entries = _load(db, draw_id)
+    _unlink_image(draw.image_url)
+    db.delete(draw)
+    db.commit()
+    return _list(db, admin)
+
+
+@router.post("/{draw_id}/image")
+async def upload_draw_image(
+    draw_id: UUID,
+    file: UploadFile = File(...),
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    draw, _entries = _load(db, draw_id)
+    extension = IMAGE_TYPES.get(file.content_type or "")
+    if extension is None:
+        raise HTTPException(400, "La imagen debe ser JPEG, PNG o WebP")
+    content = await file.read()
+    if not content:
+        raise HTTPException(400, "La imagen está vacía")
+    if len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(400, "La imagen no puede superar 5 MB")
+    filename = f"{uuid4().hex}.{extension}"
+    (DRAW_UPLOAD_DIR / filename).write_bytes(content)
+    _unlink_image(draw.image_url)
+    draw.image_url = f"draws/{filename}"
+    db.commit()
+    return _list(db, admin)
+
+
+@router.delete("/{draw_id}/image")
+def delete_draw_image(
+    draw_id: UUID,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    draw, _entries = _load(db, draw_id)
+    _unlink_image(draw.image_url)
+    draw.image_url = None
     db.commit()
     return _list(db, admin)
 

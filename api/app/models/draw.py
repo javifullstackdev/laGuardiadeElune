@@ -27,6 +27,7 @@ class GuildDraw(Base):
     ticket_series = Column(String(32), nullable=True)
     bizum_phone = Column(String(20), nullable=False)
     bizum_name = Column(String(120), nullable=False)
+    image_url = Column(String(1000), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     closed_at = Column(DateTime(timezone=True), nullable=True)
 
