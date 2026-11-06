@@ -38,10 +38,21 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
     }));
   }
 
-  async function handle(item: BioPending, action: "publish" | "reject") {
+  async function handle(item: BioPending, action: "publish" | "reject" | "decline") {
+    const draft = drafts[item.character_id];
+    if (action === "decline" && !(draft?.reason ?? "").trim()) {
+      setError("Escribe el motivo antes de rechazar la ficha.");
+      return;
+    }
+    if (action === "decline") {
+      const question =
+        item.bio_status === "published"
+          ? `¿Rechazar los cambios de ${item.character_name}? La ficha pública se queda como está y el jugador lo verá en el buzón.`
+          : `¿Rechazar la ficha de ${item.character_name}? No se publica y el jugador lo verá en el buzón.`;
+      if (!window.confirm(question)) return;
+    }
     setLoading(`${item.character_id}-${action}`);
     setError(null);
-    const draft = drafts[item.character_id];
     let res: Response;
     if (action === "publish") {
       const body = new FormData();
@@ -198,12 +209,12 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
                 value={draft.reason}
                 onChange={(e) => patch(item.character_id, "reason", e.target.value)}
                 rows={2}
-                placeholder="Motivo si pides cambios (opcional)"
+                placeholder="Motivo. Obligatorio si rechazas la ficha."
                 className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600"
               />
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={() => handle(item, "publish")}
@@ -219,6 +230,14 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
                 className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm disabled:opacity-50"
               >
                 {loading === `${item.character_id}-reject` ? "..." : "Pedir cambios"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handle(item, "decline")}
+                disabled={!!loading || !draft.reason.trim()}
+                className="px-4 py-2 rounded-lg border border-red-500/40 bg-red-950/40 hover:bg-red-900/50 text-red-200 text-sm disabled:opacity-50"
+              >
+                {loading === `${item.character_id}-decline` ? "..." : "Rechazar"}
               </button>
             </div>
           </article>

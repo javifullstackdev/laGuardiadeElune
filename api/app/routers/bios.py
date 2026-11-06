@@ -383,18 +383,67 @@ def reject_bio(
     reason = char.bio_rejection_reason
     if char.bio_status == "published":
         title = "El Eremita ha respondido a tu ficha"
-        body = f"No ha incorporado los cambios de {char.name}."
+        notice = f"No ha incorporado los cambios de {char.name}."
+        href = f"/personajes/{quote(char.realm, safe='')}/{quote(char.name, safe='')}"
     else:
         title = "El Eremita ha devuelto tu ficha"
-        body = f"El cuestionario de {char.name} vuelve a borrador."
+        notice = f"El cuestionario de {char.name} vuelve a borrador."
+        href = "/profile"
     if reason:
-        body = f"{body} {reason}"
+        notice = f"{notice} {reason}"
     notify(
         db,
         user_id=author.id,
         kind="eremita_bio",
         title=title,
-        body=body,
+        body=notice,
+        href=href,
+    )
+    db.commit()
+    db.refresh(char)
+    return _pending_out(char, author, _pending_refs(db, [char.id]).get(char.id, []))
+
+
+@router.post("/{character_id}/decline", response_model=BioPendingOut)
+def decline_bio(
+    character_id: str,
+    body: BioRejectIn,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: rechaza la ficha. El jugador lo ve en el buzón y puede reescribirla."""
+    row = (
+        db.query(Character, User)
+        .join(User, User.id == Character.user_id)
+        .filter(Character.id == character_id, Character.deleted_at.is_(None))
+        .first()
+    )
+    if not row:
+        raise HTTPException(404, "Personaje no encontrado")
+    char, author = row
+    if not char.bio_answers_pending:
+        raise HTTPException(409, "Este cuestionario no está en revisión")
+    reason = (body.reason or "").strip()
+    if not reason:
+        raise HTTPException(400, "Escribe por qué rechazas la ficha")
+    char.bio_answers_pending = False
+    char.bio_rejection_reason = reason
+    if has_public_sheet(char):
+        title = "El Eremita ha rechazado los cambios de tu ficha"
+        notice = f"La ficha pública de {char.name} sigue como está. {reason}"
+        href = f"/personajes/{quote(char.realm, safe='')}/{quote(char.name, safe='')}"
+    else:
+        char.bio_status = "rejected"
+        title = "El Eremita ha rechazado tu ficha"
+        notice = f"La ficha de {char.name} no se publica. {reason}"
+        href = "/profile"
+    notify(
+        db,
+        user_id=author.id,
+        kind="eremita_bio",
+        title=title,
+        body=notice,
+        href=href,
     )
     db.commit()
     db.refresh(char)

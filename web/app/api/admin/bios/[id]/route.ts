@@ -33,7 +33,8 @@ export async function POST(
   }
 
   const body = await req.json();
-  const action = body.action === "reject" ? "reject" : "publish";
+  const action =
+    body.action === "reject" || body.action === "decline" ? body.action : "publish";
   const res = await fetch(apiUrl(`/bios/${id}/${action}`), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

@@ -79,7 +79,8 @@ class Character(Base):
     biography    = Column(Text, nullable=True)
     personality  = Column(Text, nullable=True)
     appearance   = Column(Text, nullable=True)
-    # draft | pending | published  (published = hay ficha pública escrita por el Eremita)
+    # draft | pending | rejected | published
+    # published = hay ficha pública. rejected = el Eremita ha rechazado el envío.
     bio_status = Column(String(20), nullable=False, server_default="draft")
     bio_answers = Column(JSONB, nullable=True)
     bio_answers_pending = Column(Boolean, nullable=False, default=False, server_default="false")

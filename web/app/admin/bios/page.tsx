@@ -45,6 +45,7 @@ export default async function AdminBiosPage() {
         <p className="text-sm text-gray-500 mb-8">
           El jugador responde el cuestionario y puede adjuntar capturas del juego.
           Si te convence la ficha, escribe el texto, sube el arte y se publica.
+          Si no, pide cambios o recházala: el jugador lo ve en el buzón.
           Las que ya están en público se corrigen más abajo. Los apellidos se aceptan u ocultan aquí.
         </p>
         <section className="mb-14">
