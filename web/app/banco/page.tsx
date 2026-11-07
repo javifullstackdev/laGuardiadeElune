@@ -13,7 +13,16 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function BancoPage() {
+export default async function BancoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const params = await searchParams;
+  const initialTab =
+    params.tab === "gold" || params.tab === "withdrawal" || params.tab === "history"
+      ? params.tab
+      : "deposit";
   const token = (await cookies()).get("token")?.value;
   if (!token) redirect("/");
   const headers = { Authorization: `Bearer ${token}` };
@@ -50,6 +59,7 @@ export default async function BancoPage() {
           characters={Array.isArray(characters) ? characters : []}
           scoresBankPoints={scoresBankPoints}
           gold={gold && Array.isArray(gold.deposits) ? gold : EMPTY_GOLD_BOARD}
+          initialTab={initialTab}
         />
       </div>
     </main>

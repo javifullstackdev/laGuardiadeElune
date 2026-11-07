@@ -62,16 +62,26 @@ type HomeUser = {
 export default function ProfileHome({
   user,
   missions,
+  character = null,
   hasCharacter,
   onOpenMission,
 }: {
   user: HomeUser;
   missions: Mission[];
+  character?: { name: string; realm: string; game: string } | null;
   hasCharacter: boolean;
   onOpenMission: (mission: Mission) => void;
 }) {
-  const [goldOpen, setGoldOpen] = useState(false);
-  const pending = missions.filter((m) => m.status !== "done");
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const pending = missions.filter((mission) => {
+    if (mission.status === "done") return false;
+    if (!character || !mission.character) return true;
+    return (
+      mission.character.name === character.name &&
+      mission.character.realm === character.realm &&
+      mission.character.game === character.game
+    );
+  });
 
   return (
     <div className="space-y-4">
@@ -124,102 +134,92 @@ export default function ProfileHome({
             <p className="text-sm text-gray-500">No hay misiones pendientes.</p>
           ) : (
             <ul className="space-y-3">
-              {pending.map((mission) => (
-                <li key={missionKey(mission)} className="rounded-xl border border-gray-800 bg-gray-950/80 px-4 py-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <h3 className="font-semibold text-gray-100">
-                      {mission.key === "forever_gold_10" ? (
-                        <button
-                          type="button"
-                          aria-expanded={goldOpen}
-                          onClick={() => setGoldOpen((open) => !open)}
-                          className="flex items-center gap-2 text-left"
-                        >
-                          <img src="/missions/quest.png" alt="" className="h-8 w-auto shrink-0" />
-                          <span className="leading-none">{mission.title}</span>
-                        </button>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <img src="/missions/quest.png" alt="" className="h-8 w-auto shrink-0" />
-                          <span className="leading-none">{mission.title}</span>
-                        </span>
-                      )}
-                    </h3>
-                    <span className="shrink-0 rounded-md bg-yellow-400/15 px-2 py-0.5 text-base font-bold text-yellow-200">
-                      +{mission.points}
-                    </span>
-                  </div>
-                  {mission.subject && (
-                    <p className="text-sm font-medium text-gray-100 mt-2">{mission.subject}</p>
-                  )}
-                  <p className="text-sm text-gray-400 mt-2">{mission.description}</p>
-                  {mission.goal != null && mission.goal > 0 && (
-                    <div className="mt-3">
-                      <div className="mb-2 flex justify-between text-xs text-gray-400">
-                        <span>{formatMoney(mission.progress ?? 0)}</span>
-                        <span>{formatMoney(mission.goal)}</span>
-                      </div>
-                      <div className="h-5 overflow-hidden rounded-full bg-gray-800">
-                        <div
-                          className="h-full bg-yellow-400"
-                          style={{
-                            width: `${Math.min(100, Math.round(((mission.progress ?? 0) / mission.goal) * 100))}%`,
-                          }}
-                        />
-                      </div>
-                      {mission.key === "forever_gold_10" && goldOpen && (
-                        mission.contributions && mission.contributions.length > 0 ? (
-                          <ul className="mt-3 space-y-1">
-                            {mission.contributions.map((row) => (
-                              <li key={`${row.realm}-${row.name}`} className="text-sm text-gray-300">
-                                {row.name}: {formatMoney(row.copper)}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="mt-3 text-sm text-gray-500">Todavía no hay oro confirmado.</p>
-                        )
-                      )}
-                    </div>
-                  )}
-                  {mission.status === "review" ? (
-                    <div className="mt-3">
-                      <p className="text-sm text-amber-300/90">{MISSION_COPY[mission.key]?.review}</p>
-                      {(mission.character || hasCharacter) && (
-                        <button
-                          type="button"
-                          onClick={() => onOpenMission(mission)}
-                          className="mt-2 text-sm text-gray-300 underline hover:text-white"
-                        >
-                          {MISSION_COPY[mission.key]?.see}
-                        </button>
-                      )}
-                    </div>
-                  ) : mission.key === "forever_gold_10" ? (
-                    <Link
-                      href="/banco"
-                      className="mt-3 inline-block px-3 py-1.5 rounded-lg bg-yellow-500/90 hover:bg-yellow-400 text-black text-sm font-medium"
-                    >
-                      Enviar oro
-                    </Link>
-                  ) : mission.character || hasCharacter ? (
+              {pending.map((mission) => {
+                const key = missionKey(mission);
+                const open = openKey === key;
+                const actionClass =
+                  "inline-flex w-full items-center justify-center gap-2 bg-yellow-500/90 px-3 py-2.5 text-sm font-medium text-black hover:bg-yellow-400 sm:w-auto sm:rounded-lg";
+                return (
+                  <li key={key} className="overflow-hidden rounded-xl border border-gray-800 bg-gray-950/80">
                     <button
                       type="button"
-                      onClick={() => onOpenMission(mission)}
-                      className="mt-3 px-3 py-1.5 rounded-lg bg-yellow-500/90 hover:bg-yellow-400 text-black text-sm font-medium"
+                      aria-expanded={open}
+                      onClick={() => setOpenKey(open ? null : key)}
+                      className="flex w-full items-center gap-3 px-4 py-4 text-left"
                     >
-                      {MISSION_COPY[mission.key]?.open}
+                      <img src="/missions/quest.png" alt="" className="h-8 w-auto shrink-0" />
+                      <h3 className="min-w-0 flex-1 font-quest font-semibold leading-none tracking-wide text-gray-100">
+                        {mission.title}
+                      </h3>
+                      <span className="shrink-0 text-base font-bold text-yellow-500">+{mission.points}</span>
                     </button>
-                  ) : (
-                    <Link
-                      href="/characters"
-                      className="inline-block mt-3 px-3 py-1.5 rounded-lg bg-yellow-500/90 hover:bg-yellow-400 text-black text-sm font-medium"
-                    >
-                      Añadir un personaje
-                    </Link>
-                  )}
-                </li>
-              ))}
+                    {open && (
+                      <div>
+                        <div className="px-4">
+                          {mission.subject && (
+                            <p className="text-sm font-medium text-gray-100">{mission.subject}</p>
+                          )}
+                          <p className={`text-sm text-gray-400 ${mission.subject ? "mt-2" : ""}`}>{mission.description}</p>
+                          {mission.goal != null && mission.goal > 0 && (
+                            <div className="mt-3">
+                              <div className="mb-2 flex justify-between text-xs text-gray-400">
+                                <span>{formatMoney(mission.progress ?? 0)}</span>
+                                <span>{formatMoney(mission.goal)}</span>
+                              </div>
+                              <div className="h-5 overflow-hidden rounded-full bg-gray-800">
+                                <div
+                                  className="h-full bg-yellow-400"
+                                  style={{
+                                    width: `${Math.min(100, Math.round(((mission.progress ?? 0) / mission.goal) * 100))}%`,
+                                  }}
+                                />
+                              </div>
+                              {mission.contributions && mission.contributions.length > 0 ? (
+                                <ul className="mt-3 space-y-1">
+                                  {mission.contributions.map((row) => (
+                                    <li key={`${row.realm}-${row.name}`} className="text-sm text-gray-300">
+                                      {row.name}: {formatMoney(row.copper)}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : mission.key === "forever_gold_10" ? (
+                                <p className="mt-3 text-sm text-gray-500">Todavía no hay oro confirmado.</p>
+                              ) : null}
+                            </div>
+                          )}
+                          {mission.status === "review" && (
+                            <p className="mt-3 text-sm text-amber-300/90">{MISSION_COPY[mission.key]?.review}</p>
+                          )}
+                        </div>
+                        <div className="mt-4 sm:flex sm:justify-end sm:px-4 sm:pb-4">
+                          {mission.status === "review" ? (
+                            (mission.character || hasCharacter) && (
+                              <button type="button" onClick={() => onOpenMission(mission)} className={actionClass}>
+                                {MISSION_COPY[mission.key]?.see}
+                              </button>
+                            )
+                          ) : mission.key === "forever_gold_10" ? (
+                            <Link href="/banco?tab=gold" className={actionClass}>
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6" aria-hidden>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.25 7.756a4.5 4.5 0 1 0 0 8.488M7.5 10.5h5.25m-5.25 3h5.25M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                              </svg>
+                              Enviar oro
+                            </Link>
+                          ) : mission.character || hasCharacter ? (
+                            <button type="button" onClick={() => onOpenMission(mission)} className={actionClass}>
+                              {MISSION_COPY[mission.key]?.open}
+                            </button>
+                          ) : (
+                            <Link href="/characters" className={actionClass}>
+                              Añadir un personaje
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
