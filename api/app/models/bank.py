@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -70,3 +70,45 @@ class BankRequest(Base):
 
     user = relationship("User", foreign_keys=[user_id], lazy="joined")
     resolver = relationship("User", foreign_keys=[resolved_by], lazy="joined")
+
+
+class BankGoldSettings(Base):
+    """Tarifa del oro de Warcraft Forever. Una sola fila."""
+
+    __tablename__ = "bank_gold_settings"
+
+    id = Column(Integer, primary_key=True)
+    # 1 punto por cada tantas platas. 10 platas = 1 punto al empezar.
+    silver_per_point = Column(Integer, nullable=False, server_default="10")
+    # Objetivo en cobres. 100 de oro = 1_000_000 cobres.
+    goal_copper = Column(BigInteger, nullable=False, server_default="1000000")
+
+
+class BankGoldDeposit(Base):
+    """Oro de Forever declarado por un miembro. Los puntos esperan a que el líder lo confirme."""
+
+    __tablename__ = "bank_gold_deposits"
+    __table_args__ = (
+        Index("ix_bank_gold_deposits_status_created", "status", "created_at"),
+        Index("ix_bank_gold_deposits_user_created", "user_id", "created_at"),
+    )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    character_name = Column(String(64), nullable=False)
+    character_realm = Column(String(64), nullable=False)
+    copper = Column(BigInteger, nullable=False)
+    # pending | approved | rejected
+    status = Column(String(16), nullable=False, server_default="pending")
+    estimated_points = Column(Integer, nullable=False, server_default="0")
+    awarded_points = Column(Integer, nullable=True)
+    point_transaction_id = Column(
+        UUID(as_uuid=True), ForeignKey("point_transactions.id", ondelete="SET NULL"), nullable=True
+    )
+    note = Column(Text, nullable=True)
+    admin_note = Column(Text, nullable=True)
+    resolved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id], lazy="select")

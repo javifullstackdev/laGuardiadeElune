@@ -391,7 +391,7 @@ def my_characters(current_user: User = Depends(get_current_user), db: Session = 
         .order_by(Character.is_main.desc(), Character.name)
         .all()
     )
-    return [{"name": c.name, "realm": c.realm, "is_main": c.is_main} for c in rows]
+    return [{"name": c.name, "realm": c.realm, "is_main": c.is_main, "game": c.game or "retail"} for c in rows]
 
 
 @router.get("/requests/mine")
