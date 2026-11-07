@@ -423,7 +423,8 @@ export default function BancoClient({
 function BankGoalCard({ gold }: { gold: GoldBoard }) {
   const [open, setOpen] = useState(false);
   const goal = gold.goal_copper > 0 ? gold.goal_copper : 1;
-  const width = Math.min(100, Math.round((gold.confirmed_copper / goal) * 100));
+  const percent = Math.min(100, (gold.confirmed_copper / goal) * 100);
+  const barWidth = gold.confirmed_copper > 0 ? `max(8px, ${percent}%)` : "0%";
   const people = gold.contributors ?? [];
 
   return (
@@ -446,11 +447,17 @@ function BankGoalCard({ gold }: { gold: GoldBoard }) {
             <span>{formatMoney(gold.goal_copper)}</span>
           </div>
           <div className="h-5 overflow-hidden rounded-full bg-gray-800">
-            <div className="h-full bg-yellow-400" style={{ width: `${width}%` }} />
+            <div
+              className="h-full bg-yellow-400 transition-[width] duration-500"
+              style={{ width: barWidth }}
+            />
           </div>
           <p className="mt-3 text-sm text-gray-400">
             No todo el mundo podrá presumir de haber invertido al menos 5 oros en la primera pestaña del banco de la Guardia.
           </p>
+          <h3 className="mt-4 font-quest font-semibold leading-none tracking-wide text-gray-100">
+            Participantes
+          </h3>
           {people.length > 0 ? (
             <ul className="mt-3 space-y-1">
               {people.map((row) => (
@@ -462,10 +469,10 @@ function BankGoalCard({ gold }: { gold: GoldBoard }) {
           ) : (
             <p className="mt-3 text-sm text-gray-500">Todavía no hay oro confirmado.</p>
           )}
-          <p className="mt-4 text-sm text-gray-300">
-            Logro: <span className="font-medium text-gray-100">Invirtiendo en la Guardia</span>
+          <p className="mt-4 font-quest font-semibold leading-none tracking-wide text-gray-100">
+            Logro: Invirtiendo en la Guardia
           </p>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="mt-2 text-sm text-gray-400">
             Se concede al completar el objetivo, si has ingresado 5 de oro o más entre todos tus personajes.
           </p>
         </div>
