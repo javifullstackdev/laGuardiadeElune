@@ -41,6 +41,12 @@ class BioReferenceImage(BaseModel):
     url: str
 
 
+class BioSheetImage(BaseModel):
+    slot: str
+    label: str
+    url: str
+
+
 class SurnameReviewOut(BaseModel):
     character_id: UUID
     character_name: str
@@ -74,6 +80,7 @@ class BioPendingOut(BaseModel):
     cover_url: str | None = None
     answers: list[BioAnswerView]
     reference_images: list[BioReferenceImage] = []
+    sheet_images: list[BioSheetImage] = []
     submitted_at: datetime | None = None
     bio_status: str
     current_biography: str | None = None

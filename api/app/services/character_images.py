@@ -13,6 +13,15 @@ from app.services.image_bytes import read_image
 
 UPLOAD_DIR = Path("uploads/avatars")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+SHEET_DIR = Path("uploads/sheet")
+SHEET_DIR.mkdir(parents=True, exist_ok=True)
+
+# slot → (columna, etiqueta que ve el jugador y el Eremita)
+SHEET_SLOTS = {
+    "front": ("sheet_front_url", "Cuerpo completo, de frente"),
+    "back": ("sheet_back_url", "Cuerpo completo, de espaldas"),
+    "face": ("sheet_face_url", "Rostro"),
+}
 UPLOAD_ROOT = Path("uploads").resolve()
 
 MAX_IMAGE_SIZE = 8 * 1024 * 1024
@@ -51,6 +60,27 @@ def _unlink(relative: str | None) -> None:
         return
     target = UPLOAD_ROOT / relative
     target.unlink(missing_ok=True)
+
+
+def sheet_images_ready(char: Character) -> bool:
+    return all(getattr(char, column) for column, _label in SHEET_SLOTS.values())
+
+
+async def store_sheet_image(char: Character, file: UploadFile, slot: str) -> str:
+    """Guarda una captura in-game de la ficha. No la publica en el pergamino."""
+    found = SHEET_SLOTS.get(slot)
+    if found is None:
+        raise HTTPException(400, "Esa imagen no forma parte de la ficha")
+    column, _label = found
+    content, ext = await read_image(
+        file, max_bytes=MAX_IMAGE_SIZE, too_big="La imagen no puede superar 8 MB."
+    )
+    filename = f"sheet_{slot}_{char.id}_{uuid.uuid4().hex}.{ext}"
+    (SHEET_DIR / filename).write_bytes(content)
+    relative = f"sheet/{filename}"
+    _unlink(getattr(char, column))
+    setattr(char, column, relative)
+    return relative
 
 
 async def publish_character_image(char: Character, file: UploadFile, kind: str) -> str:

@@ -57,6 +57,9 @@ class CharacterResponse(BaseModel):
     pending_avatar_url: Optional[str] = None
     custom_face_url:    Optional[str] = None   # cara propia aprobada (ranking)
     pending_face_url:   Optional[str] = None
+    sheet_front_url:    Optional[str] = None
+    sheet_back_url:     Optional[str] = None
+    sheet_face_url:     Optional[str] = None
     # Calculados
     avatar_url: Optional[str] = None           # ficha/carrusel: custom completa > render
     face_display_url: Optional[str] = None     # ranking: custom cara > face Blizzard
@@ -104,6 +107,10 @@ class CharacterResponse(BaseModel):
             self.avatar_url = static_url(self.custom_avatar_url)
         else:
             self.avatar_url = self.render_url
+
+        self.sheet_front_url = static_url(self.sheet_front_url)
+        self.sheet_back_url = static_url(self.sheet_back_url)
+        self.sheet_face_url = static_url(self.sheet_face_url)
 
         if self.custom_face_url:
             self.face_display_url = static_url(self.custom_face_url)

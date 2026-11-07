@@ -39,7 +39,7 @@ export type ProfileSection =
   | "professions";
 
 export const PROFILE_SECTIONS: { key: ProfileSection; label: string }[] = [
-  { key: "bio", label: "Bio" },
+  { key: "bio", label: "Ficha" },
   { key: "details", label: "Datos" },
   { key: "points", label: "Puntos" },
   { key: "achievements", label: "Logros" },

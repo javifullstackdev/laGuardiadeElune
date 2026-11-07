@@ -35,7 +35,7 @@ from app.services import blizzard, title_sync
 from app.models.craft import CharacterProfessionSkill, CraftOrder
 from app.services.professions import store_profession_snapshot, summarize_profession
 from app.services.bio_questions import answers_complete, normalize_answers
-from app.services.character_images import media_type_for, upload_file
+from app.services.character_images import media_type_for, sheet_images_ready, store_sheet_image, upload_file
 from app.services.image_bytes import read_image
 from app.urls import static_url
 
@@ -452,13 +452,40 @@ def submit_bio(
     answers = normalize_answers(char.bio_answers)
     has_sheet = len((char.biography or "").strip()) >= 40
     if not answers_complete(answers) and not has_sheet:
-        raise HTTPException(400, "Escribe la biografía en el pergamino antes de publicarla")
+        raise HTTPException(400, "Escribe la historia del personaje antes de enviar la ficha")
+    if not sheet_images_ready(char):
+        raise HTTPException(
+            400,
+            "Adjunta las tres imágenes antes de enviar la ficha: cuerpo de frente, cuerpo de espaldas y rostro.",
+        )
     char.bio_answers = answers
     char.bio_answers_pending = True
     char.bio_submitted_at = datetime.now(timezone.utc)
     char.bio_rejection_reason = None
     if char.bio_status != "published":
         char.bio_status = "pending"
+    db.commit()
+    db.refresh(char)
+    return char
+
+
+@router.post("/{name}/{realm}/sheet-image/{slot}", response_model=CharacterResponse)
+async def upload_sheet_image(
+    name: str,
+    realm: str,
+    slot: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Guarda una captura in-game de la ficha: frente, espalda o rostro."""
+    char = _get_own_character(name, realm, current_user, db)
+    if char.bio_answers_pending:
+        raise HTTPException(
+            409,
+            "El Eremita todavía tiene esta ficha. Espera su respuesta para cambiar las imágenes.",
+        )
+    await store_sheet_image(char, file, slot)
     db.commit()
     db.refresh(char)
     return char
