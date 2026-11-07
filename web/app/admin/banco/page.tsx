@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { apiUrl } from "@/lib/api";
 import type { BankItem, BankRequest } from "@/lib/bank";
+import { EMPTY_GOLD_BOARD, type GoldBoard } from "@/lib/gold";
 import BankAdmin from "./BankAdmin";
 
 export default async function AdminBancoPage() {
@@ -16,13 +17,16 @@ export default async function AdminBancoPage() {
   );
   if (!me || me.role !== "admin") redirect("/admin");
 
-  const [queue, catalog] = await Promise.all([
+  const [queue, catalog, gold] = await Promise.all([
     fetch(apiUrl("/bank/admin/queue"), { headers, cache: "no-store" }).then((r) =>
       r.ok ? r.json() : [],
     ) as Promise<BankRequest[]>,
     fetch(apiUrl("/bank/admin/items"), { headers, cache: "no-store" }).then((r) =>
       r.ok ? r.json() : [],
     ) as Promise<BankItem[]>,
+    fetch(apiUrl("/bank/gold/admin"), { headers, cache: "no-store" }).then((r) =>
+      r.ok ? r.json() : null,
+    ) as Promise<GoldBoard | null>,
   ]);
 
   return (
@@ -38,11 +42,13 @@ export default async function AdminBancoPage() {
         <p className="text-sm text-gray-400 mb-8 max-w-2xl">
           Publica los materiales que la hermandad necesita, los puntos de cada uno y, si quieres, un
           cupo. Al aceptar un ingreso, esa cantidad se resta del cupo y se otorgan los puntos de la
-          tarifa publicada.
+          tarifa publicada. En Oro se confirma el oro de Forever y se ajusta cuántas platas hacen
+          un punto.
         </p>
         <BankAdmin
           queue={Array.isArray(queue) ? queue : []}
           catalog={Array.isArray(catalog) ? catalog : []}
+          gold={gold && Array.isArray(gold.deposits) ? gold : EMPTY_GOLD_BOARD}
         />
       </div>
     </main>

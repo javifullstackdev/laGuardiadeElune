@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import { apiUrl } from "@/lib/api";
 import type { BankItem, BankRequest } from "@/lib/bank";
+import { EMPTY_GOLD_BOARD, type GoldBoard } from "@/lib/gold";
 import BancoClient from "./BancoClient";
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export default async function BancoPage() {
   if (!token) redirect("/");
   const headers = { Authorization: `Bearer ${token}` };
 
-  const [catalog, requests, characters, me] = await Promise.all([
+  const [catalog, requests, characters, me, gold] = await Promise.all([
     fetch(apiUrl("/bank/items"), { headers, cache: "no-store" }).then((r) =>
       r.ok ? r.json() : [],
     ) as Promise<BankItem[]>,
@@ -26,10 +27,13 @@ export default async function BancoPage() {
     ) as Promise<BankRequest[]>,
     fetch(apiUrl("/bank/characters"), { headers, cache: "no-store" }).then((r) =>
       r.ok ? r.json() : [],
-    ) as Promise<{ name: string; realm: string; is_main: boolean }[]>,
+    ) as Promise<{ name: string; realm: string; is_main: boolean; game?: string }[]>,
     fetch(apiUrl("/bank/me"), { headers, cache: "no-store" }).then((r) =>
       r.ok ? r.json() : null,
     ) as Promise<{ path: string | null; scores_points: boolean } | null>,
+    fetch(apiUrl("/bank/gold"), { headers, cache: "no-store" }).then((r) =>
+      r.ok ? r.json() : null,
+    ) as Promise<GoldBoard | null>,
   ]);
   const scoresBankPoints = Boolean(me?.scores_points);
 
@@ -43,7 +47,8 @@ export default async function BancoPage() {
             Ingresa solo los materiales publicados, con la calidad que indique cada uno. Un
             administrador comprueba el banco del juego y, al aceptarlo, se anotan los puntos y esa
             cantidad se resta del cupo. Artesanía y farmeo de materiales suma puntos; competitivo
-            puede aportar, sin puntos.
+            puede aportar, sin puntos. En Oro se envía oro de Warcraft Forever para la pestaña del
+            banco: los puntos esperan a que el líder confirme la llegada.
           </p>
         </header>
         <BancoClient
@@ -51,6 +56,7 @@ export default async function BancoPage() {
           initialRequests={Array.isArray(requests) ? requests : []}
           characters={Array.isArray(characters) ? characters : []}
           scoresBankPoints={scoresBankPoints}
+          gold={gold && Array.isArray(gold.deposits) ? gold : EMPTY_GOLD_BOARD}
         />
       </div>
     </main>

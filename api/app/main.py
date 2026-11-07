@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.limit import WriteLimitMiddleware
 
-from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios, image_requests, share, seasons, points, bank, notifications, craft_orders, missions, draws
+from app.routers import posts, auth, users, characters, titles, stories, likes, claims, wiki, hero, bios, image_requests, share, seasons, points, bank, bank_gold, notifications, craft_orders, missions, draws
 from app.services import scheduler
 from app.services.seasons import sync_in_background as season_sync_in_background
 
@@ -96,6 +96,7 @@ app.include_router(image_requests.router)
 app.include_router(seasons.router)
 app.include_router(points.router)
 app.include_router(bank.router)
+app.include_router(bank_gold.router)
 app.include_router(craft_orders.router)
 app.include_router(missions.router)
 app.include_router(draws.router)

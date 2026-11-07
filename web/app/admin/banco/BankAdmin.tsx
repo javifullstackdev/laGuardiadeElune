@@ -22,8 +22,10 @@ import LotSelect from "@/app/banco/LotSelect";
 import NumberField from "@/app/banco/NumberField";
 import ItemPicker, { type PickedItem } from "@/app/banco/ItemPicker";
 import { GradeBadge } from "@/app/banco/QualityGem";
+import GoldAdmin from "./GoldAdmin";
+import type { GoldBoard } from "@/lib/gold";
 
-type Tab = "queue" | "catalog";
+type Tab = "queue" | "catalog" | "gold";
 
 function fmtWhen(iso: string | null) {
   if (!iso) return "";
@@ -38,9 +40,11 @@ function fmtWhen(iso: string | null) {
 export default function BankAdmin({
   queue,
   catalog,
+  gold,
 }: {
   queue: BankRequest[];
   catalog: BankItem[];
+  gold: GoldBoard;
 }) {
   const [tab, setTab] = useState<Tab>(queue.length ? "queue" : "catalog");
   const [pending, setPending] = useState(queue);
@@ -179,22 +183,30 @@ export default function BankAdmin({
 
   return (
     <div>
-      <div className="flex gap-1 mb-8 border-b border-gray-800">
-        {(["queue", "catalog"] as const).map((id) => (
+      <div className="flex gap-1 mb-8 border-b border-gray-800 overflow-x-auto">
+        {(
+          [
+            ["queue", `Cola (${pending.length})`],
+            ["gold", "Oro"],
+            ["catalog", "Materiales publicados"],
+          ] as const
+        ).map(([id, label]) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
               tab === id
                 ? "border-yellow-400 text-yellow-400"
                 : "border-transparent text-gray-400 hover:text-gray-200"
             }`}
           >
-            {id === "queue" ? `Cola (${pending.length})` : "Materiales publicados"}
+            {label}
           </button>
         ))}
       </div>
+
+      {tab === "gold" && <GoldAdmin initial={gold} />}
 
       {error && <p className="text-sm text-red-400 mb-4">{error}</p>}
 

@@ -15,14 +15,16 @@ import {
   type BankRequest,
   type MaterialGrade,
 } from "@/lib/bank";
+import type { GoldBoard } from "@/lib/gold";
 import GradeSelect from "./GradeSelect";
+import GoldDeposit from "./GoldDeposit";
 import ItemFlavor from "./ItemFlavor";
 import ItemPicker, { type PickedItem } from "./ItemPicker";
 import NumberField from "./NumberField";
 import { GradeBadge } from "./QualityGem";
 
-type CharacterOpt = { name: string; realm: string; is_main: boolean };
-type Tab = "deposit" | "withdrawal" | "history";
+type CharacterOpt = { name: string; realm: string; is_main: boolean; game?: string };
+type Tab = "deposit" | "withdrawal" | "gold" | "history";
 
 function fmtWhen(iso: string | null) {
   if (!iso) return "";
@@ -39,11 +41,13 @@ export default function BancoClient({
   initialRequests,
   characters,
   scoresBankPoints,
+  gold,
 }: {
   catalog: BankItem[];
   initialRequests: BankRequest[];
   characters: CharacterOpt[];
   scoresBankPoints: boolean;
+  gold: GoldBoard;
 }) {
   const [tab, setTab] = useState<Tab>("deposit");
   const [items, setItems] = useState(catalog);
@@ -170,6 +174,7 @@ export default function BancoClient({
     () =>
       [
         { id: "deposit" as const, label: "Ingresar" },
+        { id: "gold" as const, label: "Oro" },
         { id: "withdrawal" as const, label: "Pedir" },
         { id: "history" as const, label: "Historial" },
       ],
@@ -206,7 +211,9 @@ export default function BancoClient({
         ))}
       </div>
 
-      {tab !== "history" && (
+      {tab === "gold" && <GoldDeposit characters={characters} initial={gold} />}
+
+      {(tab === "deposit" || tab === "withdrawal") && (
         <form onSubmit={onSubmit(tab)} className="max-w-xl space-y-4">
           {tab === "deposit" ? (
             <div className="space-y-2">
