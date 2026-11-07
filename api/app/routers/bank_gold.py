@@ -10,10 +10,12 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_guild_admin
+from app.models.achievement import Achievement
 from app.models.bank import BankGoldDeposit, BankGoldSettings
 from app.models.character import Character
 from app.models.enums import EventCategory
 from app.models.user import User
+from app.models.user_achievement import UserAchievement
 from app.services.notifications import notify
 from app.services.missions import grant_ready
 from app.services import points as points_service
@@ -91,6 +93,52 @@ def _out(row: BankGoldDeposit, settings: BankGoldSettings) -> dict:
     }
 
 
+BANK_ACHIEVEMENT = "Invirtiendo en la Guardia"
+
+
+def _contributors(db: Session) -> list[dict]:
+    rows = (
+        db.query(User.username, func.coalesce(func.sum(BankGoldDeposit.copper), 0))
+        .join(User, User.id == BankGoldDeposit.user_id)
+        .filter(BankGoldDeposit.status == "approved")
+        .group_by(User.id, User.username)
+        .all()
+    )
+    people = [
+        {"username": name, "copper": int(total or 0)}
+        for name, total in rows
+        if int(total or 0) > 0
+    ]
+    people.sort(key=lambda row: (-row["copper"], row["username"].casefold()))
+    return people
+
+
+def grant_bank_investors(db: Session) -> None:
+    """Cuando el banco llega al objetivo, el logro es de quien aportó al menos 1 de oro. Sin puntos."""
+    settings = get_settings(db)
+    if _sum_copper(db, "approved") < int(settings.goal_copper):
+        return
+    achievement = db.query(Achievement).filter(Achievement.name == BANK_ACHIEVEMENT).first()
+    if achievement is None:
+        return
+    totals = (
+        db.query(BankGoldDeposit.user_id, func.coalesce(func.sum(BankGoldDeposit.copper), 0))
+        .filter(BankGoldDeposit.status == "approved")
+        .group_by(BankGoldDeposit.user_id)
+        .all()
+    )
+    already = {
+        user_id
+        for (user_id,) in db.query(UserAchievement.user_id)
+        .filter(UserAchievement.achievement_id == achievement.id)
+        .all()
+    }
+    for user_id, total in totals:
+        if int(total or 0) < GOLD or user_id in already:
+            continue
+        db.add(UserAchievement(user_id=user_id, achievement_id=achievement.id, character_id=None))
+
+
 def _board(db: Session, deposits: list[BankGoldDeposit]) -> dict:
     settings = get_settings(db)
     return {
@@ -98,6 +146,7 @@ def _board(db: Session, deposits: list[BankGoldDeposit]) -> dict:
         "goal_copper": int(settings.goal_copper),
         "confirmed_copper": _sum_copper(db, "approved"),
         "pending_copper": _sum_copper(db, "pending"),
+        "contributors": _contributors(db),
         "deposits": [_out(row, settings) for row in deposits],
     }
 
@@ -147,6 +196,9 @@ def gold_board(current_user: User = Depends(get_current_user), db: Session = Dep
         .limit(40)
         .all()
     )
+    grant_bank_investors(db)
+    if db.new:
+        db.commit()
     return _board(db, rows)
 
 
@@ -260,6 +312,7 @@ def approve_gold(
     player = db.query(User).filter(User.id == row.user_id).first()
     if player is not None:
         grant_ready(db, player)
+    grant_bank_investors(db)
     db.commit()
     db.refresh(row)
     return _out(row, settings)

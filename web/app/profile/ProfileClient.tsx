@@ -901,7 +901,8 @@ function AchievementGroup({
                 <p className="text-sm font-medium text-gray-100">{item.title || item.name}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>
                 <p className="text-xs text-gray-600 mt-1">
-                  {item.points_value} pts · {new Date(item.earned_at).toLocaleDateString("es-ES")}
+                  {item.points_value > 0 ? `${item.points_value} pts · ` : ""}
+                  {new Date(item.earned_at).toLocaleDateString("es-ES")}
                 </p>
               </div>
             </li>

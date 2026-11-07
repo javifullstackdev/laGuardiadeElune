@@ -14,12 +14,18 @@ export type GoldDeposit = {
   resolved_at: string | null;
 };
 
+export type GoldContributor = {
+  username: string;
+  copper: number;
+};
+
 export type GoldBoard = {
   silver_per_point: number;
   goal_copper: number;
   confirmed_copper: number;
   pending_copper: number;
   deposits: GoldDeposit[];
+  contributors?: GoldContributor[];
 };
 
 export const COPPER_PER_SILVER = 100;
