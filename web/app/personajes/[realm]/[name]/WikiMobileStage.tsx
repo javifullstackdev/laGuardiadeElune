@@ -9,7 +9,7 @@ import {
   type TransitionEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import Breadcrumb, { type Crumb } from "@/app/components/Breadcrumb";
+import BreadcrumbNav, { type Crumb } from "@/app/components/BreadcrumbNav";
 import FactCycle from "@/app/personajes/FactCycle";
 import type { WikiNeighbor } from "@/lib/wiki";
 
@@ -544,7 +544,7 @@ export default function WikiMobileStage({
       </div>
 
       <div className="absolute top-0 inset-x-0 z-50 px-4 pt-3">
-        <Breadcrumb className="mb-0" items={crumbs} onBack={onBack} jsonLd={false} />
+        <BreadcrumbNav className="mb-0" items={crumbs} onBack={onBack} jsonLd={false} />
       </div>
 
       {hasLore && (

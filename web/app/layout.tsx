@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Cinzel, Cinzel_Decorative, Geist, Geist_Mono, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import Navbar from "./components/Navbar";
@@ -68,14 +69,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const nonce = (await headers()).get("x-nonce") ?? "";
+
   return (
     <html
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} ${cinzelDecorative.variable} ${sourceSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-gray-950 text-white">
-        <JsonLd />
+        <JsonLd nonce={nonce} />
         <LogoChromeProvider>
           <HomeLogo />
           <Navbar />

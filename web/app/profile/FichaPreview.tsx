@@ -8,9 +8,11 @@ import WikiCharacterView from "@/app/personajes/WikiCharacterView";
 export default function FichaPreview({
   char,
   onClose,
+  nonce,
 }: {
   char: WikiCharacter;
   onClose: () => void;
+  nonce?: string;
 }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -44,7 +46,7 @@ export default function FichaPreview({
           Cerrar
         </button>
       </div>
-      <WikiCharacterView char={char} preview loggedIn onDismiss={onClose} />
+      <WikiCharacterView char={char} preview loggedIn onDismiss={onClose} nonce={nonce} />
     </div>,
     document.body,
   );

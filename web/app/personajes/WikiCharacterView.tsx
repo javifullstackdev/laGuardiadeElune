@@ -4,7 +4,7 @@ import { textToParagraphs } from "@/lib/posts";
 import { relationLabel } from "@/lib/relations";
 import { classLabel, raceLabel, factionLabel, factionColor, isHorde } from "@/lib/wow";
 import type { WikiCharacter, WikiNeighbor } from "@/lib/wiki";
-import Breadcrumb from "@/app/components/Breadcrumb";
+import BreadcrumbNav from "@/app/components/BreadcrumbNav";
 import ShareBar from "@/app/components/ShareBar";
 import Parchment from "@/app/components/ui/Parchment";
 import WikiMobileStage from "@/app/personajes/[realm]/[name]/WikiMobileStage";
@@ -111,6 +111,7 @@ export default function WikiCharacterView({
   onDismiss,
   prev,
   next,
+  nonce,
 }: {
   char: WikiCharacter;
   preview?: boolean;
@@ -118,6 +119,7 @@ export default function WikiCharacterView({
   onDismiss?: () => void;
   prev?: WikiNeighbor;
   next?: WikiNeighbor;
+  nonce?: string;
 }) {
   const facts = (
     [
@@ -188,7 +190,7 @@ export default function WikiCharacterView({
 
       <div className="relative z-10 hidden min-[1440px]:block h-[calc(100dvh-3rem)] overflow-hidden">
         <div className="h-full flex flex-col px-4 pt-6 lg:pl-[clamp(25rem,28vw,32rem)] lg:pr-20">
-          <Breadcrumb className="mb-4 shrink-0" items={crumbs} onBack={onDismiss} />
+          <BreadcrumbNav className="mb-4 shrink-0" items={crumbs} onBack={onDismiss} nonce={nonce} />
 
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:items-stretch gap-5 lg:gap-2">
             {hasLore && (

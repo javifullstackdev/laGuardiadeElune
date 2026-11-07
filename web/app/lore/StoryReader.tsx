@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { textToParagraphs, formatDate } from "@/lib/posts";
 import { fitToOneLine } from "@/lib/fit-line";
 import ShareBar from "@/app/components/ShareBar";
-import Breadcrumb, { type Crumb } from "@/app/components/Breadcrumb";
+import BreadcrumbNav, { type Crumb } from "@/app/components/BreadcrumbNav";
 import Parchment from "@/app/components/ui/Parchment";
 import { ParchmentPanRoot, PanningCover } from "@/app/components/ui/PanningCover";
 import { characterSignature, type StoryPublic } from "@/lib/stories";
@@ -195,11 +195,13 @@ export default function StoryReader({
   isHordeStory,
   loggedIn,
   initialMode,
+  nonce,
 }: {
   story: StoryPublic;
   isHordeStory: boolean;
   loggedIn: boolean;
   initialMode: StoryReadingMode;
+  nonce?: string;
 }) {
   const [phase, setPhase] = useState<Phase>(initialMode === "comfort" ? "comfort" : "parchment");
   const [entrance, setEntrance] = useState(initialMode === "parchment");
@@ -357,7 +359,7 @@ export default function StoryReader({
             {look !== "comfort" ? <h1 className="sr-only">{story.title}</h1> : null}
             <div className="flex items-start justify-between gap-3 md:gap-4">
               <div className="pointer-events-auto min-w-0 flex-1">
-                <Breadcrumb className="mb-0" items={crumbs} />
+                <BreadcrumbNav className="mb-0" items={crumbs} nonce={nonce} />
               </div>
               <div className="pointer-events-auto flex shrink-0 items-start gap-2">
                 <StatusBadge status={story.status} />
