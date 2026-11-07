@@ -412,6 +412,7 @@ export default function ProfileClient({
               onFavoritePrefixChange={(t) => handleFavoritePrefixChange(selected, t)}
               onDetailsPatch={(p) => handleDetailsPatch(selected, p)}
               onOpenCharacters={() => setSidebarOpen(true)}
+              nonce={nonce}
               home={
                 <ProfileHome
                   user={user}
@@ -541,7 +542,7 @@ type DetailTab = "inicio" | ProfileSection;
 
 function CharacterDetail({
   char, transactions, points, onSetMain, isPending, onFavoriteTitleChange, onFavoritePrefixChange, onDetailsPatch,
-  onOpenCharacters, tab, onTabChange, home,
+  onOpenCharacters, tab, onTabChange, home, nonce,
 }: {
   tab: DetailTab;
   onTabChange: (tab: DetailTab) => void;
@@ -555,6 +556,7 @@ function CharacterDetail({
   onFavoritePrefixChange: (t: TitleData | null) => void;
   onDetailsPatch: (p: CharPatch) => void;
   onOpenCharacters?: () => void;
+  nonce?: string;
 }) {
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -786,7 +788,7 @@ function CharacterDetail({
                   <>
                     {t.key === "inicio" && home}
                     {t.key === "bio" && (
-                      <BioTab char={char} onDetailsPatch={onDetailsPatch} />
+                      <BioTab char={char} onDetailsPatch={onDetailsPatch} nonce={nonce} />
                     )}
                     {t.key === "details" && (
                       <DetailsTab
@@ -1055,10 +1057,11 @@ function buildFichaPreview(char: Character, biography: string): WikiCharacter {
 }
 
 function BioTab({
-  char, onDetailsPatch,
+  char, onDetailsPatch, nonce,
 }: {
   char: Character;
   onDetailsPatch: (p: CharPatch) => void;
+  nonce?: string;
 }) {
   const answersLocked = char.bio_answers_pending;
   const [biography, setBiography] = useState(char.biography ?? "");
