@@ -15,7 +15,7 @@ import {
   type BankRequest,
   type MaterialGrade,
 } from "@/lib/bank";
-import type { GoldBoard } from "@/lib/gold";
+import { formatMoney, type GoldBoard } from "@/lib/gold";
 import GradeSelect from "./GradeSelect";
 import GoldDeposit from "./GoldDeposit";
 import ItemFlavor from "./ItemFlavor";
@@ -198,6 +198,7 @@ export default function BancoClient({
 
   return (
     <div>
+      <BankGoalCard gold={gold} />
       <div className="flex gap-1 mb-8 border-b border-gray-800">
         {tabs.map((t) => (
           <button
@@ -416,5 +417,53 @@ export default function BancoClient({
         </ul>
       )}
     </div>
+  );
+}
+
+function BankGoalCard({ gold }: { gold: GoldBoard }) {
+  const [open, setOpen] = useState(false);
+  const goal = gold.goal_copper > 0 ? gold.goal_copper : 1;
+  const width = Math.min(100, Math.round((gold.confirmed_copper / goal) * 100));
+  const people = gold.contributors ?? [];
+
+  return (
+    <section className="mb-8 overflow-hidden rounded-xl border border-gray-800 bg-gray-950/80">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center gap-3 px-4 py-4 text-left"
+      >
+        <img src="/missions/quest.png" alt="" className="h-8 w-auto shrink-0" />
+        <h2 className="min-w-0 flex-1 font-quest font-semibold leading-none tracking-wide text-gray-100">
+          ¡Un banco para todos!
+        </h2>
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          <div className="mb-2 flex justify-between text-xs text-gray-400">
+            <span>{formatMoney(gold.confirmed_copper)}</span>
+            <span>{formatMoney(gold.goal_copper)}</span>
+          </div>
+          <div className="h-5 overflow-hidden rounded-full bg-gray-800">
+            <div className="h-full bg-yellow-400" style={{ width: `${width}%` }} />
+          </div>
+          <p className="mt-3 text-sm text-gray-400">
+            No todo el mundo podrá presumir de haber invertido al menos 5 oros en la primera pestaña del banco de la Guardia.
+          </p>
+          {people.length > 0 ? (
+            <ul className="mt-3 space-y-1">
+              {people.map((row) => (
+                <li key={row.username} className="text-sm text-gray-300">
+                  {row.username}: {formatMoney(row.copper)}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-gray-500">Todavía no hay oro confirmado.</p>
+          )}
+        </div>
+      )}
+    </section>
   );
 }

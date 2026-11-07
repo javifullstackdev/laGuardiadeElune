@@ -75,6 +75,7 @@ export default function ProfileHome({
   const [openKey, setOpenKey] = useState<string | null>(null);
   const pending = missions.filter((mission) => {
     if (mission.status === "done") return false;
+    if (mission.key === "forever_gold_10") return character?.game === "forever";
     if (!character || !mission.character) return true;
     return (
       mission.character.name === character.name &&
