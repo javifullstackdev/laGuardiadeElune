@@ -20,9 +20,9 @@ export default async function BancoPage({
 }) {
   const params = await searchParams;
   const initialTab =
-    params.tab === "gold" || params.tab === "withdrawal" || params.tab === "history"
+    params.tab === "deposit" || params.tab === "withdrawal" || params.tab === "history"
       ? params.tab
-      : "deposit";
+      : "gold";
   const token = (await cookies()).get("token")?.value;
   if (!token) redirect("/");
   const headers = { Authorization: `Bearer ${token}` };

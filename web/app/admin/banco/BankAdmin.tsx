@@ -142,6 +142,24 @@ export default function BankAdmin({
     }
   }
 
+  async function removeItem(item: BankItem) {
+    const pendingNote =
+      item.pending_deposit_qty > 0
+        ? " Las solicitudes pendientes siguen en la cola para rechazarlas."
+        : "";
+    if (!window.confirm(`¿Quitar «${item.name}» de los materiales publicados?${pendingNote}`)) return;
+    setBusy(`delete-${item.id}`);
+    setError(null);
+    const res = await fetch(`/api/bank/admin/items/${item.id}`, { method: "DELETE" });
+    setBusy(null);
+    if (res.ok) {
+      await reload();
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    setError(apiDetail(data, "No se pudo eliminar"));
+  }
+
   async function addToCatalog() {
     if (!picked) return;
     const quantityLimit = limitPayload(newLimited, newLimit);
@@ -449,6 +467,14 @@ export default function BankAdmin({
                   className="text-xs text-yellow-400 hover:text-yellow-300"
                 >
                   Actualizar
+                </button>
+                <button
+                  type="button"
+                  disabled={busy === `delete-${item.id}`}
+                  onClick={() => removeItem(item)}
+                  className="text-xs text-red-300 hover:text-red-200 disabled:opacity-50"
+                >
+                  Eliminar
                 </button>
               </li>
             ))}

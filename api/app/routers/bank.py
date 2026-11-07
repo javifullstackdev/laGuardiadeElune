@@ -515,6 +515,20 @@ def update_item_points(
     return serialize_item(item, _demand(db))
 
 
+@router.delete("/admin/items/{item_id}")
+def delete_item(
+    item_id: UUID,
+    _: User = Depends(require_guild_admin),
+    db: Session = Depends(get_db),
+):
+    item = db.query(BankItem).filter(BankItem.id == item_id).first()
+    if not item:
+        raise HTTPException(404, "Objeto no encontrado")
+    db.delete(item)
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/admin/requests/{request_id}/approve")
 def approve_deposit(
     request_id: UUID,
