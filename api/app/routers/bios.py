@@ -15,12 +15,13 @@ from app.schemas.bio import (
     BioPublishedOut,
     BioQuestionOut,
     BioReferenceImage,
+    BioSheetImage,
     BioRejectIn,
     SurnameDecisionIn,
     SurnameReviewOut,
 )
 from app.services.bio_questions import QUESTIONS, formatted_answers, has_public_sheet
-from app.services.character_images import publish_character_image, reference_paths
+from app.services.character_images import SHEET_SLOTS, publish_character_image, reference_paths
 from app.services.missions import grant_ready
 from app.services.notifications import notify
 from app.urls import static_url
@@ -60,6 +61,16 @@ def _reference_views(reqs: list[ImageRequest]) -> list[BioReferenceImage]:
     return views
 
 
+def _sheet_views(char: Character) -> list[BioSheetImage]:
+    views: list[BioSheetImage] = []
+    for slot, (column, label) in SHEET_SLOTS.items():
+        url = static_url(getattr(char, column))
+        if not url:
+            continue
+        views.append(BioSheetImage(slot=slot, label=label, url=url))
+    return views
+
+
 def _pending_out(
     char: Character,
     author: User,
@@ -73,6 +84,7 @@ def _pending_out(
         cover_url=_cover(char),
         answers=[BioAnswerView(**row) for row in formatted_answers(char.bio_answers)],
         reference_images=_reference_views(refs or []),
+        sheet_images=_sheet_views(char),
         submitted_at=char.bio_submitted_at,
         bio_status=char.bio_status,
         current_biography=char.biography,

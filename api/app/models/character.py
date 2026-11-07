@@ -52,6 +52,10 @@ class Character(Base):
     pending_avatar_url    = Column(String(500), nullable=True) # imagen completa pendiente
     custom_face_url       = Column(String(500), nullable=True) # cara propia aprobada (ranking)
     pending_face_url      = Column(String(500), nullable=True) # cara propia pendiente
+    # Capturas in-game obligatorias para enviar la ficha al Eremita
+    sheet_front_url       = Column(String(500), nullable=True)
+    sheet_back_url        = Column(String(500), nullable=True)
+    sheet_face_url        = Column(String(500), nullable=True)
     # ── Línea temporal ─────────────────────────────────────────────────────
     # "retail"  → personaje importado y verificado por Blizzard
     # "forever" → personaje de Warcraft Forever, creado manualmente

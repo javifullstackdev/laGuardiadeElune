@@ -59,6 +59,9 @@ type Character = {
   pending_avatar_url: string | null;
   custom_face_url: string | null;
   pending_face_url: string | null;
+  sheet_front_url: string | null;
+  sheet_back_url: string | null;
+  sheet_face_url: string | null;
   wow_class: string | null;
   race: string | null;
   faction: string | null;
@@ -142,6 +145,7 @@ type CharPatch = Partial<Pick<Character,
   "origin" | "age_lore" | "residence" |
   "avatar_url" | "face_display_url" | "custom_avatar_url" | "pending_avatar_url" |
   "custom_face_url" | "pending_face_url" |
+  "sheet_front_url" | "sheet_back_url" | "sheet_face_url" |
   "bio_status" | "published_story_id" | "public_fields" |
   "bio_answers" | "bio_answers_pending" | "bio_rejection_reason" | "is_verified"
 >>;
@@ -778,9 +782,9 @@ function CharacterDetail({
             return (
               <div
                 key={t.key}
-                className={`w-full h-full shrink-0 ${panelPad} ${t.key === "bio"
-                  ? "overflow-hidden flex flex-col pt-3 pb-10 sm:pt-4 sm:pb-14"
-                  : "overflow-y-auto overscroll-y-contain scrollbar-none py-3 sm:py-4"
+                className={`w-full h-full shrink-0 overflow-y-auto overscroll-y-contain scrollbar-none ${panelPad} ${t.key === "bio"
+                  ? "pt-3 pb-10 sm:pt-4 sm:pb-14"
+                  : "py-3 sm:py-4"
                   }`}
                 aria-hidden={!active}
               >
@@ -1056,6 +1060,14 @@ function buildFichaPreview(char: Character, biography: string): WikiCharacter {
   };
 }
 
+const SHEET_SLOTS = [
+  { id: "front", field: "sheet_front_url", label: "Cuerpo completo, de frente" },
+  { id: "back", field: "sheet_back_url", label: "Cuerpo completo, de espaldas" },
+  { id: "face", field: "sheet_face_url", label: "Rostro" },
+] as const;
+
+type SheetSlot = (typeof SHEET_SLOTS)[number];
+
 function BioTab({
   char, onDetailsPatch, nonce,
 }: {
@@ -1067,6 +1079,7 @@ function BioTab({
   const [biography, setBiography] = useState(char.biography ?? "");
   const [savingSheet, setSavingSheet] = useState(false);
   const [sending, setSending] = useState(false);
+  const [uploadingSlot, setUploadingSlot] = useState<SheetSlot["id"] | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [canScrollMore, setCanScrollMore] = useState(false);
@@ -1125,9 +1138,40 @@ function BioTab({
     }
   }
 
+  const imagesReady = SHEET_SLOTS.every((slot) => Boolean(char[slot.field]));
+
+  async function uploadSheetImage(slot: SheetSlot, file: File) {
+    setUploadingSlot(slot.id);
+    setError(null);
+    try {
+      const body = new FormData();
+      body.set("name", char.name);
+      body.set("realm", char.realm);
+      body.set("slot", slot.id);
+      body.set("file", file);
+      const res = await fetch("/api/characters/sheet-image", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(typeof data.detail === "string" ? data.detail : "No se ha podido guardar la imagen");
+        return;
+      }
+      onDetailsPatch({
+        sheet_front_url: data.sheet_front_url ?? null,
+        sheet_back_url: data.sheet_back_url ?? null,
+        sheet_face_url: data.sheet_face_url ?? null,
+      });
+    } finally {
+      setUploadingSlot(null);
+    }
+  }
+
   async function handlePublish() {
     if (biography.trim().length < 40) {
-      setError("La biografía es demasiado corta para publicarla");
+      setError("La historia es demasiado corta para enviarla");
+      return;
+    }
+    if (!imagesReady) {
+      setError("Adjunta las tres imágenes antes de enviar la ficha: cuerpo de frente, cuerpo de espaldas y rostro.");
       return;
     }
     setSending(true);
@@ -1179,12 +1223,12 @@ function BioTab({
     "px-4 py-2 rounded-lg border border-gray-700 bg-transparent hover:bg-gray-800/80 text-gray-200 font-semibold text-sm disabled:opacity-50";
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 max-w-2xl">
-      <p className="shrink-0 text-sm text-gray-400">
-        Escribe aquí una breve biografía del personaje. La vista previa muestra cómo se verá en el pergamino cuando el Eremita la publique.
+    <div className="flex flex-col gap-4 max-w-2xl">
+      <p className="text-sm text-gray-400">
+        Escribe la historia del personaje. Para enviarla al Eremita hacen falta también tres imágenes in-game: el cuerpo completo de frente, el cuerpo completo de espaldas y el rostro.
       </p>
-      <div className="relative min-h-0 flex-1">
-        <label className="text-xs text-gray-500 block mb-1">Biografía</label>
+      <div className="relative">
+        <label className="text-xs text-gray-500 block mb-1">Historia</label>
         <textarea
           ref={scrollerRef}
           value={biography}
@@ -1195,8 +1239,8 @@ function BioTab({
           onScroll={updateScrollHint}
           placeholder="Cuenta quién es este personaje: de dónde viene, qué lo mueve, qué ha vivido…"
           disabled={answersLocked}
-          aria-label="Biografía"
-          className="bio-field h-[calc(100%-1.25rem)] w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 pb-10 text-sm text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-gray-500 resize-none leading-relaxed disabled:opacity-70"
+          aria-label="Historia"
+          className="bio-field h-64 w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 pb-10 text-sm text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-gray-500 resize-none leading-relaxed disabled:opacity-70"
         />
         {canScrollMore && (
           <>
@@ -1227,6 +1271,38 @@ function BioTab({
             </button>
           </>
         )}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {SHEET_SLOTS.map((slot) => {
+          const url = char[slot.field];
+          const busy = uploadingSlot === slot.id;
+          return (
+            <div key={slot.id} className="rounded-lg border border-gray-800 bg-gray-950/60 p-3">
+              <p className="text-xs text-gray-300">{slot.label}</p>
+              {url ? (
+                <img src={url} alt="" className="mt-2 h-36 w-full rounded-md object-contain bg-black/40" />
+              ) : (
+                <div className="mt-2 flex h-36 items-center justify-center rounded-md border border-dashed border-gray-700 text-xs text-gray-500">
+                  Obligatorio
+                </div>
+              )}
+              <label className="mt-2 block text-xs text-gray-400">
+                {busy ? "Guardando..." : url ? "Cambiar imagen" : "Adjuntar imagen"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={answersLocked || busy}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) void uploadSheetImage(slot, file);
+                  }}
+                  className="mt-1 block w-full text-xs text-gray-400 file:mr-2 file:rounded-lg file:border-0 file:bg-gray-800 file:px-2 file:py-1 file:text-xs file:text-gray-200 disabled:opacity-50"
+                />
+              </label>
+            </div>
+          );
+        })}
       </div>
       {sheetDirty && !answersLocked && (
         <p className="shrink-0 text-xs text-gray-500">Hay cambios sin guardar.</p>
@@ -1268,10 +1344,10 @@ function BioTab({
         <button
           type="button"
           onClick={handlePublish}
-          disabled={sending || answersLocked || biography.trim().length < 40}
+          disabled={sending || answersLocked || biography.trim().length < 40 || !imagesReady}
           className={btn}
         >
-          {sending ? "Publicando..." : "Publicar ficha"}
+          {sending ? "Enviando..." : "Enviar al Eremita"}
         </button>
       </div>
       {previewOpen && (

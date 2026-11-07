@@ -33,6 +33,12 @@ export type BioReferenceImage = {
   url: string;
 };
 
+export type BioSheetImage = {
+  slot: string;
+  label: string;
+  url: string;
+};
+
 export type BioPublished = {
   character_id: string;
   character_name: string;
@@ -53,6 +59,7 @@ export type BioPending = {
   cover_url: string | null;
   answers: BioAnswerView[];
   reference_images?: BioReferenceImage[];
+  sheet_images?: BioSheetImage[];
   submitted_at: string | null;
   bio_status: string;
   current_biography: string | null;

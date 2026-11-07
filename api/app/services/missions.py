@@ -74,8 +74,8 @@ SHEET = {
     "key": PUBLISH_SHEET,
     "title": "Publica la ficha de tu personaje",
     "description": (
-        "Escribe una breve biografía de tu personaje y adjunta las imágenes "
-        "necesarias para que el Eremita publique tu ficha."
+        "Escribe la historia del personaje y adjunta el cuerpo de frente, "
+        "el cuerpo de espaldas y el rostro para que el Eremita publique la ficha."
     ),
     "points": 100,
 }

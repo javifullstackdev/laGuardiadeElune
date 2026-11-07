@@ -129,6 +129,27 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
               )}
             </div>
 
+            {(item.sheet_images ?? []).length > 0 && (
+              <div className="space-y-3">
+                <h3 className="text-xs uppercase tracking-wider text-gray-500">Imágenes in-game de la ficha</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {item.sheet_images?.map((image) => (
+                    <div key={image.slot} className="space-y-2">
+                      <a
+                        href={image.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block rounded-lg overflow-hidden border border-gray-700 bg-black/40"
+                      >
+                        <img src={image.url} alt="" className="w-full h-36 object-contain" />
+                      </a>
+                      <p className="text-xs text-gray-400">{image.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <h3 className="text-xs uppercase tracking-wider text-gray-500">Capturas in-game</h3>
               {(item.reference_images ?? []).length === 0 ? (
