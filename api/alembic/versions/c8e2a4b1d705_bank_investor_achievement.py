@@ -27,7 +27,7 @@ def upgrade() -> None:
             '{ACHIEVEMENT_ID}',
             'Invirtiendo en la Guardia',
             'Invirtiendo en la Guardia',
-            'Colaboraste con al menos 1 de oro en la primera pestaña del banco de la Guardia.',
+            'Colaboraste con al menos 5 de oro en la primera pestaña del banco de la Guardia.',
             '/missions/quest.png',
             true,
             false,

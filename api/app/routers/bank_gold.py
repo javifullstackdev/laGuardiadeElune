@@ -114,13 +114,16 @@ def _contributors(db: Session) -> list[dict]:
 
 
 def grant_bank_investors(db: Session) -> None:
-    """Cuando el banco llega al objetivo, el logro es de quien aportó al menos 1 de oro. Sin puntos."""
+    """Cuando el banco llega al objetivo, el logro es de quien aportó al menos 5 de oro. Sin puntos."""
     settings = get_settings(db)
     if _sum_copper(db, "approved") < int(settings.goal_copper):
         return
     achievement = db.query(Achievement).filter(Achievement.name == BANK_ACHIEVEMENT).first()
     if achievement is None:
         return
+    description = "Colaboraste con al menos 5 de oro en la primera pestaña del banco de la Guardia."
+    if achievement.achievement_description != description:
+        achievement.achievement_description = description
     totals = (
         db.query(BankGoldDeposit.user_id, func.coalesce(func.sum(BankGoldDeposit.copper), 0))
         .filter(BankGoldDeposit.status == "approved")
@@ -134,7 +137,7 @@ def grant_bank_investors(db: Session) -> None:
         .all()
     }
     for user_id, total in totals:
-        if int(total or 0) < GOLD or user_id in already:
+        if int(total or 0) < 5 * GOLD or user_id in already:
             continue
         db.add(UserAchievement(user_id=user_id, achievement_id=achievement.id, character_id=None))
 
