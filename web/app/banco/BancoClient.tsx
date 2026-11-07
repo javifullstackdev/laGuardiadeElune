@@ -48,7 +48,7 @@ export default function BancoClient({
   characters,
   scoresBankPoints,
   gold,
-  initialTab = "deposit",
+  initialTab = "gold",
 }: {
   catalog: BankItem[];
   initialRequests: BankRequest[];
@@ -181,8 +181,8 @@ export default function BancoClient({
   const tabs = useMemo(
     () =>
       [
-        { id: "deposit" as const, label: "Ingresar" },
         { id: "gold" as const, label: "Oro" },
+        { id: "deposit" as const, label: "Materiales" },
         { id: "withdrawal" as const, label: "Pedir" },
         { id: "history" as const, label: "Historial" },
       ],
