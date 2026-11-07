@@ -16,6 +16,7 @@ from app.models.enums import EventCategory
 from app.services import blizzard, dungeons, mplus_sync, raiderio
 from app.services import points as points_service
 from app.services.bio_questions import has_public_sheet
+from app.services.image_bytes import read_image
 from app.services.blizzard import BlizzardError
 from app.services.seasons import current_season
 
@@ -274,7 +275,6 @@ def admin_history(
     return [serialize_admin_tx(tx, user, character, run) for tx, user, character, run in rows]
 
 
-COVER_EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 MAX_COVER_SIZE = 5 * 1024 * 1024
 
 
@@ -291,12 +291,9 @@ async def admin_dungeon_image(
 ):
     if slug not in dungeons.BY_SLUG:
         raise HTTPException(404, "Mazmorra no reconocida")
-    extension = COVER_EXTENSIONS.get(file.content_type)
-    if extension is None:
-        raise HTTPException(400, "La imagen debe ser JPEG, PNG o WebP")
-    content = await file.read()
-    if len(content) > MAX_COVER_SIZE:
-        raise HTTPException(400, "La imagen no puede superar 5 MB")
+    content, extension = await read_image(
+        file, max_bytes=MAX_COVER_SIZE, too_big="La imagen no puede superar 5 MB"
+    )
     dungeons.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     for ext in dungeons.IMAGE_EXTS:
         (dungeons.UPLOAD_DIR / f"{slug}.{ext}").unlink(missing_ok=True)

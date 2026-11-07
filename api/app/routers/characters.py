@@ -36,6 +36,7 @@ from app.models.craft import CharacterProfessionSkill, CraftOrder
 from app.services.professions import store_profession_snapshot, summarize_profession
 from app.services.bio_questions import answers_complete, normalize_answers
 from app.services.character_images import media_type_for, upload_file
+from app.services.image_bytes import read_image
 from app.urls import static_url
 
 BLIZZARD_REGION = os.getenv("BLIZZARD_REGION", "eu")
@@ -45,7 +46,6 @@ BLIZZARD_CLIENT_SECRET = os.getenv("BLIZZARD_CLIENT_SECRET")
 UPLOAD_DIR = Path("uploads/avatars")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
 
 BLIZZARD_CLASS_MAP: dict[int, str] = {
@@ -1220,16 +1220,9 @@ async def _store_pending_image(
     pending_attr: str,
     prefix: str,
 ) -> str:
-    if file.content_type not in ALLOWED_IMAGE_TYPES:
-        raise HTTPException(400, "Solo se permiten imágenes JPEG, PNG o WebP.")
-
-    content = await file.read()
-    if len(content) > MAX_AVATAR_SIZE:
-        raise HTTPException(400, "La imagen no puede superar 5 MB.")
-
-    ext = (file.filename or "avatar").rsplit(".", 1)[-1].lower()
-    if ext not in ("jpg", "jpeg", "png", "webp"):
-        ext = "jpg"
+    content, ext = await read_image(
+        file, max_bytes=MAX_AVATAR_SIZE, too_big="La imagen no puede superar 5 MB."
+    )
     filename = f"{prefix}_{char.id}_{_uuid.uuid4().hex}.{ext}"
     filepath = UPLOAD_DIR / filename
 

@@ -1,6 +1,11 @@
 import os
+import secrets
+import time
+import unicodedata
+import logging
+
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -30,19 +35,29 @@ BLIZZARD_REDIRECT_URI  = os.getenv("BLIZZARD_REDIRECT_URI")
 BLIZZARD_REGION        = os.getenv("BLIZZARD_REGION", "eu")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+log = logging.getLogger(__name__)
+
+_ROLE_REFRESH_SECONDS = 15 * 60
+_role_checked_at: dict[str, float] = {}
 
 # ── Mapeo de roles de Discord → nivel de permiso ─────────────────────────
-# "Lider"/"Líder"/"Admin" → ADMIN, "Oficial" → OFFICER, todo lo demás → MEMBER
-_ADMIN_KEYWORDS   = {"lider", "líder", "admin"}
-_OFFICER_KEYWORDS = {"oficial"}
+# El nombre tiene que coincidir entero. Un rol que solo contenga la palabra
+# no abre el panel: «Ayudante del líder» sigue siendo miembro.
+_ADMIN_ROLES = frozenset({"admin", "lider"})
+_OFFICER_ROLES = frozenset({"oficial"})
+
+
+def _role_key(name: str) -> str:
+    folded = unicodedata.normalize("NFKD", name.strip().lower())
+    return "".join(ch for ch in folded if not unicodedata.combining(ch))
 
 
 def _map_role_name(name: str) -> UserRole | None:
-    """Devuelve el UserRole si el nombre del rol coincide con un patrón conocido."""
-    lower = name.lower()
-    if any(k in lower for k in _ADMIN_KEYWORDS):
+    """Devuelve el UserRole si el nombre del rol es exactamente Admin, Líder u Oficial."""
+    key = _role_key(name)
+    if key in _ADMIN_ROLES:
         return UserRole.ADMIN
-    if any(k in lower for k in _OFFICER_KEYWORDS):
+    if key in _OFFICER_ROLES:
         return UserRole.OFFICER
     return None
 
@@ -102,6 +117,70 @@ async def _resolve_discord_role(
     return best_role, best_title
 
 
+def _highest_role(member_role_ids: list[str], all_roles: dict[str, dict]) -> UserRole:
+    member_roles = [all_roles[rid] for rid in member_role_ids if rid in all_roles]
+    member_roles.sort(key=lambda role: role.get("position", 0), reverse=True)
+    best = UserRole.MEMBER
+    for discord_role in member_roles:
+        mapped = _map_role_name(discord_role["name"])
+        if mapped == UserRole.ADMIN:
+            return UserRole.ADMIN
+        if mapped == UserRole.OFFICER:
+            best = UserRole.OFFICER
+    return best
+
+
+async def _role_from_discord(discord_id: str) -> UserRole | None:
+    """Rol actual en el servidor. None si Discord no responde, para no quitar permisos a ciegas."""
+    if not DISCORD_BOT_TOKEN or not DISCORD_GUILD_ID or not discord_id:
+        return None
+    headers = {"Authorization": f"Bot {DISCORD_BOT_TOKEN}"}
+    try:
+        async with httpx.AsyncClient() as client:
+            member_res = await client.get(
+                f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/members/{discord_id}",
+                headers=headers,
+                timeout=5.0,
+            )
+            if member_res.status_code == 404:
+                return UserRole.MEMBER
+            if member_res.status_code != 200:
+                return None
+            roles_res = await client.get(
+                f"https://discord.com/api/v10/guilds/{DISCORD_GUILD_ID}/roles",
+                headers=headers,
+                timeout=5.0,
+            )
+        if roles_res.status_code != 200:
+            return None
+    except Exception:
+        return None
+    all_roles = {
+        role["id"]: role
+        for role in roles_res.json()
+        if role["id"] != DISCORD_GUILD_ID
+    }
+    return _highest_role(member_res.json().get("roles") or [], all_roles)
+
+
+async def refresh_stored_role(user: User, db: Session) -> None:
+    """Relee el rol de Discord de un admin u oficial, como mucho cada 15 minutos."""
+    if user.role not in (UserRole.ADMIN, UserRole.OFFICER):
+        return
+    key = str(user.id)
+    now = time.monotonic()
+    checked = _role_checked_at.get(key)
+    if checked is not None and now - checked < _ROLE_REFRESH_SECONDS:
+        return
+    _role_checked_at[key] = now
+    role = await _role_from_discord(user.discord_id)
+    if role is None or role == user.role:
+        return
+    log.info("discord role for %s changed from %s to %s", user.id, user.role.value, role.value)
+    user.role = role
+    db.commit()
+
+
 def _nick_from_member(member: dict, fallback: str = "") -> str:
     """Apodo del servidor, o username de Discord si no tiene apodo."""
     nick = (member.get("nick") or "").strip()
@@ -154,16 +233,43 @@ async def fetch_guild_nicks() -> dict[str, str]:
     except Exception:
         return {}
 
+DISCORD_STATE_COOKIE = "discord_oauth_state"
+BLIZZARD_STATE_COOKIE = "blizzard_oauth_state"
+_OAUTH_STATE_SECONDS = 600
+
+
+def _oauth_redirect(url: str, cookie_name: str, state: str) -> RedirectResponse:
+    response = RedirectResponse(url)
+    response.set_cookie(
+        key=cookie_name,
+        value=state,
+        max_age=_OAUTH_STATE_SECONDS,
+        httponly=True,
+        secure=os.getenv("ENV", "development").lower() == "production",
+        samesite="lax",
+        path="/",
+    )
+    return response
+
+
+def _state_ok(saved: str | None, got: str | None) -> bool:
+    if not saved or not got or len(saved) != len(got):
+        return False
+    return secrets.compare_digest(saved, got)
+
+
 @router.get("/discord/login")
 def discord_login():
+    state = secrets.token_urlsafe(32)
     url = (
         "https://discord.com/oauth2/authorize"
         f"?client_id={DISCORD_CLIENT_ID}"
         f"&redirect_uri={quote(DISCORD_REDIRECT_URI, safe='')}"
         "&response_type=code"
         "&scope=identify%20guilds.members.read"
+        f"&state={quote(state, safe='')}"
     )
-    return RedirectResponse(url)
+    return _oauth_redirect(url, DISCORD_STATE_COOKIE, state)
 
 def create_jwt(user_id: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRE_HOURS)
@@ -174,7 +280,14 @@ def create_jwt(user_id: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 @router.get("/discord/callback")
-async def discord_callback(code: str, db: Session = Depends(get_db)):
+async def discord_callback(
+    code: str,
+    state: str,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    if not _state_ok(request.cookies.get(DISCORD_STATE_COOKIE), state):
+        raise HTTPException(400, "El inicio de sesión no es válido. Vuelve a entrar con Discord.")
     # ── 1. Intercambiar code por access_token ─────────────────────────────
     async with httpx.AsyncClient() as client:
         token_res = await client.post(
@@ -287,36 +400,28 @@ def blizzard_unlink(
 
 class BlizzardLinkRequest(BaseModel):
     code: str
+    state: str
 
 
 @router.get("/blizzard/login")
 def blizzard_login():
-    """
-    Redirige al formulario de autorización de Battle.net.
-    El usuario verá la pantalla de login de Blizzard y dará permiso
-    para leer sus personajes de WoW (scope: wow.profile).
-
-    ¿Por qué necesitamos `state`?
-    Blizzard lo exige como medida de seguridad anti-CSRF.
-    En producción generaríamos un token aleatorio por sesión y lo
-    verificaríamos en el callback. Para desarrollo usamos un valor fijo.
-    """
-    import secrets
-    state = secrets.token_urlsafe(16)   # ej: "Zf3kQaB9vT2..." — aleatorio pero no verificado aún
+    """Redirige a Battle.net para leer los personajes (scope wow.profile)."""
+    state = secrets.token_urlsafe(32)
     url = (
         "https://oauth.battle.net/authorize"
         f"?client_id={BLIZZARD_CLIENT_ID}"
         f"&redirect_uri={quote(BLIZZARD_REDIRECT_URI, safe='')}"
         "&response_type=code"
         "&scope=wow.profile"
-        f"&state={state}"
+        f"&state={quote(state, safe='')}"
     )
-    return RedirectResponse(url)
+    return _oauth_redirect(url, BLIZZARD_STATE_COOKIE, state)
 
 
 @router.post("/blizzard/link")
 async def blizzard_link(
     data: BlizzardLinkRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -327,8 +432,10 @@ async def blizzard_link(
     ¿Por qué POST y no GET?
     - El código llega primero a Next.js (que tiene la cookie del usuario).
     - Next.js llama aquí con Authorization: Bearer <jwt> + el código en el body.
-    - Así sabemos qué usuario está vinculando su cuenta.
+      Así sabemos qué usuario está vinculando su cuenta.
     """
+    if not _state_ok(request.cookies.get(BLIZZARD_STATE_COOKIE), data.state):
+        raise HTTPException(400, "La vinculación no es válida. Vuelve a conectar Battle.net.")
     # 1 — Intercambiar code por access_token
     async with httpx.AsyncClient() as client:
         token_res = await client.post(
