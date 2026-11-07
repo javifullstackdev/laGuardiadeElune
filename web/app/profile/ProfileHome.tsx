@@ -124,10 +124,10 @@ export default function ProfileHome({
             <ul className="space-y-3">
               {pending.map((mission) => (
                 <li key={missionKey(mission)} className="rounded-xl border border-gray-800 bg-gray-950/80 px-4 py-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="flex items-start gap-2 font-semibold text-gray-100">
-                      <img src="/missions/quest.png" alt="" className="mt-0.5 h-8 w-auto shrink-0" />
-                      <span>{mission.title}</span>
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="flex items-center gap-2 font-semibold text-gray-100">
+                      <img src="/missions/quest.png" alt="" className="h-8 w-auto shrink-0" />
+                      <span className="leading-none">{mission.title}</span>
                     </h3>
                     <span className="shrink-0 rounded-md bg-yellow-400/15 px-2 py-0.5 text-base font-bold text-yellow-200">
                       +{mission.points}
