@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { textToParagraphs, formatDate } from "@/lib/posts";
 import { fitToOneLine } from "@/lib/fit-line";
 import ShareBar from "@/app/components/ShareBar";
@@ -9,7 +10,7 @@ import BreadcrumbNav, { type Crumb } from "@/app/components/BreadcrumbNav";
 import Parchment from "@/app/components/ui/Parchment";
 import { ParchmentPanRoot, PanningCover } from "@/app/components/ui/PanningCover";
 import { characterSignature, type StoryPublic } from "@/lib/stories";
-import { relationLabel } from "@/lib/relations";
+import { relationLabel, type StoryRelation } from "@/lib/relations";
 import { STORY_READING_COOKIE, type StoryReadingMode } from "@/lib/story-reading";
 import { Toggle } from "@/components/base/toggle/toggle";
 
@@ -22,71 +23,78 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function highlightNames(text: string, names: string[], nameClass: string) {
-  if (!names.length) return text;
-  const escaped = names
+function characterHref(realm: string, name: string) {
+  return `/personajes/${encodeURIComponent(realm)}/${encodeURIComponent(name)}`;
+}
+
+function highlightNames(text: string, people: StoryRelation[]) {
+  if (!people.length) return text;
+  const escaped = people
+    .map((person) => person.name)
     .filter(Boolean)
     .sort((a, b) => b.length - a.length)
     .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
   if (!escaped.length) return text;
   const re = new RegExp(`(${escaped.join("|")})`, "gi");
-  return text.split(re).map((part, i) =>
-    names.some((n) => n.toLowerCase() === part.toLowerCase()) ? (
-      <span key={`${part}-${i}`} className={nameClass}>
+  return text.split(re).map((part, i) => {
+    const matches = people.filter((person) => person.name.toLowerCase() === part.toLowerCase());
+    const match = matches.find((person) => person.has_page) ?? matches[0];
+    if (!match) return part;
+    if (match.has_page) {
+      return (
+        <Link
+          key={`${match.realm}-${part}-${i}`}
+          href={characterHref(match.realm, match.name)}
+          className="font-semibold text-inherit hover:underline"
+        >
+          {part}
+        </Link>
+      );
+    }
+    return (
+      <span key={`${match.realm}-${part}-${i}`} className="font-semibold text-inherit">
         {part}
       </span>
-    ) : (
-      part
-    ),
-  );
+    );
+  });
 }
 
 function ScrollSection({
   title,
   text,
-  names,
-  nameClass,
+  people,
 }: {
   title?: string;
   text: string | null;
-  names: string[];
-  nameClass: string;
+  people: StoryRelation[];
 }) {
   if (!text?.trim()) return null;
   return (
     <section>
       {title ? <h2>{title}</h2> : null}
       {textToParagraphs(text).map((p, i) => (
-        <p key={i}>{highlightNames(p, names, nameClass)}</p>
+        <p key={i}>{highlightNames(p, people)}</p>
       ))}
     </section>
   );
 }
 
-function StoryBody({
-  story,
-  nameClass,
-}: {
-  story: StoryPublic;
-  nameClass: string;
-}) {
-  const names = story.relations.map((r) => r.name);
+function StoryBody({ story }: { story: StoryPublic }) {
+  const people = story.relations;
   const hasBio = Boolean(story.biography?.trim());
   const hasPers = Boolean(story.personality?.trim());
   return (
     <>
-      <ScrollSection text={story.biography} names={names} nameClass={nameClass} />
+      <ScrollSection text={story.biography} people={people} />
       <ScrollSection
         title={hasBio ? "Personalidad" : undefined}
         text={story.personality}
-        names={names}
-        nameClass={nameClass}
+        people={people}
       />
       <ScrollSection
         title={hasBio || hasPers ? "Aspecto físico" : undefined}
         text={story.appearance}
-        names={names}
-        nameClass={nameClass}
+        people={people}
       />
     </>
   );
@@ -155,7 +163,13 @@ function StoryRelations({ story }: { story: StoryPublic }) {
       <ul className="space-y-2">
         {story.relations.map((r) => (
           <li key={`${r.name}-${r.realm}`} className="text-sm text-gray-300">
-            <span className="text-white">{r.name}</span>
+            {r.has_page ? (
+              <Link href={characterHref(r.realm, r.name)} className="font-semibold text-white hover:underline">
+                {r.name}
+              </Link>
+            ) : (
+              <span className="font-semibold text-white">{r.name}</span>
+            )}
             {" · "}
             {relationLabel(r.relation_type)}
             {r.met_at ? ` · se conocieron en ${r.met_at}` : ""}
@@ -185,7 +199,7 @@ function StoryParchment({
       actions={actions}
       isHorde={isHordeChar}
     >
-      <StoryBody story={story} nameClass="text-[#5c2a78] font-semibold" />
+      <StoryBody story={story} />
     </Parchment>
   );
 }
@@ -345,7 +359,7 @@ export default function StoryReader({
               <PanningCover
                 src={story.cover_url}
                 alt=""
-                className="absolute inset-0 min-[1440px]:inset-y-0 min-[1440px]:right-0 min-[1440px]:left-auto min-[1440px]:w-[58%]"
+                className="absolute inset-0 min-[1440px]:inset-y-0 min-[1440px]:-right-48 min-[1440px]:left-auto min-[1440px]:w-[58%]"
                 opacity={0.55}
                 focusY={0.18}
               />
@@ -435,7 +449,7 @@ export default function StoryReader({
             <div className="story-read-text">
               {hasLore ? (
                 <div className="story-prose">
-                  <StoryBody story={story} nameClass="font-semibold text-violet-300" />
+                  <StoryBody story={story} />
                 </div>
               ) : (
                 <p className="text-sm text-white/60">Esta historia aún no tiene texto publicado.</p>

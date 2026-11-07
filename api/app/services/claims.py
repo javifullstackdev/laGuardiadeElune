@@ -8,6 +8,7 @@ from app.models.relation_claim import RelationClaim, Notification
 from app.services.notifications import notify
 from app.models.user import User
 from app.schemas.story import StoryRelationOut
+from app.services.bio_questions import has_public_sheet
 
 
 def claim_rows(db: Session, story_id) -> list[tuple[RelationClaim, Character, User]]:
@@ -30,9 +31,80 @@ def claims_out(db: Session, story_id) -> list[StoryRelationOut]:
             note=claim.note,
             status=claim.status,
             owner_username=owner.username,
+            has_page=has_public_sheet(char),
         )
         for claim, char, owner in claim_rows(db, story_id)
     ]
+
+
+def _find_character(db: Session, name: str, realm: str) -> Character | None:
+    return (
+        db.query(Character)
+        .filter(
+            Character.name == name.strip(),
+            Character.realm == realm.strip(),
+            Character.deleted_at.is_(None),
+        )
+        .first()
+    )
+
+
+def add_appearance(db: Session, story: CharacterStory, admin: User, name: str, realm: str) -> list[StoryRelationOut]:
+    """El Eremita marca que un personaje aparece. No pide confirmación ni crea una relación."""
+    from fastapi import HTTPException
+
+    target = _find_character(db, name, realm)
+    if not target:
+        raise HTTPException(400, f"{name.strip()} no es un personaje de la hermandad")
+    if target.id == story.character_id:
+        raise HTTPException(400, "El protagonista ya es de esta historia")
+    existing = (
+        db.query(RelationClaim)
+        .filter(
+            RelationClaim.story_id == story.id,
+            RelationClaim.to_character_id == target.id,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(400, f"{target.name} ya está en esta historia")
+    now = datetime.now(timezone.utc)
+    db.add(RelationClaim(
+        id=uuid.uuid4(),
+        story_id=story.id,
+        from_character_id=story.character_id,
+        to_character_id=target.id,
+        relation_type="appears",
+        status="confirmed",
+        created_by=admin.id,
+        resolved_by=admin.id,
+        resolved_at=now,
+    ))
+    db.flush()
+    return claims_out(db, story.id)
+
+
+def remove_appearance(db: Session, story: CharacterStory, name: str, realm: str) -> list[StoryRelationOut]:
+    from fastapi import HTTPException
+
+    target = _find_character(db, name, realm)
+    if not target:
+        raise HTTPException(404, "Personaje no encontrado")
+    claim = (
+        db.query(RelationClaim)
+        .filter(
+            RelationClaim.story_id == story.id,
+            RelationClaim.to_character_id == target.id,
+            RelationClaim.relation_type == "appears",
+        )
+        .first()
+    )
+    if not claim:
+        raise HTTPException(404, "Ese personaje no está etiquetado como que aparece")
+    db.query(Notification).filter(Notification.claim_id == claim.id).delete(synchronize_session=False)
+    db.delete(claim)
+    db.flush()
+    return claims_out(db, story.id)
 
 
 def awaiting_relations(db: Session, story_id) -> bool:

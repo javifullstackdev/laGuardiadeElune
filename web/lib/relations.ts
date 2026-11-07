@@ -11,6 +11,7 @@ export const RELATION_TYPES: { value: string; label: string }[] = [
 ];
 
 export function relationLabel(type: string) {
+  if (type === "appears") return "Aparece";
   return RELATION_TYPES.find((r) => r.value === type)?.label ?? type;
 }
 
@@ -22,6 +23,7 @@ export type StoryRelation = {
   note: string | null;
   status: string;
   owner_username: string;
+  has_page?: boolean;
 };
 
 export type RelationClaim = {
