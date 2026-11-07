@@ -5,7 +5,6 @@ import { useState } from "react";
 import NumberField from "@/app/banco/NumberField";
 import { apiDetail } from "@/lib/bank";
 import { COPPER_PER_GOLD, formatMoney, type GoldBoard, type GoldDeposit } from "@/lib/gold";
-import { foreverModeLabel } from "@/lib/wow";
 
 function fmtWhen(iso: string | null) {
   if (!iso) return "";
@@ -87,7 +86,7 @@ export default function GoldAdmin({ initial }: { initial: GoldBoard }) {
             <span>Confirmado: {formatMoney(board.confirmed_copper)}</span>
             <span>Objetivo: {formatMoney(board.goal_copper)}</span>
           </div>
-          <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+          <div className="h-5 rounded-full bg-gray-800 overflow-hidden">
             <div className="h-full bg-yellow-400" style={{ width: `${progress}%` }} />
           </div>
         </div>
@@ -119,7 +118,7 @@ export default function GoldAdmin({ initial }: { initial: GoldBoard }) {
           <li key={row.id} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
             <p className="font-medium text-yellow-100">{formatMoney(row.copper)}</p>
             <p className="text-xs text-gray-400 mt-1">
-              {row.username} · {row.character_name} · {foreverModeLabel(row.character_realm)} · {fmtWhen(row.created_at)}
+              {row.username} · {row.character_name} · {fmtWhen(row.created_at)}
             </p>
             <p className="text-xs text-gray-500 mt-1">
               Si se confirma ahora: {row.current_points ?? 0} pts

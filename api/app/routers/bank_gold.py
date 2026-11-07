@@ -15,6 +15,7 @@ from app.models.character import Character
 from app.models.enums import EventCategory
 from app.models.user import User
 from app.services.notifications import notify
+from app.services.missions import grant_ready
 from app.services import points as points_service
 
 router = APIRouter(prefix="/bank/gold", tags=["bank"])
@@ -256,6 +257,9 @@ def approve_gold(
     if amount == 0:
         detail += " Con la tarifa actual no llega a 1 punto."
     notify(db, user_id=row.user_id, kind="points_bank", title=title, body=detail, href="/banco")
+    player = db.query(User).filter(User.id == row.user_id).first()
+    if player is not None:
+        grant_ready(db, player)
     db.commit()
     db.refresh(row)
     return _out(row, settings)
