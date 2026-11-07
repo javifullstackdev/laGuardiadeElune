@@ -18,6 +18,7 @@ from app.schemas.story import (
 from app.services.claims import (
     awaiting_relations, claims_out, replace_claims,
 )
+from app.services.image_bytes import read_image
 from app.services.missions import grant_ready
 from app.services.notifications import notify
 from app.services.slugs import RESERVED_SLUGS, is_uuid, slugify, unique_slug
@@ -28,7 +29,6 @@ router = APIRouter(prefix="/stories", tags=["stories"])
 
 STORY_UPLOAD_DIR = Path("uploads/stories")
 STORY_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_COVER_SIZE = 5 * 1024 * 1024
 
 
@@ -209,14 +209,9 @@ def get_story(
 
 
 async def _save_cover(story_id, file: UploadFile) -> str:
-    if file.content_type not in ALLOWED_IMAGE_TYPES:
-        raise HTTPException(400, "La portada debe ser JPEG, PNG o WebP")
-    content = await file.read()
-    if len(content) > MAX_COVER_SIZE:
-        raise HTTPException(400, "La portada no puede superar 5 MB")
-    ext = (file.filename or "cover").rsplit(".", 1)[-1].lower()
-    if ext not in ("jpg", "jpeg", "png", "webp"):
-        ext = "jpg"
+    content, ext = await read_image(
+        file, max_bytes=MAX_COVER_SIZE, too_big="La portada no puede superar 5 MB"
+    )
     filename = f"{story_id}_{uuid.uuid4().hex}.{ext}"
     path = STORY_UPLOAD_DIR / filename
     path.write_bytes(content)

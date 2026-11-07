@@ -9,7 +9,7 @@ JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
 JWT_ALGORITHM = "HS256"
 
 
-def get_current_user(
+async def get_current_user(
     request: Request,
     db: Session = Depends(get_db),
 ) -> User:
@@ -43,15 +43,19 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
+    if user.role.value in ("admin", "officer"):
+        from app.routers.auth import refresh_stored_role
+
+        await refresh_stored_role(user, db)
     return user
 
 
-def get_optional_user(
+async def get_optional_user(
     request: Request,
     db: Session = Depends(get_db),
 ) -> User | None:
     try:
-        return get_current_user(request, db)
+        return await get_current_user(request, db)
     except HTTPException:
         return None
 

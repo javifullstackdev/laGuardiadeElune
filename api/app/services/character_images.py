@@ -9,12 +9,12 @@ from fastapi import HTTPException, UploadFile
 
 from app.models.character import Character
 from app.models.image_request import ImageRequest
+from app.services.image_bytes import read_image
 
 UPLOAD_DIR = Path("uploads/avatars")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 UPLOAD_ROOT = Path("uploads").resolve()
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_SIZE = 8 * 1024 * 1024
 
 MEDIA_TYPES = {
@@ -57,18 +57,9 @@ async def publish_character_image(char: Character, file: UploadFile, kind: str) 
     """Guarda el arte generado y lo deja público en la ficha (full) o en el ranking (face)."""
     if kind not in ("face", "full"):
         raise HTTPException(400, "kind debe ser face o full")
-    if file.content_type not in ALLOWED_IMAGE_TYPES:
-        raise HTTPException(400, "Solo se permiten imágenes JPEG, PNG o WebP.")
-
-    content = await file.read()
-    if not content:
-        raise HTTPException(400, "El archivo está vacío.")
-    if len(content) > MAX_IMAGE_SIZE:
-        raise HTTPException(400, "La imagen no puede superar 8 MB.")
-
-    ext = (file.filename or "img").rsplit(".", 1)[-1].lower()
-    if ext not in ("jpg", "jpeg", "png", "webp"):
-        ext = "jpg"
+    content, ext = await read_image(
+        file, max_bytes=MAX_IMAGE_SIZE, too_big="La imagen no puede superar 8 MB."
+    )
     filename = f"art_{kind}_{char.id}_{uuid.uuid4().hex}.{ext}"
     (UPLOAD_DIR / filename).write_bytes(content)
     relative = f"avatars/{filename}"

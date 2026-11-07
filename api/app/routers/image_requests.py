@@ -19,6 +19,7 @@ from app.services.character_images import (
     reference_paths,
     upload_file,
 )
+from app.services.image_bytes import read_image
 from app.services.notifications import notify
 from app.urls import static_url
 
@@ -26,7 +27,6 @@ router = APIRouter(prefix="/image-requests", tags=["image-requests"])
 
 UPLOAD_DIR = Path("uploads/image_requests")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_SIZE = 8 * 1024 * 1024
 MAX_FILES = 6
 
@@ -84,14 +84,9 @@ async def _save_uploads(char: Character, kind: str, uploads: list[UploadFile]) -
     written: list[Path] = []
     try:
         for upload in uploads:
-            if upload.content_type not in ALLOWED_IMAGE_TYPES:
-                raise HTTPException(400, "Solo se permiten imágenes JPEG, PNG o WebP.")
-            content = await upload.read()
-            if len(content) > MAX_SIZE:
-                raise HTTPException(400, "Cada imagen no puede superar 8 MB.")
-            ext = (upload.filename or "ref").rsplit(".", 1)[-1].lower()
-            if ext not in ("jpg", "jpeg", "png", "webp"):
-                ext = "jpg"
+            content, ext = await read_image(
+                upload, max_bytes=MAX_SIZE, too_big="Cada imagen no puede superar 8 MB."
+            )
             filename = f"{char.id}_{kind}_{_uuid.uuid4().hex}.{ext}"
             filepath = UPLOAD_DIR / filename
             filepath.write_bytes(content)

@@ -7,6 +7,7 @@ from app.models.post import Post
 from app.models.user import User
 from app.schemas.post import PostResponse, PostCreate, PostUpdate
 from app.dependencies import require_admin
+from app.services.image_bytes import read_image
 from app.services.slugs import is_uuid, unique_slug
 from app.urls import static_url
 
@@ -17,7 +18,6 @@ router = APIRouter(
 
 POST_UPLOAD_DIR = Path("uploads/posts")
 POST_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-COVER_EXTENSIONS = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 MAX_COVER_SIZE = 5 * 1024 * 1024
 
 @router.get("/", response_model=list[PostResponse])
@@ -37,12 +37,9 @@ async def upload_post_cover(
     file: UploadFile = File(...),
     current_user: User = Depends(require_admin),
 ):
-    extension = COVER_EXTENSIONS.get(file.content_type)
-    if extension is None:
-        raise HTTPException(status_code=400, detail="La portada debe ser JPEG, PNG o WebP")
-    content = await file.read()
-    if len(content) > MAX_COVER_SIZE:
-        raise HTTPException(status_code=400, detail="La portada no puede superar 5 MB")
+    content, extension = await read_image(
+        file, max_bytes=MAX_COVER_SIZE, too_big="La portada no puede superar 5 MB"
+    )
     filename = f"{uuid.uuid4().hex}.{extension}"
     (POST_UPLOAD_DIR / filename).write_bytes(content)
     return {"cover_url": static_url(f"posts/{filename}")}
