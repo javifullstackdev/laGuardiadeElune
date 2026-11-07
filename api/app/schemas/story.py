@@ -31,6 +31,12 @@ class StoryRelationOut(BaseModel):
     note: str | None = None
     status: str
     owner_username: str
+    has_page: bool = False
+
+
+class StoryAppearanceIn(BaseModel):
+    to_name: str
+    to_realm: str
 
 
 class ClaimInboxItem(BaseModel):

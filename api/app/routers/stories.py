@@ -14,9 +14,10 @@ from app.models.character import Character
 from app.models.character_story import CharacterStory, ContentLike
 from app.schemas.story import (
     StoryMentionIn, StoryReject, StoryApprove, StoryPublic, StoryMine, StoryPending, StoryHeadingIn, StoryBodyIn,
+    StoryAppearanceIn, StoryRelationOut,
 )
 from app.services.claims import (
-    awaiting_relations, claims_out, replace_claims,
+    add_appearance, awaiting_relations, claims_out, remove_appearance, replace_claims,
 )
 from app.services.image_bytes import read_image
 from app.services.missions import grant_ready
@@ -592,6 +593,42 @@ def _clean_body(value: str | None, *, required: bool) -> str | None:
     if required and len(" ".join(text.split())) < 80:
         raise HTTPException(400, "La historia es demasiado corta")
     return text
+
+
+def _story_for_cast(db: Session, story_id: str) -> CharacterStory:
+    story = db.query(CharacterStory).filter(CharacterStory.id == story_id).first()
+    if not story:
+        raise HTTPException(404, "Historia no encontrada")
+    return story
+
+
+@router.post("/{story_id}/mentions", response_model=list[StoryRelationOut])
+def add_story_appearance(
+    story_id: str,
+    body: StoryAppearanceIn,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """El Eremita añade un personaje que aparece en la historia."""
+    story = _story_for_cast(db, story_id)
+    relations = add_appearance(db, story, current_user, body.to_name, body.to_realm)
+    db.commit()
+    return relations
+
+
+@router.delete("/{story_id}/mentions", response_model=list[StoryRelationOut])
+def remove_story_appearance(
+    story_id: str,
+    name: str,
+    realm: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Quita una etiqueta de aparición puesta por el Eremita. Las relaciones del jugador se quedan."""
+    story = _story_for_cast(db, story_id)
+    relations = remove_appearance(db, story, name, realm)
+    db.commit()
+    return relations
 
 
 @router.post("/{story_id}/body")

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { StoryPending } from "@/lib/stories";
-import { relationLabel } from "@/lib/relations";
+import StoryCastField from "./StoryCastField";
 
 export default function StoryReviewPanel({ pending }: { pending: StoryPending[] }) {
   const [items, setItems] = useState(pending);
@@ -63,20 +63,15 @@ export default function StoryReviewPanel({ pending }: { pending: StoryPending[] 
             </p>
           )}
 
-          {item.relations?.length > 0 && (
-            <div className="mt-3 text-xs text-gray-400 space-y-1">
-              <p className="uppercase tracking-wider text-gray-500">Menciones</p>
-              {item.relations.map((r) => (
-                <p key={`${r.name}-${r.realm}`}>
-                  {r.name} · {relationLabel(r.relation_type)} · {r.status}
-                  {r.met_at ? ` · ${r.met_at}` : ""}
-                </p>
-              ))}
-              {item.awaiting_relations && (
-                <p className="text-amber-400">Faltan confirmaciones. Publicar ahora es decisión del Eremita.</p>
-              )}
-            </div>
+          {item.awaiting_relations && (
+            <p className="mt-3 text-xs text-amber-400">
+              Faltan confirmaciones. Publicar ahora es decisión del Eremita.
+            </p>
           )}
+
+          <div className="mt-3">
+            <StoryCastField storyId={item.id} relations={item.relations ?? []} startOpen />
+          </div>
 
           <textarea
             value={reason[item.id] ?? ""}

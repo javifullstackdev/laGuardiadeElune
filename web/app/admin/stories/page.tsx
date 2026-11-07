@@ -6,6 +6,7 @@ import StoryCoverButton from "./StoryCoverButton";
 import StoryOgButton from "./StoryOgButton";
 import StoryHeadingField from "./StoryHeadingField";
 import StoryDeleteButton from "./StoryDeleteButton";
+import StoryCastField from "./StoryCastField";
 import type { StoryPending, StoryPublic } from "@/lib/stories";
 import { storyHref } from "@/lib/stories";
 import { formatDate } from "@/lib/posts";
@@ -56,7 +57,7 @@ export default async function AdminStoriesPage() {
         <section>
           <h2 className="text-lg font-semibold mb-1">Publicadas</h2>
           <p className="text-sm text-gray-500 mb-5">
-            Puedes cambiar el título, el subtítulo, el enlace, el texto y la portada. La imagen al compartir es la que ven WhatsApp y X, y no sustituye a la portada. Si cambias el enlace, el anterior sigue abriendo la historia. Solo el Eremita o un administrador puede eliminarla.
+            Puedes cambiar el título, el subtítulo, el enlace, el texto, la portada y quién aparece. La imagen al compartir es la que ven WhatsApp y X, y no sustituye a la portada. Si cambias el enlace, el anterior sigue abriendo la historia. Solo el Eremita o un administrador puede eliminarla.
           </p>
           {publishedStories.length === 0 ? (
             <p className="text-gray-500">No hay historias publicadas.</p>
@@ -88,6 +89,7 @@ export default async function AdminStoriesPage() {
                       personality={story.personality}
                       appearance={story.appearance}
                     />
+                    <StoryCastField storyId={story.id} relations={story.relations} />
                     <StoryOgButton storyId={story.id} ogImageUrl={story.og_image_url ?? null} />
                   </div>
                   <div className="flex items-center gap-2 shrink-0 pt-0.5">
