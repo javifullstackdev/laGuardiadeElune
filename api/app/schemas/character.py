@@ -186,6 +186,12 @@ class RelationCreate(BaseModel):
     description: Optional[str] = None
 
 
+class RelationUpdate(BaseModel):
+    """Tipo y nota de una relación que ya existe."""
+    relation_type: str
+    description: Optional[str] = None
+
+
 class RelationCharacterOut(BaseModel):
     """Resumen de un personaje en una relación."""
     name: str
