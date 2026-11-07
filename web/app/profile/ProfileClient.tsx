@@ -1976,7 +1976,17 @@ function RelationsSection({ char }: { char: Character }) {
         <p className="text-gray-500 text-sm">Sin relaciones marcadas todavía.</p>
       )}
       {relations.map((rel) => (
-        <RelationCard key={rel.id} rel={rel} onDelete={handleDelete} />
+        <RelationCard
+          key={rel.id}
+          rel={rel}
+          char={char}
+          onDelete={handleDelete}
+          onUpdated={(next) => setRelations((prev) => prev.map((item) => (
+            item.id === next.id
+              ? { ...item, relation_type: next.relation_type, description: next.description }
+              : item
+          )))}
+        />
       ))}
       {showForm ? (
         <AddRelationForm
@@ -1996,31 +2006,126 @@ function RelationsSection({ char }: { char: Character }) {
   );
 }
 
-function RelationCard({ rel, onDelete }: { rel: RelationData; onDelete: (id: string) => void }) {
+function RelationCard({
+  rel,
+  char,
+  onDelete,
+  onUpdated,
+}: {
+  rel: RelationData;
+  char: Character;
+  onDelete: (id: string) => void;
+  onUpdated: (rel: RelationData) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [relType, setRelType] = useState(rel.relation_type);
+  const [desc, setDesc] = useState(rel.description ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const color = classColor(rel.other.wow_class);
   const count = rel.story_count ?? 0;
+  const own = rel.direction === "outgoing";
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    const res = await fetch(
+      `/api/characters/relations/${rel.id}?name=${encodeURIComponent(char.name)}&realm=${encodeURIComponent(char.realm)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ relation_type: relType, description: desc }),
+      },
+    );
+    const data = await res.json().catch(() => ({}));
+    setSaving(false);
+    if (!res.ok) {
+      setError(typeof data.detail === "string" ? data.detail : "No se pudo guardar");
+      return;
+    }
+    onUpdated({ ...rel, relation_type: data.relation_type ?? relType, description: data.description ?? null });
+    setEditing(false);
+  }
+
   return (
     <div className="px-4 py-3 rounded-lg bg-gray-900/70 border border-gray-800/50 flex gap-3 items-start">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-semibold" style={{ color }}>{rel.other.name}</span>
-          <span className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">{getRelationLabel(rel.relation_type)}</span>
+          {!editing && (
+            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">{getRelationLabel(rel.relation_type)}</span>
+          )}
           <span className="text-xs px-1.5 py-0.5 rounded bg-gray-800 text-gray-500">{relationDegree(count)}</span>
           {rel.reciprocal && (
             <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Recíproca</span>
           )}
           <span className="text-xs text-gray-600">({rel.other.owner_username})</span>
         </div>
-        <p className="text-xs text-gray-600 mt-0.5 italic">
-          {rel.direction === "outgoing"
-            ? `Consideras a ${rel.other.name} tu ${getRelationLabel(rel.relation_type).toLowerCase()}`
-            : `${rel.other.name} te considera su ${getRelationLabel(rel.relation_type).toLowerCase()}`}
-          {count > 0 ? ` · ${count} historia${count === 1 ? "" : "s"} en común` : ""}
-        </p>
-        {rel.description && <p className="text-sm text-gray-300 mt-1.5 leading-relaxed">{rel.description}</p>}
+        {editing ? (
+          <div className="mt-3 space-y-3">
+            <select
+              value={relType}
+              onChange={(e) => setRelType(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-gray-500"
+            >
+              {RELATION_TYPES.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <textarea
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="Nota sobre esta relación (opcional)"
+              rows={2}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600 focus:outline-none focus:border-gray-500 resize-none"
+            />
+            {error && <p className="text-red-400 text-xs">{error}</p>}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={save}
+                disabled={saving}
+                className="px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-xs disabled:opacity-40"
+              >
+                {saving ? "..." : "Guardar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(false);
+                  setRelType(rel.relation_type);
+                  setDesc(rel.description ?? "");
+                  setError(null);
+                }}
+                className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-200"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-gray-600 mt-0.5 italic">
+              {own
+                ? `Consideras a ${rel.other.name} tu ${getRelationLabel(rel.relation_type).toLowerCase()}`
+                : `${rel.other.name} te considera su ${getRelationLabel(rel.relation_type).toLowerCase()}`}
+              {count > 0 ? ` · ${count} historia${count === 1 ? "" : "s"} en común` : ""}
+            </p>
+            {rel.description && <p className="text-sm text-gray-300 mt-1.5 leading-relaxed">{rel.description}</p>}
+          </>
+        )}
       </div>
-      {rel.direction === "outgoing" && (
-        <button onClick={() => onDelete(rel.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors shrink-0 mt-0.5">✕</button>
+      {own && !editing && (
+        <div className="flex shrink-0 items-center gap-2 mt-0.5">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-xs text-gray-500 hover:text-gray-200 transition-colors"
+          >
+            Editar
+          </button>
+          <button onClick={() => onDelete(rel.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
+        </div>
       )}
     </div>
   );

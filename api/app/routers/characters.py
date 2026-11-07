@@ -28,7 +28,7 @@ from app.models.relation_claim import RelationClaim
 from app.schemas.character import (
     CharacterAddInput, CharacterResponse, BlizzardCharacterOut,
     SetMainInput, FavoriteTitleInput, TitleOut,
-    CharacterBioUpdate, RelationCreate, RelationOut, RelationCharacterOut,
+    CharacterBioUpdate, RelationCreate, RelationUpdate, RelationOut, RelationCharacterOut,
     AchievementOut, merge_public_fields,
 )
 from app.services import blizzard, title_sync
@@ -672,6 +672,62 @@ def add_relation(
             realm=target.realm,
             wow_class=target.wow_class.value if target.wow_class else None,
             owner_username=target_owner.username if target_owner else "?",
+        ),
+    )
+
+
+@router.patch("/{name}/{realm}/relations/{relation_id}", response_model=RelationOut)
+def update_relation(
+    name: str, realm: str, relation_id: str,
+    data: RelationUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Cambia el tipo o la nota de una relación marcada por este personaje."""
+    import uuid as _uuid
+    from app.models.character_relation import RELATION_TYPES
+    from app.models.user import User as UserModel
+
+    char = _get_own_character(name, realm, current_user, db)
+    if data.relation_type not in RELATION_TYPES:
+        raise HTTPException(400, f"Tipo de relación no válido: {data.relation_type}")
+
+    rel = db.query(CharacterRelation).filter(
+        CharacterRelation.id == _uuid.UUID(relation_id),
+        CharacterRelation.from_character_id == char.id,
+    ).first()
+    if not rel:
+        raise HTTPException(404, "Relación no encontrada")
+
+    note = (data.description or "").strip()
+    if len(note) > 2000:
+        raise HTTPException(400, "La nota no puede superar 2000 caracteres")
+
+    if data.relation_type != rel.relation_type:
+        taken = db.query(CharacterRelation).filter(
+            CharacterRelation.from_character_id == char.id,
+            CharacterRelation.to_character_id == rel.to_character_id,
+            CharacterRelation.relation_type == data.relation_type,
+        ).first()
+        if taken:
+            raise HTTPException(400, "Esta relación ya existe")
+        rel.relation_type = data.relation_type
+    rel.description = note or None
+    db.commit()
+    db.refresh(rel)
+
+    other = db.query(Character).filter(Character.id == rel.to_character_id).first()
+    owner = db.query(UserModel).filter(UserModel.id == other.user_id).first() if other else None
+    return RelationOut(
+        id=rel.id,
+        relation_type=rel.relation_type,
+        description=rel.description,
+        direction="outgoing",
+        other=RelationCharacterOut(
+            name=other.name if other else "?",
+            realm=other.realm if other else "",
+            wow_class=other.wow_class.value if other and other.wow_class else None,
+            owner_username=owner.username if owner else "?",
         ),
     )
 

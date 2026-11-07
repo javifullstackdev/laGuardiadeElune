@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models.craft import CraftOrder
 from app.models.relation_claim import Notification, RelationClaim
+from app.services.discord_dm import queue_discord_dm
 
 
 def notify(
@@ -32,6 +33,7 @@ def notify(
         craft_order_id=craft_order_id,
     )
     db.add(row)
+    queue_discord_dm(db, user_id=user_id)
     return row
 
 
