@@ -19,4 +19,6 @@ export type Mission = {
   progress?: number;
   /** Cobre necesario para completarla. */
   goal?: number;
+  /** Oro confirmado de cada personaje de Forever. */
+  contributions?: { name: string; realm: string; copper: number }[];
 };

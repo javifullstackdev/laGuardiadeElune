@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 import PathPicker from "../onboarding/PathPicker";
@@ -69,6 +70,7 @@ export default function ProfileHome({
   hasCharacter: boolean;
   onOpenMission: (mission: Mission) => void;
 }) {
+  const [goldOpen, setGoldOpen] = useState(false);
   const pending = missions.filter((m) => m.status !== "done");
 
   return (
@@ -125,9 +127,23 @@ export default function ProfileHome({
               {pending.map((mission) => (
                 <li key={missionKey(mission)} className="rounded-xl border border-gray-800 bg-gray-950/80 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="flex items-center gap-2 font-semibold text-gray-100">
-                      <img src="/missions/quest.png" alt="" className="h-8 w-auto shrink-0" />
-                      <span className="leading-none">{mission.title}</span>
+                    <h3 className="font-semibold text-gray-100">
+                      {mission.key === "forever_gold_10" ? (
+                        <button
+                          type="button"
+                          aria-expanded={goldOpen}
+                          onClick={() => setGoldOpen((open) => !open)}
+                          className="flex items-center gap-2 text-left"
+                        >
+                          <img src="/missions/quest.png" alt="" className="h-8 w-auto shrink-0" />
+                          <span className="leading-none">{mission.title}</span>
+                        </button>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <img src="/missions/quest.png" alt="" className="h-8 w-auto shrink-0" />
+                          <span className="leading-none">{mission.title}</span>
+                        </span>
+                      )}
                     </h3>
                     <span className="shrink-0 rounded-md bg-yellow-400/15 px-2 py-0.5 text-base font-bold text-yellow-200">
                       +{mission.points}
@@ -151,6 +167,19 @@ export default function ProfileHome({
                           }}
                         />
                       </div>
+                      {mission.key === "forever_gold_10" && goldOpen && (
+                        mission.contributions && mission.contributions.length > 0 ? (
+                          <ul className="mt-3 space-y-1">
+                            {mission.contributions.map((row) => (
+                              <li key={`${row.realm}-${row.name}`} className="text-sm text-gray-300">
+                                {row.name}: {formatMoney(row.copper)}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-3 text-sm text-gray-500">Todavía no hay oro confirmado.</p>
+                        )
+                      )}
                     </div>
                   )}
                   {mission.status === "review" ? (

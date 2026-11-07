@@ -94,9 +94,9 @@ GOLD = {
     "key": FOREVER_GOLD,
     "title": "Colabora con 10 oros en La Guardia",
     "description": (
-        "Se completa una sola vez, cuando un mismo personaje de Forever "
-        "lleva 10 de oro confirmados, en un envío o en varios. Esos 100 "
-        "puntos se suman a los del oro."
+        "Se completa una sola vez, cuando tus personajes de Forever suman "
+        "10 de oro confirmados, en uno o varios envíos. Esos 100 puntos se "
+        "suman a los del oro."
     ),
     "points": 100,
 }
@@ -189,20 +189,31 @@ def _gold_by_character(db: Session, user_id) -> dict[tuple[str, str], int]:
     return {(name, realm): int(total or 0) for name, realm, total in rows}
 
 
-def _leading_gold(
+def _gold_breakdown(
     characters: list[Character], totals: dict[tuple[str, str], int]
-) -> tuple[Character | None, int]:
-    """El personaje de Forever que más oro confirmado lleva. El objetivo es de uno solo."""
-    best: Character | None = None
-    best_copper = 0
+) -> tuple[int, list[dict], bool]:
+    """Suma el oro confirmado del jugador y lista solo a quien ha aportado."""
+    known = {
+        (char.name, char.realm): char
+        for char in characters
+        if (char.game or "retail") == "forever"
+    }
+    rows: list[dict] = []
     for char in characters:
-        if (char.game or "retail") != "forever":
+        if (char.name, char.realm) not in known:
             continue
         copper = totals.get((char.name, char.realm), 0)
-        if best is None or copper > best_copper:
-            best = char
-            best_copper = copper
-    return best, best_copper
+        if copper <= 0:
+            continue
+        rows.append(
+            {"name": _character_subject(char), "realm": char.realm, "copper": copper}
+        )
+    listed = set(known)
+    for (name, realm), copper in totals.items():
+        if copper <= 0 or (name, realm) in listed:
+            continue
+        rows.append({"name": name, "realm": realm, "copper": copper})
+    return sum(totals.values()), rows, bool(known)
 
 
 def _award_gold(db: Session, user: User) -> None:
@@ -213,8 +224,7 @@ def _award_gold(db: Session, user: User) -> None:
     )
     if already:
         return
-    characters = _characters(db, user.id)
-    _, confirmed = _leading_gold(characters, _gold_by_character(db, user.id))
+    confirmed, _, _ = _gold_breakdown(_characters(db, user.id), _gold_by_character(db, user.id))
     if confirmed < GOLD_GOAL_COPPER:
         return
     _pay(
@@ -263,6 +273,7 @@ def _card(
     subject: str | None,
     progress: int | None = None,
     goal: int | None = None,
+    contributions: list[dict] | None = None,
 ) -> dict:
     card = {
         "key": spec["key"],
@@ -277,6 +288,8 @@ def _card(
     if goal is not None:
         card["progress"] = progress or 0
         card["goal"] = goal
+    if contributions is not None:
+        card["contributions"] = contributions
     return card
 
 
@@ -300,7 +313,9 @@ def list_for(db: Session, user: User) -> list[dict]:
         .first()
     )
     characters = _characters(db, user.id)
-    leader, confirmed = _leading_gold(characters, _gold_by_character(db, user.id))
+    contributed, contributions, has_forever = _gold_breakdown(
+        characters, _gold_by_character(db, user.id)
+    )
 
     rows: list[dict] = []
     for char in characters:
@@ -324,16 +339,17 @@ def list_for(db: Session, user: User) -> list[dict]:
             )
         )
 
-    if leader is not None:
+    if has_forever:
         rows.append(
             _card(
                 GOLD,
-                status="done" if gold_row or confirmed >= GOLD_GOAL_COPPER else "open",
+                status="done" if gold_row or contributed >= GOLD_GOAL_COPPER else "open",
                 completed_at=gold_row.completed_at if gold_row else None,
                 character=None,
-                subject=_character_subject(leader) if confirmed else None,
-                progress=min(confirmed, GOLD_GOAL_COPPER),
+                subject=None,
+                progress=contributed,
                 goal=GOLD_GOAL_COPPER,
+                contributions=contributions,
             )
         )
 
