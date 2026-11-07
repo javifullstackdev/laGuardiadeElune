@@ -64,8 +64,6 @@ export default function GoldDeposit({
 
   const copperTotal = digits(gold) * 10000 + digits(silver) * 100;
   const estimate = pointsForCopper(copperTotal, board.silver_per_point);
-  const goal = Math.max(board.goal_copper, 1);
-  const progress = Math.min(100, Math.round((board.confirmed_copper / goal) * 100));
 
   async function reload() {
     const res = await fetch("/api/bank/gold");
@@ -119,29 +117,12 @@ export default function GoldDeposit({
 
   return (
     <div className="space-y-8">
-      <section className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5 max-w-xl">
-        <div>
-          <div className="flex justify-between text-xs text-gray-400 mb-2">
-            <span>Confirmado: {formatMoney(board.confirmed_copper)}</span>
-            <span>Objetivo: {formatMoney(board.goal_copper)}</span>
-          </div>
-          <div className="h-5 rounded-full bg-gray-800 overflow-hidden">
-            <div className="h-full bg-yellow-400" style={{ width: `${progress}%` }} />
-          </div>
-          {board.pending_copper > 0 && (
-            <p className="text-xs text-gray-500 mt-2">
-              Pendiente de confirmar: {formatMoney(board.pending_copper)}
-            </p>
-          )}
-        </div>
-      </section>
-
       {forever.length === 0 ? (
-        <p className="text-sm text-gray-500 max-w-xl">
+        <p className="text-sm text-gray-500">
           Necesitas un personaje de Warcraft Forever en tu perfil para enviar oro.
         </p>
       ) : (
-        <form onSubmit={submit} className="max-w-xl space-y-4">
+        <form onSubmit={submit} className="space-y-4">
           <label className="block text-sm text-gray-400">
             Personaje de Forever
             <select

@@ -462,6 +462,12 @@ function BankGoalCard({ gold }: { gold: GoldBoard }) {
           ) : (
             <p className="mt-3 text-sm text-gray-500">Todavía no hay oro confirmado.</p>
           )}
+          <p className="mt-4 text-sm text-gray-300">
+            Logro: <span className="font-medium text-gray-100">Invirtiendo en la Guardia</span>
+          </p>
+          <p className="mt-1 text-sm text-gray-400">
+            Se concede al completar el objetivo, si has ingresado 5 de oro o más entre todos tus personajes.
+          </p>
         </div>
       )}
     </section>
