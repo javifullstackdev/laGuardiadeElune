@@ -48,14 +48,16 @@ export default function BancoClient({
   characters,
   scoresBankPoints,
   gold,
+  initialTab = "deposit",
 }: {
   catalog: BankItem[];
   initialRequests: BankRequest[];
   characters: CharacterOpt[];
   scoresBankPoints: boolean;
   gold: GoldBoard;
+  initialTab?: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>("deposit");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [items, setItems] = useState(catalog);
   const [rows, setRows] = useState(initialRequests);
   const [picked, setPicked] = useState<PickedItem | null>(null);

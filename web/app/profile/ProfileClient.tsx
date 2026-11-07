@@ -421,6 +421,11 @@ export default function ProfileClient({
                 <ProfileHome
                   user={user}
                   missions={missions}
+                  character={{
+                    name: selected.name,
+                    realm: selected.realm,
+                    game: selected.game || "retail",
+                  }}
                   hasCharacter
                   onOpenMission={openMission}
                 />
@@ -572,7 +577,7 @@ function CharacterDetail({
   };
 
   const tabs: { key: DetailTab; label: string }[] = [
-    { key: "inicio", label: "Inicio" },
+    { key: "inicio", label: "Info" },
     ...PROFILE_SECTIONS,
   ];
   const tabIndex = tabs.findIndex((t) => t.key === tab);
