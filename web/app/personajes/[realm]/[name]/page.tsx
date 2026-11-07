@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import { loadWikiChar, type WikiCharacter, type WikiListItem, type WikiNeighbor } from "@/lib/wiki";
 import WikiCharacterView from "@/app/personajes/WikiCharacterView";
@@ -96,6 +96,7 @@ export default async function WikiCharacterPage({
   const listRes = await fetch(apiUrl("/wiki/"), { cache: "no-store" });
   const items: WikiListItem[] = listRes.ok ? await listRes.json() : [];
   const { prev, next } = neighbors(items, char);
+  const nonce = (await headers()).get("x-nonce") ?? "";
 
   return (
     <main className="relative text-white">
@@ -104,6 +105,7 @@ export default async function WikiCharacterPage({
         loggedIn={!!token}
         prev={prev}
         next={next}
+        nonce={nonce}
       />
     </main>
   );

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { permanentRedirect } from "next/navigation";
 import type { StoryPublic } from "@/lib/stories";
 import { loadWikiChar } from "@/lib/wiki";
@@ -79,6 +79,7 @@ export default async function LoreDetailPage({
     story.character_race ?? wikiChar?.race,
   );
   const initialMode = parseStoryReadingMode(cookieStore.get(STORY_READING_COOKIE)?.value);
+  const nonce = (await headers()).get("x-nonce") ?? "";
 
   return (
     <StoryReader
@@ -86,6 +87,7 @@ export default async function LoreDetailPage({
       isHordeStory={isHordeStory}
       loggedIn={!!token}
       initialMode={initialMode}
+      nonce={nonce}
     />
   );
 }

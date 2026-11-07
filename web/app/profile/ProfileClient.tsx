@@ -154,12 +154,14 @@ export default function ProfileClient({
   transactions,
   missions,
   bnetTokenExpired = false,
+  nonce,
 }: {
   user: User;
   characters: Character[];
   transactions: Transaction[];
   missions: Mission[];
   bnetTokenExpired?: boolean;
+  nonce?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -1272,6 +1274,7 @@ function BioTab({
       {previewOpen && (
         <FichaPreview
           char={buildFichaPreview(char, biography)}
+          nonce={nonce}
           onClose={() => setPreviewOpen(false)}
         />
       )}

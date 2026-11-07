@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import { FAQS, faqPageJsonLd } from "@/lib/faqs";
+import { jsonLdHtml } from "@/lib/json-ld";
 import { buildShareMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -12,12 +14,15 @@ export const metadata: Metadata = {
   }),
 };
 
-export default function PreguntasPage() {
+export default async function PreguntasPage() {
+  const nonce = (await headers()).get("x-nonce") ?? "";
+
   return (
     <main className="min-h-screen">
       <script
+        nonce={nonce || undefined}
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqPageJsonLd()) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(faqPageJsonLd()) }}
       />
       <div className="max-w-7xl mx-auto px-4 py-10 sm:py-14">
         <Breadcrumb

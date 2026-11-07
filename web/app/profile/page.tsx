@@ -1,10 +1,11 @@
-import { cookies } from "next/headers";
+import { cookies, headers as requestHeaders } from "next/headers";
 import { redirect } from "next/navigation";
 import ProfileClient from "./ProfileClient";
 import type { Mission } from "@/lib/missions";
 
 import { apiUrl } from "@/lib/api";
 export default async function ProfilePage() {
+  const nonce = (await requestHeaders()).get("x-nonce") ?? "";
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   if (!token) redirect("/");
@@ -85,6 +86,7 @@ export default async function ProfilePage() {
       transactions={transactions}
       missions={missions}
       bnetTokenExpired={bnetTokenExpired}
+      nonce={nonce}
     />
   );
 }

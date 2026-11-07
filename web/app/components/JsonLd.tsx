@@ -1,7 +1,8 @@
+import { jsonLdHtml } from "@/lib/json-ld";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
 /** Organization + WebSite JSON-LD for the public site. */
-export default function JsonLd() {
+export default function JsonLd({ nonce }: { nonce?: string }) {
   const data = {
     "@context": "https://schema.org",
     "@graph": [
@@ -27,8 +28,9 @@ export default function JsonLd() {
 
   return (
     <script
+      nonce={nonce || undefined}
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: jsonLdHtml(data) }}
     />
   );
 }
