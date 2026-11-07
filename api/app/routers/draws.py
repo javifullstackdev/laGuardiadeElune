@@ -14,6 +14,7 @@ from app.database import get_db
 from app.dependencies import get_current_user, require_admin
 from app.models.draw import GuildDraw, GuildDrawEntry
 from app.models.user import User
+from app.services.image_bytes import read_image
 from app.urls import static_url
 
 router = APIRouter(prefix="/draws", tags=["draws"])
@@ -23,7 +24,6 @@ MIN_SHARE_CENTS = 50
 MAX_PRICE_CENTS = 10_000
 DRAW_UPLOAD_DIR = Path("uploads/draws")
 DRAW_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-IMAGE_TYPES = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 OPEN = "open"
 CLOSED = "closed"
@@ -439,14 +439,9 @@ async def upload_draw_image(
     db: Session = Depends(get_db),
 ):
     draw, _entries = _load(db, draw_id)
-    extension = IMAGE_TYPES.get(file.content_type or "")
-    if extension is None:
-        raise HTTPException(400, "La imagen debe ser JPEG, PNG o WebP")
-    content = await file.read()
-    if not content:
-        raise HTTPException(400, "La imagen está vacía")
-    if len(content) > MAX_IMAGE_SIZE:
-        raise HTTPException(400, "La imagen no puede superar 5 MB")
+    content, extension = await read_image(
+        file, max_bytes=MAX_IMAGE_SIZE, too_big="La imagen no puede superar 5 MB"
+    )
     filename = f"{uuid4().hex}.{extension}"
     (DRAW_UPLOAD_DIR / filename).write_bytes(content)
     _unlink_image(draw.image_url)
