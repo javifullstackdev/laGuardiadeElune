@@ -15,4 +15,8 @@ export type Mission = {
   completed_at: string | null;
   character: MissionCharacter | null;
   subject: string | null;
+  /** Cobre confirmado, solo en la misión de oro. */
+  progress?: number;
+  /** Cobre necesario para completarla. */
+  goal?: number;
 };

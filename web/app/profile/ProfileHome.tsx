@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import PathPicker from "../onboarding/PathPicker";
 import type { Mission } from "@/lib/missions";
+import { formatMoney } from "@/lib/gold";
 import { PATH_LABEL } from "@/lib/points";
 
 function missionKey(mission: Mission) {
@@ -124,7 +125,10 @@ export default function ProfileHome({
               {pending.map((mission) => (
                 <li key={missionKey(mission)} className="rounded-xl border border-gray-800 bg-gray-950/80 px-4 py-4">
                   <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-semibold text-gray-100">{mission.title}</h3>
+                    <h3 className="flex items-start gap-2 font-semibold text-gray-100">
+                      <img src="/missions/quest.png" alt="" className="mt-0.5 h-8 w-auto shrink-0" />
+                      <span>{mission.title}</span>
+                    </h3>
                     <span className="shrink-0 rounded-md bg-yellow-400/15 px-2 py-0.5 text-base font-bold text-yellow-200">
                       +{mission.points}
                     </span>
@@ -133,6 +137,22 @@ export default function ProfileHome({
                     <p className="text-sm font-medium text-gray-100 mt-2">{mission.subject}</p>
                   )}
                   <p className="text-sm text-gray-400 mt-2">{mission.description}</p>
+                  {mission.goal != null && mission.goal > 0 && (
+                    <div className="mt-3">
+                      <div className="mb-2 flex justify-between text-xs text-gray-400">
+                        <span>{formatMoney(mission.progress ?? 0)}</span>
+                        <span>{formatMoney(mission.goal)}</span>
+                      </div>
+                      <div className="h-5 overflow-hidden rounded-full bg-gray-800">
+                        <div
+                          className="h-full bg-yellow-400"
+                          style={{
+                            width: `${Math.min(100, Math.round(((mission.progress ?? 0) / mission.goal) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
                   {mission.status === "review" ? (
                     <div className="mt-3">
                       <p className="text-sm text-amber-300/90">{MISSION_COPY[mission.key]?.review}</p>
@@ -146,6 +166,13 @@ export default function ProfileHome({
                         </button>
                       )}
                     </div>
+                  ) : mission.key === "forever_gold_10" ? (
+                    <Link
+                      href="/banco"
+                      className="mt-3 inline-block px-3 py-1.5 rounded-lg bg-yellow-500/90 hover:bg-yellow-400 text-black text-sm font-medium"
+                    >
+                      Enviar oro
+                    </Link>
                   ) : mission.character || hasCharacter ? (
                     <button
                       type="button"

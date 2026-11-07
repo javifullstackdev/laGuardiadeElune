@@ -23,7 +23,13 @@ import ItemPicker, { type PickedItem } from "./ItemPicker";
 import NumberField from "./NumberField";
 import { GradeBadge } from "./QualityGem";
 
-type CharacterOpt = { name: string; realm: string; is_main: boolean; game?: string };
+type CharacterOpt = {
+  name: string;
+  surname?: string | null;
+  realm: string;
+  is_main: boolean;
+  game?: string;
+};
 type Tab = "deposit" | "withdrawal" | "gold" | "history";
 
 function fmtWhen(iso: string | null) {

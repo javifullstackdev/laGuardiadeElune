@@ -11,9 +11,18 @@ import {
   type GoldBoard,
   type GoldDeposit as GoldRow,
 } from "@/lib/gold";
-import { foreverModeLabel } from "@/lib/wow";
+type CharacterOpt = {
+  name: string;
+  surname?: string | null;
+  realm: string;
+  is_main: boolean;
+  game?: string;
+};
 
-type CharacterOpt = { name: string; realm: string; is_main: boolean; game?: string };
+function characterLabel(character: CharacterOpt) {
+  const surname = character.surname?.trim();
+  return surname ? `${character.name} ${surname}` : character.name;
+}
 
 function fmtWhen(iso: string | null) {
   if (!iso) return "";
@@ -48,13 +57,12 @@ export default function GoldDeposit({
   });
   const [gold, setGold] = useState("0");
   const [silver, setSilver] = useState("0");
-  const [copper, setCopper] = useState("0");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
-  const copperTotal = digits(gold) * 10000 + digits(silver) * 100 + digits(copper);
+  const copperTotal = digits(gold) * 10000 + digits(silver) * 100;
   const estimate = pointsForCopper(copperTotal, board.silver_per_point);
   const goal = Math.max(board.goal_copper, 1);
   const progress = Math.min(100, Math.round((board.confirmed_copper / goal) * 100));
@@ -72,7 +80,7 @@ export default function GoldDeposit({
       return;
     }
     if (copperTotal < 1) {
-      setError("Indica cuánto oro, plata o cobre envías");
+      setError("Indica cuánto oro o plata envías");
       return;
     }
     const [character_name, character_realm] = character.split("::");
@@ -87,7 +95,7 @@ export default function GoldDeposit({
         character_realm,
         gold: digits(gold),
         silver: digits(silver),
-        copper: digits(copper),
+        copper: 0,
         note: note.trim() || null,
       }),
     });
@@ -99,7 +107,6 @@ export default function GoldDeposit({
     }
     setGold("0");
     setSilver("0");
-    setCopper("0");
     setNote("");
     setOk("Envío registrado. Los puntos se anotan cuando el líder confirme que el oro ha llegado.");
     await reload();
@@ -113,18 +120,12 @@ export default function GoldDeposit({
   return (
     <div className="space-y-8">
       <section className="rounded-xl border border-gray-800 bg-gray-900 p-4 sm:p-5 max-w-xl">
-        <p className="text-sm text-gray-300">
-          Oro de Warcraft Forever, no de Retail. Lo envía un personaje de Forever al líder de la
-          hermandad, para la pestaña del banco. 100 cobres son 1 plata y 100 platas son 1 oro.
-          Ahora mismo, 1 punto por cada {board.silver_per_point} de plata. Los puntos no se anotan
-          hasta que el líder confirma que el oro ha llegado.
-        </p>
-        <div className="mt-4">
-          <div className="flex justify-between text-xs text-gray-400 mb-1">
+        <div>
+          <div className="flex justify-between text-xs text-gray-400 mb-2">
             <span>Confirmado: {formatMoney(board.confirmed_copper)}</span>
             <span>Objetivo: {formatMoney(board.goal_copper)}</span>
           </div>
-          <div className="h-2 rounded-full bg-gray-800 overflow-hidden">
+          <div className="h-5 rounded-full bg-gray-800 overflow-hidden">
             <div className="h-full bg-yellow-400" style={{ width: `${progress}%` }} />
           </div>
           {board.pending_copper > 0 && (
@@ -150,12 +151,12 @@ export default function GoldDeposit({
             >
               {forever.map((c) => (
                 <option key={`${c.name}-${c.realm}`} value={`${c.name}::${c.realm}`}>
-                  {c.name} · {foreverModeLabel(c.realm)}
+                  {characterLabel(c)}
                 </option>
               ))}
             </select>
           </label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm text-gray-400">
               Oro
               <NumberField min={0} max={100000} value={gold} onChange={setGold} />
@@ -163,10 +164,6 @@ export default function GoldDeposit({
             <label className="block text-sm text-gray-400">
               Plata
               <NumberField min={0} max={100000} value={silver} onChange={setSilver} />
-            </label>
-            <label className="block text-sm text-gray-400">
-              Cobre
-              <NumberField min={0} max={100000} value={copper} onChange={setCopper} />
             </label>
           </div>
           <label className="block text-sm text-gray-400">
@@ -178,16 +175,12 @@ export default function GoldDeposit({
               className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gray-500"
             />
           </label>
-          <p className="text-sm text-gray-400">
-            {copperTotal < 1 ? (
-              "Indica la cantidad."
-            ) : (
-              <>
-                {formatMoney(copperTotal)}. Si se confirma:{" "}
-                <span className="text-yellow-400 font-medium">{estimate} pts</span>
-              </>
-            )}
-          </p>
+          {copperTotal > 0 && (
+            <p className="text-sm text-gray-400">
+              {formatMoney(copperTotal)}. Si se confirma:{" "}
+              <span className="text-yellow-400 font-medium">{estimate} pts</span>
+            </p>
+          )}
           {error && <p className="text-sm text-red-400">{error}</p>}
           {ok && <p className="text-sm text-emerald-400">{ok}</p>}
           <button
@@ -206,7 +199,14 @@ export default function GoldDeposit({
             <div className="min-w-0 flex-1">
               <p className="font-medium text-yellow-100">{formatMoney(row.copper)}</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                {GOLD_STATUS[row.status]} · {fmtWhen(row.created_at)} · {row.character_name}
+                {GOLD_STATUS[row.status]} · {fmtWhen(row.created_at)} ·{" "}
+                {characterLabel(
+                  forever.find((c) => c.name === row.character_name && c.realm === row.character_realm) ?? {
+                    name: row.character_name,
+                    realm: row.character_realm,
+                    is_main: false,
+                  },
+                )}
               </p>
               {row.status === "pending" && (
                 <p className="text-xs text-gray-500 mt-1">

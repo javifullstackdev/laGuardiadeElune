@@ -27,7 +27,7 @@ export default async function BancoPage() {
     ) as Promise<BankRequest[]>,
     fetch(apiUrl("/bank/characters"), { headers, cache: "no-store" }).then((r) =>
       r.ok ? r.json() : [],
-    ) as Promise<{ name: string; realm: string; is_main: boolean; game?: string }[]>,
+    ) as Promise<{ name: string; surname?: string | null; realm: string; is_main: boolean; game?: string }[]>,
     fetch(apiUrl("/bank/me"), { headers, cache: "no-store" }).then((r) =>
       r.ok ? r.json() : null,
     ) as Promise<{ path: string | null; scores_points: boolean } | null>,
@@ -43,13 +43,6 @@ export default async function BancoPage() {
         <Breadcrumb items={[{ href: "/", label: "Inicio" }, { label: "Banco" }]} />
         <header className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-quest-display font-bold">Banco</h1>
-          <p className="text-gray-400 mt-2 text-sm sm:text-base max-w-2xl">
-            Ingresa solo los materiales publicados, con la calidad que indique cada uno. Un
-            administrador comprueba el banco del juego y, al aceptarlo, se anotan los puntos y esa
-            cantidad se resta del cupo. Artesanía y farmeo de materiales suma puntos; competitivo
-            puede aportar, sin puntos. En Oro se envía oro de Warcraft Forever para la pestaña del
-            banco: los puntos esperan a que el líder confirme la llegada.
-          </p>
         </header>
         <BancoClient
           catalog={Array.isArray(catalog) ? catalog : []}

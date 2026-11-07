@@ -1,8 +1,10 @@
 """Misiones del jugador. Los puntos no dependen del itinerario ni del tope semanal."""
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.models.bank import BankGoldDeposit
 from app.models.character import Character
 from app.models.character_story import CharacterStory
 from app.models.enums import EventCategory
@@ -13,6 +15,9 @@ from app.services.notifications import notify
 
 PUBLISH_SHEET = "publish_character_sheet"
 PUBLISH_STORY = "publish_first_story"
+FOREVER_GOLD = "forever_gold_10"
+# 10 de oro. 1 oro = 100 platas = 10_000 cobres, la misma unidad que el banco.
+GOLD_GOAL_COPPER = 10 * 10_000
 
 
 def _characters(db: Session, user_id) -> list[Character]:
@@ -83,6 +88,17 @@ STORY = {
         "suficientemente buena como para que el Eremita decida publicarla."
     ),
     "points": 250,
+}
+
+GOLD = {
+    "key": FOREVER_GOLD,
+    "title": "Colabora con 10 oros en La Guardia",
+    "description": (
+        "Se completa una sola vez, cuando un mismo personaje de Forever "
+        "lleva 10 de oro confirmados, en un envío o en varios. Esos 100 "
+        "puntos se suman a los del oro."
+    ),
+    "points": 100,
 }
 
 
@@ -156,6 +172,61 @@ def _award_sheets(db: Session, user: User) -> None:
         )
 
 
+def _gold_by_character(db: Session, user_id) -> dict[tuple[str, str], int]:
+    rows = (
+        db.query(
+            BankGoldDeposit.character_name,
+            BankGoldDeposit.character_realm,
+            func.coalesce(func.sum(BankGoldDeposit.copper), 0),
+        )
+        .filter(
+            BankGoldDeposit.user_id == user_id,
+            BankGoldDeposit.status == "approved",
+        )
+        .group_by(BankGoldDeposit.character_name, BankGoldDeposit.character_realm)
+        .all()
+    )
+    return {(name, realm): int(total or 0) for name, realm, total in rows}
+
+
+def _leading_gold(
+    characters: list[Character], totals: dict[tuple[str, str], int]
+) -> tuple[Character | None, int]:
+    """El personaje de Forever que más oro confirmado lleva. El objetivo es de uno solo."""
+    best: Character | None = None
+    best_copper = 0
+    for char in characters:
+        if (char.game or "retail") != "forever":
+            continue
+        copper = totals.get((char.name, char.realm), 0)
+        if best is None or copper > best_copper:
+            best = char
+            best_copper = copper
+    return best, best_copper
+
+
+def _award_gold(db: Session, user: User) -> None:
+    already = (
+        db.query(UserMission.id)
+        .filter(UserMission.user_id == user.id, UserMission.mission_key == FOREVER_GOLD)
+        .first()
+    )
+    if already:
+        return
+    characters = _characters(db, user.id)
+    _, confirmed = _leading_gold(characters, _gold_by_character(db, user.id))
+    if confirmed < GOLD_GOAL_COPPER:
+        return
+    _pay(
+        db,
+        user,
+        GOLD,
+        character=None,
+        reason=f"Misión: {GOLD['title']}",
+        body=GOLD["title"],
+    )
+
+
 def _award_story(db: Session, user: User) -> None:
     if _first_published_story(db, user.id) is None:
         return
@@ -180,6 +251,7 @@ def grant_ready(db: Session, user: User) -> None:
     """Cobra las misiones ya cumplidas que todavía no tienen puntos. No hace commit."""
     _award_sheets(db, user)
     _award_story(db, user)
+    _award_gold(db, user)
 
 
 def _card(
@@ -189,8 +261,10 @@ def _card(
     completed_at,
     character: Character | None,
     subject: str | None,
+    progress: int | None = None,
+    goal: int | None = None,
 ) -> dict:
-    return {
+    card = {
         "key": spec["key"],
         "title": spec["title"],
         "description": spec["description"],
@@ -200,6 +274,10 @@ def _card(
         "character": _character_ref(character) if character else None,
         "subject": subject,
     }
+    if goal is not None:
+        card["progress"] = progress or 0
+        card["goal"] = goal
+    return card
 
 
 def list_for(db: Session, user: User) -> list[dict]:
@@ -216,9 +294,16 @@ def list_for(db: Session, user: User) -> list[dict]:
         .filter(UserMission.user_id == user.id, UserMission.mission_key == PUBLISH_STORY)
         .first()
     )
+    gold_row = (
+        db.query(UserMission)
+        .filter(UserMission.user_id == user.id, UserMission.mission_key == FOREVER_GOLD)
+        .first()
+    )
+    characters = _characters(db, user.id)
+    leader, confirmed = _leading_gold(characters, _gold_by_character(db, user.id))
 
     rows: list[dict] = []
-    for char in _characters(db, user.id):
+    for char in characters:
         paid = sheet_rows.get(char.id)
         if paid or char.bio_status == "published":
             status = "done"
@@ -236,6 +321,19 @@ def list_for(db: Session, user: User) -> list[dict]:
                 completed_at=completed_at,
                 character=char,
                 subject=_character_subject(char),
+            )
+        )
+
+    if leader is not None:
+        rows.append(
+            _card(
+                GOLD,
+                status="done" if gold_row or confirmed >= GOLD_GOAL_COPPER else "open",
+                completed_at=gold_row.completed_at if gold_row else None,
+                character=None,
+                subject=_character_subject(leader) if confirmed else None,
+                progress=min(confirmed, GOLD_GOAL_COPPER),
+                goal=GOLD_GOAL_COPPER,
             )
         )
 
