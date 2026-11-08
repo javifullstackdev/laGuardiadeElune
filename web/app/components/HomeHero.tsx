@@ -213,30 +213,33 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
             ))}
           </div>
 
-          <div className="absolute inset-0 z-[2] bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
-          <div className="absolute inset-0 z-[2] bg-gradient-to-t from-black/70 via-black/15 to-transparent lg:from-black/50 lg:via-transparent lg:to-black/10" />
+          <div className="absolute inset-0 z-[2] bg-[linear-gradient(to_top,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.32)_30%,transparent_58%)] lg:hidden" />
+          <div className="absolute inset-0 z-[2] hidden bg-gradient-to-r from-black/70 via-black/30 to-transparent lg:block" />
+          <div className="absolute inset-0 z-[2] hidden bg-gradient-to-t from-black/40 via-transparent to-black/10 lg:block" />
 
-          {/* Copy: en móvil y tablet solo título + CTA (sin descripción, para ver la imagen) */}
+          {/* En móvil y tablet el toque en la imagen abre la ficha o la historia. El botón queda en escritorio. */}
           <Link
             href={current.href || "#tablon"}
-            className="absolute z-[3] inset-y-0 left-0 flex flex-col justify-end lg:justify-center max-w-lg px-5 pb-8 md:px-8 md:pb-10 lg:px-16 lg:pb-0 group/hero-copy"
-            onPointerDown={(e) => e.stopPropagation()}
+            draggable={false}
+            className="absolute z-[3] inset-0 flex flex-col justify-end lg:justify-center group/hero-copy"
           >
-            <h1
-              className={`font-quest-display font-bold leading-tight text-white group-hover/hero-copy:text-white/95 text-2xl md:text-3xl lg:text-[2.6rem] ${
-                current.kind === "story" ? "line-clamp-2 lg:line-clamp-none" : ""
-              }`}
-            >
-              {current.title}
-            </h1>
-            {current.subtitle ? (
-              <p className="mt-3 text-base text-gray-200/90 leading-relaxed hidden lg:block">
-                {current.subtitle}
-              </p>
-            ) : null}
-            <span className="mt-3 sm:mt-5 inline-flex items-center self-start rounded-md bg-blue-600 group-hover/hero-copy:bg-blue-500 text-white text-sm font-semibold px-4 py-2 transition-colors">
-              {current.cta || "Descubre las novedades"}
-            </span>
+            <div className="max-w-lg px-5 pb-8 md:px-8 md:pb-9 lg:px-16 lg:pb-0">
+              <h1
+                className={`font-quest-display font-bold leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] group-hover/hero-copy:text-white/95 text-2xl md:text-3xl lg:text-[2.6rem] ${
+                  current.kind === "story" ? "line-clamp-2 lg:line-clamp-none" : ""
+                }`}
+              >
+                {current.title}
+              </h1>
+              {current.subtitle ? (
+                <p className="mt-3 text-base text-gray-200/90 leading-relaxed hidden lg:block">
+                  {current.subtitle}
+                </p>
+              ) : null}
+              <span className="mt-5 hidden lg:inline-flex items-center self-start rounded-md bg-blue-600 group-hover/hero-copy:bg-blue-500 text-white text-sm font-semibold px-4 py-2 transition-colors">
+                {current.cta || "Descubre las novedades"}
+              </span>
+            </div>
           </Link>
 
           {/* Flechas */}
