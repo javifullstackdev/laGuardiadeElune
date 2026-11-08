@@ -201,7 +201,10 @@ def gold_card(db: Session = Depends(get_db)):
     return Response(
         content=jpeg,
         media_type="image/jpeg",
-        headers={"Cache-Control": "public, max-age=60"},
+        headers={
+            "Cache-Control": "public, max-age=60",
+            "Content-Length": str(len(jpeg)),
+        },
     )
 
 
