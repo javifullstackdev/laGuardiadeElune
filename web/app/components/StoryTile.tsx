@@ -33,12 +33,8 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
         </span>
       </div>
       <div className="flex flex-col flex-1 px-4 pt-3 pb-4">
-<<<<<<< Updated upstream
-        <h3 className="font-quest-display font-bold text-[15px] leading-snug tracking-wide text-white line-clamp-2">
-          {story.title}
-=======
         <h3
-          className={`font-quest font-bold text-[15px] leading-snug text-white ${
+          className={`font-quest-display font-bold text-[15px] leading-snug tracking-wide text-white ${
             lines.length > 0 ? "" : "line-clamp-2"
           }`}
         >
@@ -49,7 +45,6 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
                 </span>
               ))
             : story.title}
->>>>>>> Stashed changes
         </h3>
         <p className="mt-1.5 text-[13px] text-gray-400 leading-snug line-clamp-2 min-h-[2.75em]">
           {excerpt || "\u00A0"}
