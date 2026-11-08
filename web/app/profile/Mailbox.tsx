@@ -42,6 +42,7 @@ const KIND_LABEL: Record<string, string> = {
   eremita_story: "Eremita",
   eremita_bio: "Eremita",
   relation_claim: "Mención",
+  recruitment: "Reclutamiento",
 };
 
 function formatWhen(iso: string) {

@@ -21,6 +21,11 @@ export const FAQS: Faq[] = [
       "Quien pase por aquí puede leer el tablón, las fichas de los personajes y las historias ya publicadas. El ranking, el banco, los pedidos, los sorteos y el perfil son sólo para miembros: para eso hace falta entrar con Discord.",
   },
   {
+    question: "¿Cómo pido unirme?",
+    answer:
+      "En Reclutamiento, en el menú, deja tu nombre, tu apellido y la razón por la que quieres entrar. La hermandad lee cada solicitud.",
+  },
+  {
     question: "¿Cómo entro con mi cuenta de Discord?",
     answer:
       "Si ya eres de la Guardia, entra desde Entrar, en el menú, con Discord. Después puedes conectar Battle.net para verificar tus personajes y dejar el perfil en orden.",
