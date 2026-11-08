@@ -217,13 +217,13 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
           <div className="absolute inset-0 z-[2] hidden bg-gradient-to-r from-black/70 via-black/30 to-transparent lg:block" />
           <div className="absolute inset-0 z-[2] hidden bg-gradient-to-t from-black/40 via-transparent to-black/10 lg:block" />
 
-          {/* En móvil y tablet el toque en la imagen abre la ficha o la historia. El botón queda en escritorio. */}
+          {/* El toque en la imagen abre la ficha o la historia. */}
           <Link
             href={current.href || "#tablon"}
             draggable={false}
             className="absolute z-[3] inset-0 flex flex-col justify-end lg:justify-center group/hero-copy"
           >
-            <div className="max-w-lg px-5 pb-8 md:px-8 md:pb-9 lg:px-16 lg:pb-0">
+            <div className="w-full px-5 pb-8 text-center md:px-8 md:pb-9 lg:max-w-lg lg:px-16 lg:pb-0 lg:text-left">
               <h1
                 className={`font-quest-display font-bold leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] group-hover/hero-copy:text-white/95 text-2xl md:text-3xl lg:text-[2.6rem] ${
                   current.kind === "story" ? "line-clamp-2 lg:line-clamp-none" : ""
@@ -236,9 +236,6 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                   {current.subtitle}
                 </p>
               ) : null}
-              <span className="mt-5 hidden lg:inline-flex items-center self-start rounded-md bg-blue-600 group-hover/hero-copy:bg-blue-500 text-white text-sm font-semibold px-4 py-2 transition-colors">
-                {current.cta || "Descubre las novedades"}
-              </span>
             </div>
           </Link>
 
