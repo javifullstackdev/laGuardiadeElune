@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  async rewrites() {
+    return [
+      {
+        source: "/objetivo/tarjeta-:version.jpg",
+        destination: "/objetivo/tarjeta.jpg",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

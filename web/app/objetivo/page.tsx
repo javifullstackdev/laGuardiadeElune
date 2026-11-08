@@ -41,7 +41,7 @@ export async function generateMetadata(): Promise<Metadata> {
         ? goalDescription(goal.confirmed_copper, goal.goal_copper)
         : "La misión de oro de La Guardia de Elune.",
       path: "/objetivo",
-      image: `/objetivo/tarjeta/${version}.jpg`,
+      image: `/objetivo/tarjeta-${version}.jpg`,
       imageType: "image/jpeg",
       imageWidth: 1200,
       imageHeight: 630,
