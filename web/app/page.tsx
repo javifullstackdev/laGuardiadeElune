@@ -185,6 +185,7 @@ function PostTile({ post }: { post: Post }) {
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900" />
           )}
+          <div className="pointer-events-none absolute inset-0 bg-black/35" />
           {post.category && (
             <span className={`absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm ${cat.flag}`}>
               {cat.label}
