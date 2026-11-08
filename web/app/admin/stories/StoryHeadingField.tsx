@@ -94,9 +94,9 @@ export default function StoryHeadingField({
         <input
           value={lineOne}
           onChange={(e) => setLineOne(e.target.value)}
-          placeholder="Tarjeta, primera línea"
+          placeholder="Miniatura del carrusel, primera línea"
           maxLength={80}
-          aria-label="Primera línea de la tarjeta"
+          aria-label="Primera línea de la miniatura del carrusel"
           className="min-w-0 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200 placeholder:text-gray-600"
         />
         <input
@@ -104,7 +104,7 @@ export default function StoryHeadingField({
           onChange={(e) => setLineTwo(e.target.value)}
           placeholder="Segunda línea, si la hay"
           maxLength={80}
-          aria-label="Segunda línea de la tarjeta"
+          aria-label="Segunda línea de la miniatura del carrusel"
           className="min-w-0 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200 placeholder:text-gray-600"
         />
       </div>
