@@ -4,7 +4,7 @@
 
 www.laguardiadeelune.com, laguardiadeelune.com {
 	# WhatsApp no muestra la tarjeta si el JPEG va comprimido o a trozos.
-	@compressible not path /objetivo/tarjeta.jpg
+	@compressible not path /objetivo/tarjeta.jpg /objetivo/tarjeta/*
 	encode @compressible gzip zstd
 
 	header {
@@ -35,6 +35,12 @@ www.laguardiadeelune.com, laguardiadeelune.com {
 
 	# La imagen de la misión la sirve la API con tamaño fijo. Next la partía en trozos y WhatsApp la ignoraba.
 	handle /objetivo/tarjeta.jpg {
+		rewrite * /bank/gold/card.jpg
+		reverse_proxy api:8000
+	}
+
+	# Sin ?v= en la dirección: WhatsApp no baja la imagen si el enlace no termina en .jpg
+	handle /objetivo/tarjeta/* {
 		rewrite * /bank/gold/card.jpg
 		reverse_proxy api:8000
 	}
