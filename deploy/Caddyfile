@@ -3,7 +3,9 @@
 }
 
 www.laguardiadeelune.com, laguardiadeelune.com {
-	encode gzip zstd
+	# WhatsApp no muestra la tarjeta si el JPEG va comprimido o a trozos.
+	@compressible not path /objetivo/tarjeta.jpg
+	encode @compressible gzip zstd
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -28,6 +30,12 @@ www.laguardiadeelune.com, laguardiadeelune.com {
 	}
 
 	handle /health {
+		reverse_proxy api:8000
+	}
+
+	# La imagen de la misión la sirve la API con tamaño fijo. Next la partía en trozos y WhatsApp la ignoraba.
+	handle /objetivo/tarjeta.jpg {
+		rewrite * /bank/gold/card.jpg
 		reverse_proxy api:8000
 	}
 

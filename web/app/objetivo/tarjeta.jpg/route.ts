@@ -11,6 +11,7 @@ export async function GET() {
     return new Response(bytes, {
       headers: {
         "Content-Type": "image/jpeg",
+        "Content-Length": String(bytes.byteLength),
         "Cache-Control": "public, max-age=60",
       },
     });

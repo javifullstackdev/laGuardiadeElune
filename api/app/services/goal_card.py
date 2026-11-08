@@ -156,5 +156,6 @@ def render_goal_card(copy: dict) -> bytes:
     draw.text((WIDTH - margin - goal_w, label_y), goal_label, font=label_font, fill=MUTED)
 
     buffer = BytesIO()
-    image.save(buffer, "JPEG", quality=85, optimize=True, progressive=True)
+    # Baseline, no progresivo: WhatsApp descarta el JPEG progresivo y se queda sin imagen.
+    image.save(buffer, "JPEG", quality=85, optimize=True, progressive=False)
     return buffer.getvalue()
