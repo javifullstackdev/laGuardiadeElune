@@ -14,7 +14,7 @@ export default function WikiTile({ item }: { item: WikiListItem }) {
             src={item.cover_url}
             alt={item.display_name}
             draggable={false}
-            className="absolute inset-0 w-full h-full object-cover object-[50%_8%] opacity-50 select-none pointer-events-none [-webkit-user-drag:none]"
+            className="absolute inset-0 w-full h-full object-cover object-[50%_8%] opacity-50 transition-opacity duration-300 lg:group-hover:opacity-80 select-none pointer-events-none [-webkit-user-drag:none]"
           />
           <div
             className="absolute inset-0 pointer-events-none"
