@@ -12,6 +12,8 @@ class CharacterStory(Base):
     author_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     title = Column(String(255), nullable=False)
     subtitle = Column(String(80), nullable=True)
+    # Dos líneas para la tarjeta, separadas por un salto. Vacío: el título se parte solo.
+    card_title = Column(String(160), nullable=True)
     slug = Column(String(255), unique=True, index=True, nullable=True)
     slug_aliases = Column(ARRAY(String(255)), nullable=False, server_default="{}")
     cover_url = Column(String(1000), nullable=True)

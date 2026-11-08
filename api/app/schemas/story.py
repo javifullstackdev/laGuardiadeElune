@@ -60,6 +60,8 @@ class StoryHeadingIn(BaseModel):
     title: str
     subtitle: str | None = None
     slug: str | None = None
+    card_line_one: str | None = None
+    card_line_two: str | None = None
 
 
 class StoryBodyIn(BaseModel):
@@ -86,6 +88,7 @@ class StoryPublic(BaseModel):
     character_race: str | None = None
     cover_url: str | None = None
     og_image_url: str | None = None
+    card_lines: list[str] = []
     author_username: str
     like_count: int = 0
     relations: list[StoryRelationOut] = []

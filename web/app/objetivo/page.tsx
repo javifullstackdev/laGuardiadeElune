@@ -16,6 +16,7 @@ type Announcement = {
   goal_copper: number;
   confirmed_copper: number;
   pending_copper: number;
+  ends_on?: string | null;
 };
 
 async function loadAnnouncement(): Promise<Announcement | null> {
@@ -33,12 +34,12 @@ async function loadAnnouncement(): Promise<Announcement | null> {
 export async function generateMetadata(): Promise<Metadata> {
   const goal = await loadAnnouncement();
   const headline = goal?.headline ?? "¡Un banco para todos!";
-  const version = goal ? `${goal.confirmed_copper}-${goal.goal_copper}` : "0";
+  const version = goal ? `${goal.confirmed_copper}-${goal.goal_copper}-${goal.ends_on ?? "abierta"}` : "0";
   return {
     ...buildShareMetadata({
       title: headline,
       description: goal
-        ? goalDescription(goal.confirmed_copper, goal.goal_copper)
+        ? goalDescription(goal.confirmed_copper, goal.goal_copper, goal.ends_on)
         : "La misión de oro de La Guardia de Elune.",
       path: "/objetivo",
       image: `/objetivo/tarjeta-${version}.jpg`,

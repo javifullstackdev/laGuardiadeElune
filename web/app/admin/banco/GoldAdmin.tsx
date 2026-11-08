@@ -20,6 +20,7 @@ export default function GoldAdmin({ initial }: { initial: GoldBoard }) {
   const [board, setBoard] = useState(initial);
   const [silverPerPoint, setSilverPerPoint] = useState(String(initial.silver_per_point));
   const [goalGold, setGoalGold] = useState(String(Math.round(initial.goal_copper / COPPER_PER_GOLD)));
+  const [endsOn, setEndsOn] = useState(initial.ends_on || "2026-11-30");
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +32,7 @@ export default function GoldAdmin({ initial }: { initial: GoldBoard }) {
       setBoard(data);
       setSilverPerPoint(String(data.silver_per_point));
       setGoalGold(String(Math.round(data.goal_copper / COPPER_PER_GOLD)));
+      if (data.ends_on) setEndsOn(data.ends_on);
     }
   }
 
@@ -43,6 +45,7 @@ export default function GoldAdmin({ initial }: { initial: GoldBoard }) {
       body: JSON.stringify({
         silver_per_point: Math.max(1, Number(silverPerPoint) || 1),
         goal_gold: Math.max(1, Number(goalGold) || 1),
+        ends_on: endsOn,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -100,6 +103,18 @@ export default function GoldAdmin({ initial }: { initial: GoldBoard }) {
             <NumberField min={1} max={1000000} value={goalGold} onChange={setGoalGold} />
           </label>
         </div>
+        <label className="mt-3 block max-w-xs text-sm text-gray-400">
+          Fecha de fin
+          <input
+            type="date"
+            value={endsOn}
+            onChange={(e) => setEndsOn(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white focus:border-gray-500 focus:outline-none"
+          />
+        </label>
+        <p className="mt-2 max-w-xl text-xs text-gray-500">
+          El oro confirmado después de ese día sigue dando puntos, pero ya no cuenta para el mes de World of Warcraft.
+        </p>
         <button
           type="button"
           onClick={() => void saveSettings()}

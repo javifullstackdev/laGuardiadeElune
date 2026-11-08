@@ -8,16 +8,20 @@ export default function StoryHeadingField({
   title,
   subtitle,
   slug,
+  cardLines,
   href,
 }: {
   storyId: string;
   title: string;
   subtitle: string | null;
   slug: string | null;
+  cardLines: string[];
   href: string;
 }) {
   const [titleValue, setTitleValue] = useState(title);
   const [subtitleValue, setSubtitleValue] = useState(subtitle ?? "");
+  const [lineOne, setLineOne] = useState(cardLines[0] ?? "");
+  const [lineTwo, setLineTwo] = useState(cardLines[1] ?? "");
   const [slugValue, setSlugValue] = useState(slug ?? "");
   const [viewHref, setViewHref] = useState(href);
   const [busy, setBusy] = useState(false);
@@ -38,6 +42,8 @@ export default function StoryHeadingField({
         title: nextTitle,
         subtitle: subtitleValue.trim() || null,
         slug: slugValue.trim(),
+        card_line_one: lineOne.trim(),
+        card_line_two: lineTwo.trim(),
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -48,6 +54,10 @@ export default function StoryHeadingField({
     }
     if (typeof data.title === "string") setTitleValue(data.title);
     setSubtitleValue(typeof data.subtitle === "string" ? data.subtitle : "");
+    if (Array.isArray(data.card_lines)) {
+      setLineOne(typeof data.card_lines[0] === "string" ? data.card_lines[0] : "");
+      setLineTwo(typeof data.card_lines[1] === "string" ? data.card_lines[1] : "");
+    }
     if (typeof data.slug === "string") {
       setSlugValue(data.slug);
       setViewHref(`/lore/${data.slug}`);
@@ -78,6 +88,24 @@ export default function StoryHeadingField({
           maxLength={80}
           aria-label="Subtítulo"
           className="min-w-0 flex-1 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200 placeholder:text-gray-600"
+        />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <input
+          value={lineOne}
+          onChange={(e) => setLineOne(e.target.value)}
+          placeholder="Tarjeta, primera línea"
+          maxLength={80}
+          aria-label="Primera línea de la tarjeta"
+          className="min-w-0 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200 placeholder:text-gray-600"
+        />
+        <input
+          value={lineTwo}
+          onChange={(e) => setLineTwo(e.target.value)}
+          placeholder="Segunda línea, si la hay"
+          maxLength={80}
+          aria-label="Segunda línea de la tarjeta"
+          className="min-w-0 bg-gray-950 border border-gray-800 rounded-lg px-2 py-1 text-xs text-gray-200 placeholder:text-gray-600"
         />
       </div>
       <div className="flex items-center gap-2">

@@ -100,6 +100,7 @@ def _to_public(db: Session, story: CharacterStory, char: Character, author: User
         character_race=_race_value(char),
         cover_url=_cover_url(story, char),
         og_image_url=_og_image_url(story),
+        card_lines=_card_lines(story.card_title),
         author_username=author.username,
         like_count=_like_count(db, story.id),
         relations=[r for r in claims_out(db, story.id) if r.status == "confirmed" or story.status != "approved"],
@@ -410,6 +411,24 @@ def _clean_subtitle(value: str | None) -> str | None:
     return text
 
 
+def _card_line(value: str | None) -> str:
+    text = " ".join((value or "").split())
+    if len(text) > 80:
+        raise HTTPException(400, "Cada línea de la tarjeta admite hasta 80 caracteres")
+    return text
+
+
+def _store_card_title(line_one: str | None, line_two: str | None) -> str | None:
+    lines = [line for line in (_card_line(line_one), _card_line(line_two)) if line]
+    return "\n".join(lines) or None
+
+
+def _card_lines(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [part.strip() for part in value.replace("\r\n", "\n").split("\n") if part.strip()][:2]
+
+
 def _remove_stored_file(relative: str | None) -> None:
     if not relative or relative.startswith("http"):
         return
@@ -542,6 +561,7 @@ def set_story_heading(
     title_changed = new_title != story.title
     story.title = new_title
     story.subtitle = _clean_subtitle(body.subtitle)
+    story.card_title = _store_card_title(body.card_line_one, body.card_line_two)
     _apply_story_slug(db, story, body.slug, story.title)
     if title_changed:
         notify(
@@ -553,7 +573,12 @@ def set_story_heading(
             href=f"/lore/{quote(story.slug or str(story.id), safe='')}",
         )
     db.commit()
-    return {"title": story.title, "subtitle": story.subtitle, "slug": story.slug}
+    return {
+        "title": story.title,
+        "subtitle": story.subtitle,
+        "slug": story.slug,
+        "card_lines": _card_lines(story.card_title),
+    }
 
 
 def _apply_story_slug(db: Session, story: CharacterStory, raw: str | None, title: str) -> None:
