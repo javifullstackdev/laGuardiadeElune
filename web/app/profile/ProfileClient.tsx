@@ -1034,7 +1034,7 @@ function TransactionRow({ t }: { t: Transaction }) {
         {counted === 0 ? `+${t.amount}` : `${counted > 0 ? "+" : ""}${counted}`}
       </span>
       <div className="flex-1 min-w-0">
-        <p className="font-quest-display font-bold text-[15px] leading-snug tracking-wide text-white">{title}</p>
+        <p className="text-sm text-gray-200">{title}</p>
         {detail && <p className="text-xs text-gray-400 mt-0.5">{detail}</p>}
         <p className="text-xs text-gray-500">
           {t.event_category ? CATEGORY_LABEL[t.event_category] ?? t.event_category : null}
