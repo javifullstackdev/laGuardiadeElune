@@ -30,7 +30,7 @@ export default function PostTile({ post, href }: { post: Post; href?: string }) 
         </div>
 
         <div className="flex flex-col flex-1 px-4 pt-3 pb-4">
-          <h3 className="font-quest font-bold text-[15px] leading-snug text-white line-clamp-2">
+          <h3 className="font-quest-display font-bold text-[15px] leading-snug tracking-wide text-white line-clamp-2">
             {post.title}
           </h3>
           <p className="mt-1.5 text-[13px] text-gray-400 leading-snug line-clamp-2 min-h-[2.75em]">

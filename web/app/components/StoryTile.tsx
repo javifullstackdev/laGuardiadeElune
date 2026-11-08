@@ -17,17 +17,18 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
             src={story.cover_url}
             alt={`Portada: ${story.title}`}
             draggable={false}
-            className="w-full h-full object-cover object-top transition-[transform,filter] duration-500 group-hover:scale-[1.03] lg:group-hover:brightness-110 select-none pointer-events-none [-webkit-user-drag:none]"
+            className="w-full h-full object-cover object-top origin-top ease-out transition-transform duration-700 lg:group-hover:scale-[1.02] select-none pointer-events-none [-webkit-user-drag:none]"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-purple-950 to-gray-900" />
         )}
+        <div className="pointer-events-none absolute inset-0 bg-black/35 transition-colors duration-700 ease-out lg:group-hover:bg-black/10" />
         <span className="absolute top-2 left-2 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm bg-purple-500 text-white">
           Historia
         </span>
       </div>
       <div className="flex flex-col flex-1 px-4 pt-3 pb-4">
-        <h3 className="font-quest font-bold text-[15px] leading-snug text-white line-clamp-2">
+        <h3 className="font-quest-display font-bold text-[15px] leading-snug tracking-wide text-white line-clamp-2">
           {story.title}
         </h3>
         <p className="mt-1.5 text-[13px] text-gray-400 leading-snug line-clamp-2 min-h-[2.75em]">
