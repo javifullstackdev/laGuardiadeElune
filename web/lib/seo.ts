@@ -24,6 +24,8 @@ type ShareMetadataInput = {
   description: string;
   path: string;
   image?: string | null;
+  imageWidth?: number;
+  imageHeight?: number;
   type?: "website" | "article" | "profile";
   publishedTime?: string | null;
 };
@@ -39,12 +41,19 @@ export function buildShareMetadata({
   description,
   path,
   image,
+  imageWidth,
+  imageHeight,
   type = "website",
   publishedTime,
 }: ShareMetadataInput): Metadata {
   const url = absoluteUrl(path);
   const imageUrl = image ? shareImageUrl(image) : absoluteUrl(DEFAULT_SHARE_IMAGE.url);
-  const sized = image ? {} : { width: DEFAULT_SHARE_IMAGE.width, height: DEFAULT_SHARE_IMAGE.height };
+  const sized =
+    imageWidth && imageHeight
+      ? { width: imageWidth, height: imageHeight }
+      : image
+        ? {}
+        : { width: DEFAULT_SHARE_IMAGE.width, height: DEFAULT_SHARE_IMAGE.height };
 
   const openGraph = {
     title,
