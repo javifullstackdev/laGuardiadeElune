@@ -26,6 +26,13 @@ const SECTIONS = [
     badge:       "bg-orange-500/20 text-orange-300",
   },
   {
+    href:        "/admin/reclutamiento",
+    title:       "Reclutamiento",
+    description: "Leer las solicitudes de quien quiere entrar en la hermandad.",
+    color:       "border-sky-500/40 hover:border-sky-400",
+    badge:       "bg-sky-500/20 text-sky-300",
+  },
+  {
     href:        "/admin/titles",
     title:       "Títulos",
     description: "Crear títulos y asignarlos a los personajes de los miembros.",
