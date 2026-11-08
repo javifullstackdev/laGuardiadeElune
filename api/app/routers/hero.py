@@ -76,7 +76,10 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
         src = src or _portrait(char, story) or FALLBACK_IMAGE
         own_title = title
         title = title or story.title
-        if not own_title or own_title == story.title:
+        # El corte de la historia manda en el carrusel, también si la diapositiva
+        # repite el mismo título en una sola línea.
+        same_title = not own_title or " ".join(own_title.split()).casefold() == " ".join(story.title.split()).casefold()
+        if same_title:
             title_lines = _card_lines(story.card_title)
         subtitle = subtitle or _excerpt(story.biography or story.personality or story.appearance)
         kicker = kicker or "Historia"
