@@ -25,6 +25,7 @@ from app.services.goal_card import (
     mission_end,
     render_goal_card,
 )
+from app.services.discord_gold import goal_deposit_message, queue_goal_deposit
 from app.services.notifications import notify
 from app.services.missions import grant_ready
 from app.services import points as points_service
@@ -383,6 +384,13 @@ def approve_gold(
     if player is not None:
         grant_ready(db, player)
     grant_bank_investors(db)
+    db.flush()
+    counted = _sum_mission_copper(db, settings.ends_on)
+    who = (player.display_name or player.username) if player else row.character_name
+    queue_goal_deposit(
+        db,
+        goal_deposit_message(who or "Alguien", int(row.copper), counted, int(settings.goal_copper)),
+    )
     db.commit()
     db.refresh(row)
     return _out(row, settings)
