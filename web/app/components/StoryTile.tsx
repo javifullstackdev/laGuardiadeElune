@@ -9,7 +9,7 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
     <Link
       href={storyHref(story)}
       draggable={false}
-      className="group flex flex-col h-full rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] hover:bg-[#1a2233] transition-colors select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
+      className="group flex flex-col h-full rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] hover:bg-[#1a2233] transition-colors select-none [touch-action:pan-x_pan-y] [-webkit-touch-callout:none] [-webkit-user-drag:none]"
     >
       <div className="relative aspect-[16/11] overflow-hidden bg-[#111]">
         {story.cover_url ? (

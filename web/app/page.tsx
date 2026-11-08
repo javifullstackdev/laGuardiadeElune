@@ -109,7 +109,7 @@ export default async function Home() {
             <ul
               className={
                 storyGrid.length > 1
-                  ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain lg:grid lg:grid-cols-4 lg:overflow-visible lg:overscroll-auto"
+                  ? "flex gap-3 overflow-x-auto overflow-y-hidden snap-x snap-mandatory scrollbar-none overscroll-x-contain [touch-action:pan-x_pan-y] lg:grid lg:grid-cols-4 lg:overflow-visible lg:overscroll-auto lg:touch-auto"
                   : "grid grid-cols-1 lg:grid-cols-4 gap-3"
               }
             >
