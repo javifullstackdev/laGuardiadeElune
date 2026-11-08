@@ -6,6 +6,19 @@ import type { HeroSlide } from "@/lib/hero";
 import { heroObjectPosition } from "@/lib/hero";
 import { useHomeIntro } from "./HomeReveal";
 
+function titleLines(slide: HeroSlide): string[] {
+  return (slide.title_lines ?? []).map((line) => line.trim()).filter(Boolean).slice(0, 2);
+}
+
+function TitleText({ title, lines }: { title: string; lines: string[] }) {
+  if (lines.length === 0) return title;
+  return lines.map((line, index) => (
+    <span key={index} className="block">
+      {line}
+    </span>
+  ));
+}
+
 const INTERVAL_MS = 7000;
 
 function ChevronLeft() {
@@ -226,10 +239,14 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
             <div className="w-full px-5 pb-8 text-center md:px-8 md:pb-9 lg:max-w-lg lg:px-16 lg:pb-0 lg:text-left">
               <h1
                 className={`font-quest-display font-bold leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] group-hover/hero-copy:text-white/95 text-2xl md:text-3xl lg:text-[2.6rem] ${
-                  current.kind === "story" ? "line-clamp-2 lg:line-clamp-none" : ""
+                  titleLines(current).length > 0
+                    ? ""
+                    : current.kind === "story"
+                      ? "line-clamp-2 lg:line-clamp-none"
+                      : ""
                 }`}
               >
-                {current.title}
+                <TitleText title={current.title} lines={titleLines(current)} />
               </h1>
               {current.subtitle ? (
                 <p className="mt-3 text-base text-gray-200/90 leading-relaxed hidden lg:block">
@@ -348,11 +365,11 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                               </p>
                             ) : null}
                             <p
-                              className={`text-xs sm:text-sm lg:text-[15px] font-quest-display font-bold tracking-wide text-white leading-snug line-clamp-2 drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)] ${
-                                isStory || charPrefix ? "mt-0.5" : ""
-                              }`}
+                              className={`text-xs sm:text-sm lg:text-[15px] font-quest-display font-bold tracking-wide text-white leading-snug drop-shadow-[0_1px_8px_rgba(0,0,0,0.85)] ${
+                                titleLines(slide).length > 0 ? "" : "line-clamp-2"
+                              } ${isStory || charPrefix ? "mt-0.5" : ""}`}
                             >
-                              {slide.title}
+                              <TitleText title={slide.title} lines={titleLines(slide)} />
                             </p>
                             {isCharacter && charCaption ? (
                               <p className="mt-0.5 text-[9px] sm:text-[11px] tracking-[0.12em] text-gray-300/95 line-clamp-1 max-w-full drop-shadow-[0_1px_6px_rgba(0,0,0,0.85)]">
@@ -363,8 +380,12 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                         </div>
                       ) : (
                         <div className="absolute bottom-0 left-0 right-0 p-1.5 sm:p-2.5">
-                          <p className="text-[11px] sm:text-sm font-quest-display font-bold tracking-wide text-white leading-snug line-clamp-2">
-                            {slide.title}
+                          <p
+                            className={`text-[11px] sm:text-sm font-quest-display font-bold tracking-wide text-white leading-snug ${
+                              titleLines(slide).length > 0 ? "" : "line-clamp-2"
+                            }`}
+                          >
+                            <TitleText title={slide.title} lines={titleLines(slide)} />
                           </p>
                           {slide.kicker && (
                             <p className="mt-0.5 text-[8px] sm:text-[10px] tracking-widest uppercase text-gray-400 truncate">

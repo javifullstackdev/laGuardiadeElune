@@ -5,6 +5,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import {
   BANK_GOAL_PATH,
   BANK_GOAL_TITLE,
+  deadlineLabel,
+  deadlinePassed,
   formatMoney,
   goalHeadline,
   shownMoney,
@@ -15,6 +17,7 @@ type GoalCardGold = {
   goal_copper: number;
   confirmed_copper: number;
   pending_copper: number;
+  ends_on?: string | null;
   contributors?: GoldContributor[];
 };
 
@@ -51,7 +54,10 @@ export default function GoalCard({
   const goal = gold.goal_copper > 0 ? gold.goal_copper : 1;
   const percent = Math.min(100, (gold.confirmed_copper / goal) * 100);
   const barWidth = gold.confirmed_copper > 0 ? `max(8px, ${percent}%)` : "0%";
-  const headline = goalHeadline(gold.confirmed_copper, gold.goal_copper);
+  const headline = goalHeadline(gold.confirmed_copper, gold.goal_copper, gold.ends_on);
+  const met = gold.goal_copper > 0 && gold.confirmed_copper >= gold.goal_copper;
+  const closed = Boolean(gold.ends_on) && !met && deadlinePassed(gold.ends_on as string);
+  const deadline = gold.ends_on ? deadlineLabel(gold.ends_on) : "";
   const roster = gold.contributors ?? [];
   const Title = heading;
 
@@ -109,8 +115,17 @@ export default function GoalCard({
         </div>
 
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-gray-400">
-          No todo el mundo podrá presumir de haber invertido al menos 5 oros en la primera pestaña del banco de la Guardia.
+          No todo el mundo podrá presumir de haber invertido al menos 5 de oro en la primera pestaña del banco de la Guardia.
         </p>
+        {deadline ? (
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-gray-300">
+            {met
+              ? `Objetivo cumplido antes del ${deadline}. El mes de World of Warcraft es para quien ingresó 5 de oro o más.`
+              : closed
+                ? `El ${deadline} terminó el plazo sin cumplir el objetivo. Nadie recibe el mes de World of Warcraft.`
+                : `Hasta el ${deadline}. Si ese día el objetivo no está cumplido, nadie recibe el mes de World of Warcraft.`}
+          </p>
+        ) : null}
 
         <div className="mt-5 flex flex-wrap gap-2">
           {whatsapp ? (
@@ -178,7 +193,9 @@ export default function GoalCard({
               Logro: Invirtiendo en la Guardia
             </p>
             <p className="mt-2 text-sm text-gray-400">
-              Se concede al completar el objetivo, si has ingresado 5 de oro o más entre todos tus personajes.
+              {deadline
+                ? `Se concede si el objetivo se cumple el ${deadline} o antes, y has ingresado 5 de oro o más. Si el plazo acaba antes, nadie lo recibe.`
+                : "Se concede al completar el objetivo, si has ingresado 5 de oro o más entre todos tus personajes."}
             </p>
           </div>
         )}

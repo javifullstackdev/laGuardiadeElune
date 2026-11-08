@@ -18,6 +18,8 @@ export type StoryPublic = {
   character_race?: string | null;
   cover_url: string | null;
   og_image_url?: string | null;
+  /** Líneas fijas de la tarjeta. Vacío: el título se parte solo. */
+  card_lines?: string[];
   author_username: string;
   like_count: number;
   relations: StoryRelation[];

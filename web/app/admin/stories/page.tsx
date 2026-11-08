@@ -74,6 +74,7 @@ export default async function AdminStoriesPage() {
                       title={story.title}
                       subtitle={story.subtitle ?? null}
                       slug={story.slug ?? null}
+                      cardLines={story.card_lines ?? []}
                       href={storyHref(story)}
                     />
                     <p className="text-sm text-gray-500 truncate">

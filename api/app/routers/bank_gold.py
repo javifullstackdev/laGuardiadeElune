@@ -1,6 +1,6 @@
 """Oro de Warcraft Forever para la pestaña del banco. Los puntos esperan la confirmación del líder."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,7 +17,14 @@ from app.models.character import Character
 from app.models.enums import EventCategory
 from app.models.user import User
 from app.models.user_achievement import UserAchievement
-from app.services.goal_card import format_money, goal_copy, render_goal_card
+from app.services.goal_card import (
+    deadline_label,
+    deadline_passed,
+    format_money,
+    goal_copy,
+    mission_end,
+    render_goal_card,
+)
 from app.services.notifications import notify
 from app.services.missions import grant_ready
 from app.services import points as points_service
@@ -29,6 +36,7 @@ GOLD = 10_000
 MAX_COPPER = 100_000 * GOLD
 DEFAULT_SILVER_PER_POINT = 10
 DEFAULT_GOAL_COPPER = 100 * GOLD
+DEFAULT_ENDS_ON = date(2026, 11, 30)
 
 
 def to_copper(gold: int, silver: int, copper: int) -> int:
@@ -48,6 +56,7 @@ def get_settings(db: Session) -> BankGoldSettings:
             id=1,
             silver_per_point=DEFAULT_SILVER_PER_POINT,
             goal_copper=DEFAULT_GOAL_COPPER,
+            ends_on=DEFAULT_ENDS_ON,
         )
         db.add(row)
         db.flush()
@@ -61,6 +70,17 @@ def _sum_copper(db: Session, status: str) -> int:
         .scalar()
     )
     return int(total or 0)
+
+
+def _sum_mission_copper(db: Session, ends_on: date | None) -> int:
+    """Oro confirmado que cuenta para la recompensa: solo hasta el fin del día de cierre."""
+    query = db.query(func.coalesce(func.sum(BankGoldDeposit.copper), 0)).filter(
+        BankGoldDeposit.status == "approved"
+    )
+    if ends_on is not None:
+        stamp = func.coalesce(BankGoldDeposit.resolved_at, BankGoldDeposit.created_at)
+        query = query.filter(stamp < mission_end(ends_on))
+    return int(query.scalar() or 0)
 
 
 def _out(row: BankGoldDeposit, settings: BankGoldSettings) -> dict:
@@ -85,14 +105,16 @@ def _out(row: BankGoldDeposit, settings: BankGoldSettings) -> dict:
 BANK_ACHIEVEMENT = "Invirtiendo en la Guardia"
 
 
-def _contributors(db: Session) -> list[dict]:
-    rows = (
+def _contributors(db: Session, ends_on: date | None = None) -> list[dict]:
+    query = (
         db.query(User.username, func.coalesce(func.sum(BankGoldDeposit.copper), 0))
         .join(User, User.id == BankGoldDeposit.user_id)
         .filter(BankGoldDeposit.status == "approved")
-        .group_by(User.id, User.username)
-        .all()
     )
+    if ends_on is not None:
+        stamp = func.coalesce(BankGoldDeposit.resolved_at, BankGoldDeposit.created_at)
+        query = query.filter(stamp < mission_end(ends_on))
+    rows = query.group_by(User.id, User.username).all()
     people = [
         {"username": name, "copper": int(total or 0)}
         for name, total in rows
@@ -103,9 +125,10 @@ def _contributors(db: Session) -> list[dict]:
 
 
 def grant_bank_investors(db: Session) -> None:
-    """Cuando el banco llega al objetivo, el logro es de quien aportó al menos 5 de oro. Sin puntos."""
+    """Si el objetivo se cumple antes del cierre, el logro es de quien aportó al menos 5 de oro. Sin puntos."""
     settings = get_settings(db)
-    if _sum_copper(db, "approved") < int(settings.goal_copper):
+    counted = _sum_mission_copper(db, settings.ends_on)
+    if counted < int(settings.goal_copper):
         return
     achievement = db.query(Achievement).filter(Achievement.name == BANK_ACHIEVEMENT).first()
     if achievement is None:
@@ -113,12 +136,13 @@ def grant_bank_investors(db: Session) -> None:
     description = "Colaboraste con al menos 5 de oro en la primera pestaña del banco de la Guardia."
     if achievement.achievement_description != description:
         achievement.achievement_description = description
-    totals = (
-        db.query(BankGoldDeposit.user_id, func.coalesce(func.sum(BankGoldDeposit.copper), 0))
-        .filter(BankGoldDeposit.status == "approved")
-        .group_by(BankGoldDeposit.user_id)
-        .all()
-    )
+    totals_query = db.query(
+        BankGoldDeposit.user_id, func.coalesce(func.sum(BankGoldDeposit.copper), 0)
+    ).filter(BankGoldDeposit.status == "approved")
+    if settings.ends_on is not None:
+        stamp = func.coalesce(BankGoldDeposit.resolved_at, BankGoldDeposit.created_at)
+        totals_query = totals_query.filter(stamp < mission_end(settings.ends_on))
+    totals = totals_query.group_by(BankGoldDeposit.user_id).all()
     already = {
         user_id
         for (user_id,) in db.query(UserAchievement.user_id)
@@ -131,14 +155,36 @@ def grant_bank_investors(db: Session) -> None:
         db.add(UserAchievement(user_id=user_id, achievement_id=achievement.id, character_id=None))
 
 
+def _mission(db: Session) -> dict:
+    settings = get_settings(db)
+    goal = int(settings.goal_copper)
+    counted = _sum_mission_copper(db, settings.ends_on)
+    met = goal > 0 and counted >= goal
+    closed = deadline_passed(settings.ends_on) and not met
+    label = deadline_label(settings.ends_on) if settings.ends_on else ""
+    return {
+        "goal": goal,
+        "counted": counted,
+        "met": met,
+        "closed": closed,
+        "ends_on": settings.ends_on.isoformat() if settings.ends_on else None,
+        "label": label,
+        "copy": goal_copy(counted, goal, closed=closed, deadline=label),
+    }
+
+
 def _board(db: Session, deposits: list[BankGoldDeposit]) -> dict:
     settings = get_settings(db)
+    mission = _mission(db)
     return {
         "silver_per_point": settings.silver_per_point,
-        "goal_copper": int(settings.goal_copper),
-        "confirmed_copper": _sum_copper(db, "approved"),
+        "goal_copper": mission["goal"],
+        "confirmed_copper": mission["counted"],
         "pending_copper": _sum_copper(db, "pending"),
-        "contributors": _contributors(db),
+        "ends_on": mission["ends_on"],
+        "closed": mission["closed"],
+        "met": mission["met"],
+        "contributors": _contributors(db, settings.ends_on),
         "deposits": [_out(row, settings) for row in deposits],
     }
 
@@ -172,6 +218,7 @@ class GoldSend(BaseModel):
 class GoldSettingsBody(BaseModel):
     silver_per_point: int = Field(ge=1, le=100_000)
     goal_gold: int = Field(ge=1, le=1_000_000)
+    ends_on: date
 
 
 class GoldNote(BaseModel):
@@ -181,23 +228,23 @@ class GoldNote(BaseModel):
 @router.get("/announcement")
 def gold_announcement(db: Session = Depends(get_db)):
     """Progreso público de la misión. Sin nombres: es lo que ven WhatsApp y Discord."""
-    settings = get_settings(db)
-    confirmed = _sum_copper(db, "approved")
-    copy = goal_copy(confirmed, int(settings.goal_copper))
+    mission = _mission(db)
+    copy = mission["copy"]
     return {
         "title": copy["title"],
         "headline": copy["headline"],
-        "goal_copper": int(settings.goal_copper),
-        "confirmed_copper": confirmed,
+        "goal_copper": mission["goal"],
+        "confirmed_copper": mission["counted"],
         "pending_copper": _sum_copper(db, "pending"),
+        "ends_on": mission["ends_on"],
+        "closed": mission["closed"],
+        "met": mission["met"],
     }
 
 
 @router.get("/card.jpg")
 def gold_card(db: Session = Depends(get_db)):
-    settings = get_settings(db)
-    confirmed = _sum_copper(db, "approved")
-    jpeg = render_goal_card(goal_copy(confirmed, int(settings.goal_copper)))
+    jpeg = render_goal_card(_mission(db)["copy"])
     return Response(
         content=jpeg,
         media_type="image/jpeg",
@@ -289,6 +336,7 @@ def update_gold_settings(
     settings = get_settings(db)
     settings.silver_per_point = body.silver_per_point
     settings.goal_copper = body.goal_gold * GOLD
+    settings.ends_on = body.ends_on
     db.commit()
     return admin_gold(_, db)
 

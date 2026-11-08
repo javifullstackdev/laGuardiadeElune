@@ -7,6 +7,8 @@ export type HeroSlide = {
   subtitle: string;
   /** Título del personaje (bajo el nombre) en mini-tarjetas */
   caption?: string | null;
+  /** Corte fijo del título cuando la diapositiva usa el de la historia. */
+  title_lines?: string[];
   href?: string;
   cta?: string;
   focus_x?: number;

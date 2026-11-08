@@ -47,6 +47,7 @@ class HeroSlidePublic(BaseModel):
     cta: str
     # Línea inferior opcional (p. ej. título del personaje bajo el nombre)
     caption: str | None = None
+    title_lines: list[str] = []
     focus_x: int = 50
     focus_y: int = 28
 

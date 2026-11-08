@@ -1,7 +1,9 @@
 """Tarjeta de la misión de oro. La frase coincide con goalHeadline en web/lib/gold.ts."""
 
+from datetime import date, datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -13,6 +15,38 @@ QUEST = ASSETS / "quest.png"
 SILVER = 100
 GOLD = 10_000
 TITLE = "¡Un banco para todos!"
+MADRID = ZoneInfo("Europe/Madrid")
+MONTHS = (
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+)
+
+
+def mission_end(ends_on: date) -> datetime:
+    """Primer instante en que el día de fin ya ha pasado, en hora de Madrid."""
+    nxt = ends_on + timedelta(days=1)
+    return datetime(nxt.year, nxt.month, nxt.day, tzinfo=MADRID)
+
+
+def deadline_passed(ends_on: date | None, now: datetime | None = None) -> bool:
+    if ends_on is None:
+        return False
+    current = now or datetime.now(timezone.utc)
+    return current >= mission_end(ends_on)
+
+
+def deadline_label(ends_on: date) -> str:
+    return f"{ends_on.day} de {MONTHS[ends_on.month - 1]} de {ends_on.year}"
 
 WIDTH = 1200
 HEIGHT = 630
@@ -43,11 +77,13 @@ def shown_money(copper: int) -> str:
     return format_money(copper)
 
 
-def goal_copy(confirmed: int, goal: int) -> dict:
+def goal_copy(confirmed: int, goal: int, *, closed: bool = False, deadline: str = "") -> dict:
     safe_goal = goal if goal > 0 else 1
     reached = goal > 0 and confirmed >= goal
     if reached:
         headline = "¡Objetivo cumplido!"
+    elif closed:
+        headline = "El plazo ha terminado."
     else:
         money = format_money(max(0, goal - confirmed))
         verb = "Falta" if "," not in money and money.startswith("1 ") else "Faltan"
@@ -59,6 +95,8 @@ def goal_copy(confirmed: int, goal: int) -> dict:
         "confirmed_label": shown_money(confirmed),
         "goal_label": shown_money(goal),
         "percent": percent,
+        "closed": closed and not reached,
+        "deadline_label": deadline,
     }
 
 
@@ -154,6 +192,11 @@ def render_goal_card(copy: dict) -> bytes:
     goal_label = copy["goal_label"]
     goal_w = draw.textlength(goal_label, font=label_font)
     draw.text((WIDTH - margin - goal_w, label_y), goal_label, font=label_font, fill=MUTED)
+    deadline = (copy.get("deadline_label") or "").strip()
+    if deadline:
+        note = deadline if copy.get("closed") else f"Hasta el {deadline}"
+        note_font = _font(FONT_REGULAR, 22)
+        draw.text((margin, label_y + 40), note, font=note_font, fill=MUTED)
 
     buffer = BytesIO()
     # Baseline, no progresivo: WhatsApp descarta el JPEG progresivo y se queda sin imagen.

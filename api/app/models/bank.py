@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Column, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -82,6 +82,8 @@ class BankGoldSettings(Base):
     silver_per_point = Column(Integer, nullable=False, server_default="10")
     # Objetivo en cobres. 100 de oro = 1_000_000 cobres.
     goal_copper = Column(BigInteger, nullable=False, server_default="1000000")
+    # Último día, inclusive, en hora de Madrid. Después, el oro ya no cuenta para la recompensa.
+    ends_on = Column(Date, nullable=False, server_default="2026-11-30")
 
 
 class BankGoldDeposit(Base):

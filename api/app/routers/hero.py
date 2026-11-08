@@ -20,6 +20,12 @@ FALLBACK_IMAGE = "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?a
 MAX_SLIDES = 8
 
 
+def _card_lines(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [part.strip() for part in value.replace("\r\n", "\n").split("\n") if part.strip()][:2]
+
+
 def _clamp_focus(value: int | None, default: int) -> int:
     if value is None:
         return default
@@ -55,6 +61,7 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
     href = (slide.href or "").strip()
     cta = (slide.cta_label or "").strip()
     caption: str | None = None
+    title_lines: list[str] = []
 
     if kind == "story":
         row = (
@@ -67,7 +74,10 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
             return None
         story, char = row
         src = src or _portrait(char, story) or FALLBACK_IMAGE
+        own_title = title
         title = title or story.title
+        if not own_title or own_title == story.title:
+            title_lines = _card_lines(story.card_title)
         subtitle = subtitle or _excerpt(story.biography or story.personality or story.appearance)
         kicker = kicker or "Historia"
         href = href or f"/lore/{story.slug or story.id}"
@@ -118,6 +128,7 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
         href=href,
         cta=cta,
         caption=caption,
+        title_lines=title_lines,
         focus_x=_clamp_focus(slide.focus_x, 50),
         focus_y=_clamp_focus(slide.focus_y, 28),
     )
