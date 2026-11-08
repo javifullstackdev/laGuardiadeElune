@@ -528,17 +528,27 @@ export default function ProfileClient({
                 characters={characters}
                 selected={selected}
                 onSelect={handleSelect}
-                onRemove={handleRemove}
-                removing={removing}
               />
             )}
           </div>
         </Mailbox>
 
-        <div className="p-3 border-t border-gray-800">
-          <Link href="/characters" className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm text-gray-300 transition-colors">
+        <div className="flex items-stretch gap-2 border-t border-gray-800 p-3">
+          <Link href="/characters" className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg bg-gray-800 px-3 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-700">
             + Añadir desde Battle.net
           </Link>
+          <button
+            type="button"
+            onClick={() => {
+              if (selected) handleRemove(selected);
+            }}
+            disabled={!selected || removing !== null}
+            aria-label={selected ? `Quitar a ${selected.name}` : "Quitar el personaje seleccionado"}
+            title={selected ? `Quitar a ${selected.name}` : "Selecciona un personaje"}
+            className="inline-flex w-10 shrink-0 items-center justify-center rounded-lg border border-gray-700 bg-gray-800 text-gray-300 transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Trash2 size={16} strokeWidth={1.75} aria-hidden />
+          </button>
         </div>
       </aside>
     </div>
@@ -953,22 +963,22 @@ function PointsTab({ transactions, points }: { transactions: Transaction[]; poin
           )}
           {buckets.map((b) => {
             const { accrued, used, available } = cap![b];
+            const percent = Math.min(100, (used / accrued) * 100);
             return (
               <div key={b}>
-                <div className="flex items-baseline justify-between text-xs mb-1">
-                  <span className="text-gray-400">{BUCKET_LABEL[b]}</span>
-                  <span className="text-gray-300">
-                    Te quedan <span className="font-bold text-yellow-400">{available.toLocaleString()}</span> puntos
-                  </span>
+                <p className="mb-2 text-sm text-gray-300">{BUCKET_LABEL[b]}</p>
+                <div className="mb-2 flex justify-between gap-4 text-xs text-gray-400">
+                  <span>{used.toLocaleString("es-ES")} usados</span>
+                  <span>{accrued.toLocaleString("es-ES")} acumulados</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                <div className="h-5 overflow-hidden rounded-full bg-gray-800">
                   <div
-                    className="h-full bg-yellow-500/80"
-                    style={{ width: `${Math.min(100, (used / accrued) * 100)}%` }}
+                    className="h-full bg-yellow-400 transition-[width] duration-500"
+                    style={{ width: used > 0 ? `max(8px, ${percent}%)` : "0%" }}
                   />
                 </div>
-                <p className="text-[11px] text-gray-600 mt-1">
-                  {used.toLocaleString()} de {accrued.toLocaleString()} acumulados esta temporada
+                <p className="mt-2 text-sm text-gray-400">
+                  Te quedan <span className="font-bold text-yellow-400">{available.toLocaleString("es-ES")}</span> puntos
                 </p>
               </div>
             );
@@ -1015,16 +1025,16 @@ function TransactionRow({ t }: { t: Transaction }) {
   const detail = split === -1 ? null : t.reason.slice(split + 3);
 
   return (
-    <li className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-900 border border-gray-800/50 ${counted === 0 && t.amount > 0 ? "opacity-60" : ""}`}>
+    <li className={`flex items-center gap-4 px-4 py-3 rounded-lg bg-gray-900 border border-gray-800/50 ${counted === 0 && t.amount > 0 ? "opacity-60" : ""}`}>
       <span
-        className={`text-sm font-bold w-14 text-right shrink-0 ${
+        className={`flex w-24 shrink-0 items-center justify-center text-center text-xl font-bold leading-none tabular-nums sm:text-2xl ${
           counted > 0 ? "text-green-400" : counted < 0 ? "text-red-400" : "text-gray-500 line-through"
         }`}
       >
         {counted === 0 ? `+${t.amount}` : `${counted > 0 ? "+" : ""}${counted}`}
       </span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-gray-200">{title}</p>
+        <p className="font-quest-display font-bold text-[15px] leading-snug tracking-wide text-white">{title}</p>
         {detail && <p className="text-xs text-gray-400 mt-0.5">{detail}</p>}
         <p className="text-xs text-gray-500">
           {t.event_category ? CATEGORY_LABEL[t.event_category] ?? t.event_category : null}
@@ -2401,13 +2411,11 @@ const GAME_ACCENT: Record<string, string> = {
 };
 
 function CharacterList({
-  characters, selected, onSelect, onRemove, removing,
+  characters, selected, onSelect,
 }: {
   characters: Character[];
   selected: Character | null;
   onSelect: (c: Character) => void;
-  onRemove: (c: Character) => void;
-  removing: string | null;
 }) {
   const games = ["retail", "forever"].filter((g) => characters.some((c) => (c.game ?? "retail") === g));
 
@@ -2428,12 +2436,11 @@ function CharacterList({
               {group.map((char) => {
                 const color = classColor(char.wow_class);
                 const isActive = selected?.name === char.name && selected?.realm === char.realm && (selected?.game ?? "retail") === game;
-                const removeKey = `${game}-${char.name}-${char.realm}`;
                 return (
-                  <li key={`${char.name}-${char.realm}-${game}`} className="flex items-stretch gap-1">
+                  <li key={`${char.name}-${char.realm}-${game}`}>
                     <button
                       onClick={() => onSelect(char)}
-                      className={`min-w-0 flex-1 text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${isActive ? "bg-gray-700 ring-1 ring-gray-600" : "hover:bg-gray-800"
+                      className={`w-full min-w-0 text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${isActive ? "bg-gray-700 ring-1 ring-gray-600" : "hover:bg-gray-800"
                         }`}
                     >
                       {(char.face_display_url || char.face_url) ? (
@@ -2466,16 +2473,6 @@ function CharacterList({
                             : <span className="text-gray-500">{char.game === "forever" ? foreverModeLabel(char.realm) : realmLabel(char.realm)}</span>}
                         </p>
                       </div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onRemove(char)}
-                      disabled={removing === removeKey}
-                      aria-label={`Quitar a ${char.name}`}
-                      title="Quitar de la lista"
-                      className="shrink-0 self-center rounded-md p-1.5 text-gray-500 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50"
-                    >
-                      <Trash2 size={15} strokeWidth={1.75} aria-hidden />
                     </button>
                   </li>
                 );
