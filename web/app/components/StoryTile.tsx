@@ -17,7 +17,7 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
             src={story.cover_url}
             alt={`Portada: ${story.title}`}
             draggable={false}
-            className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-500 select-none pointer-events-none [-webkit-user-drag:none]"
+            className="w-full h-full object-cover object-top transition-[transform,filter] duration-500 group-hover:scale-[1.03] lg:group-hover:brightness-110 select-none pointer-events-none [-webkit-user-drag:none]"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-purple-950 to-gray-900" />
