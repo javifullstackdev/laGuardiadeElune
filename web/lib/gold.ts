@@ -44,6 +44,26 @@ export function pointsForCopper(copper: number, silverPerPoint: number) {
   return Math.floor(copper / (silverPerPoint * COPPER_PER_SILVER));
 }
 
+export const BANK_GOAL_TITLE = "¡Un banco para todos!";
+export const BANK_GOAL_PATH = "/objetivo";
+
+/** Misma frase que la tarjeta de WhatsApp y Discord. Va a la par de goal_copy en la API. */
+export function goalHeadline(confirmedCopper: number, goalCopper: number) {
+  if (goalCopper > 0 && confirmedCopper >= goalCopper) return "¡Objetivo cumplido!";
+  const money = formatMoney(Math.max(0, goalCopper - confirmedCopper));
+  const verb = !money.includes(",") && money.startsWith("1 ") ? "Falta" : "Faltan";
+  return `¡${verb} ${money} para el objetivo!`;
+}
+
+export function goalDescription(confirmedCopper: number, goalCopper: number) {
+  return `${BANK_GOAL_TITLE} Llevamos ${shownMoney(confirmedCopper)}. El objetivo es ${shownMoney(goalCopper)}.`;
+}
+
+export function shownMoney(copper: number) {
+  if (copper <= 0) return "0 de oro";
+  return formatMoney(copper);
+}
+
 export function formatMoney(copper: number) {
   const safe = Math.max(0, Math.floor(copper));
   const gold = Math.floor(safe / COPPER_PER_GOLD);

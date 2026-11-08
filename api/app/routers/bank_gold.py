@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
@@ -16,6 +17,7 @@ from app.models.character import Character
 from app.models.enums import EventCategory
 from app.models.user import User
 from app.models.user_achievement import UserAchievement
+from app.services.goal_card import format_money, goal_copy, render_goal_card
 from app.services.notifications import notify
 from app.services.missions import grant_ready
 from app.services import points as points_service
@@ -37,19 +39,6 @@ def points_for(copper: int, silver_per_point: int) -> int:
     if silver_per_point < 1 or copper < 1:
         return 0
     return copper // (silver_per_point * SILVER)
-
-
-def format_money(copper: int) -> str:
-    gold, rest = divmod(max(0, copper), GOLD)
-    silver, coins = divmod(rest, SILVER)
-    parts: list[str] = []
-    if gold:
-        parts.append(f"{gold} de oro")
-    if silver:
-        parts.append(f"{silver} de plata")
-    if coins or not parts:
-        parts.append(f"{coins} de cobre")
-    return ", ".join(parts)
 
 
 def get_settings(db: Session) -> BankGoldSettings:
@@ -187,6 +176,33 @@ class GoldSettingsBody(BaseModel):
 
 class GoldNote(BaseModel):
     note: str | None = Field(default=None, max_length=500)
+
+
+@router.get("/announcement")
+def gold_announcement(db: Session = Depends(get_db)):
+    """Progreso público de la misión. Sin nombres: es lo que ven WhatsApp y Discord."""
+    settings = get_settings(db)
+    confirmed = _sum_copper(db, "approved")
+    copy = goal_copy(confirmed, int(settings.goal_copper))
+    return {
+        "title": copy["title"],
+        "headline": copy["headline"],
+        "goal_copper": int(settings.goal_copper),
+        "confirmed_copper": confirmed,
+        "pending_copper": _sum_copper(db, "pending"),
+    }
+
+
+@router.get("/card.jpg")
+def gold_card(db: Session = Depends(get_db)):
+    settings = get_settings(db)
+    confirmed = _sum_copper(db, "approved")
+    jpeg = render_goal_card(goal_copy(confirmed, int(settings.goal_copper)))
+    return Response(
+        content=jpeg,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=60"},
+    )
 
 
 @router.get("")
