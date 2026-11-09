@@ -4,8 +4,8 @@ import HomeReveal from "./components/HomeReveal";
 import FadeUp from "./components/FadeUp";
 import { HERO_SLIDES, type HeroSlide } from "@/lib/hero";
 import { getCategoryStyle, postSubtitle, formatDate, postHref} from "@/lib/posts";
+import CharacterCarousel from "./components/CharacterCarousel";
 import StoryTile from "./components/StoryTile";
-import WikiTile from "./components/WikiTile";
 import type { StoryPublic } from "@/lib/stories";
 import type { WikiListItem } from "@/lib/wiki";
 
@@ -33,14 +33,6 @@ export default async function Home() {
   const wiki: WikiListItem[] = wikiRes.ok ? await wikiRes.json() : [];
   const heroSlides: HeroSlide[] = heroRes.ok ? await heroRes.json() : [];
   const storyGrid = stories.slice(0, 4);
-  const wikiGrid = wiki.slice(0, 4);
-
-  const wikiListClass =
-    wikiGrid.length > 1
-      ? "flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-none overscroll-x-contain lg:grid lg:grid-cols-4 lg:overflow-visible lg:overscroll-auto"
-      : "grid grid-cols-1 lg:grid-cols-4 gap-3";
-  const wikiItemClass =
-    wikiGrid.length > 1 ? "w-[80%] shrink-0 snap-start md:w-[min(72%,26rem)] lg:w-full h-full" : "h-full";
 
   return (
     <main className="relative min-h-screen">
@@ -74,7 +66,7 @@ export default async function Home() {
           )}
         </div>
 
-        {wikiGrid.length > 0 && (
+        {wiki.length > 0 && (
           <section className="px-4 pb-10 sm:pb-14">
             <FadeUp>
               <div className="flex items-end justify-between mb-6">
@@ -85,13 +77,7 @@ export default async function Home() {
               </div>
             </FadeUp>
             <FadeUp delayMs={60}>
-              <ul className={wikiListClass}>
-                {wikiGrid.map((item) => (
-                  <li key={`${item.name}-${item.realm}`} className={wikiItemClass}>
-                    <WikiTile item={item} />
-                  </li>
-                ))}
-              </ul>
+              <CharacterCarousel items={wiki} />
             </FadeUp>
           </section>
         )}
