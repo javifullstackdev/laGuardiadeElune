@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { WikiListItem } from "@/lib/wiki";
 
-export default function WikiTile({ item }: { item: WikiListItem }) {
+export default function WikiTile({ item, tabbable = true }: { item: WikiListItem; tabbable?: boolean }) {
   return (
     <Link
       href={`/personajes/${encodeURIComponent(item.realm)}/${encodeURIComponent(item.name)}`}
+      tabIndex={tabbable ? undefined : -1}
       draggable={false}
       className="group relative flex flex-col justify-end h-full min-h-[168px] md:min-h-[42vw] lg:min-h-[168px] rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] select-none [-webkit-touch-callout:none] [-webkit-user-drag:none] sm:hover:-translate-y-0.5 sm:hover:shadow-[0_8px_20px_rgba(0,0,0,0.28)] transition-[transform,box-shadow] duration-300 ease-out"
     >
@@ -30,7 +31,7 @@ export default function WikiTile({ item }: { item: WikiListItem }) {
           {item.display_name}
         </h3>
         {item.title && (
-          <p className="mt-1 text-[10px] tracking-[0.14em] uppercase text-yellow-500/80 truncate">
+          <p className="mt-1 font-quest text-[10px] font-semibold tracking-[0.14em] uppercase text-yellow-500/80 truncate">
             {item.title}
           </p>
         )}
