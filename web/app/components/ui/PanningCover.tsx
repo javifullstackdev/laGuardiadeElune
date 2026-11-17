@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useCanPlayGif, useGroupHover } from "@/app/components/HoverGif";
 import { ParchmentScrollContext } from "@/app/components/ui/parchment-scroll";
-import { isGif, stillFrameUrl } from "@/lib/images";
+import { isGif, onceGifUrl, stillFrameUrl } from "@/lib/images";
 
 const START_AT = 0.04;
 const TRAVEL = 0.92;
@@ -45,20 +45,23 @@ export function PanningCover({
   className,
   opacity,
   focusY = 0.18,
+  live = true,
 }: {
   src: string;
   alt?: string;
   className?: string;
   opacity: number;
   focusY?: number;
+  /** Si es false, el fondo se queda en el primer fotograma. */
+  live?: boolean;
 }) {
   const progress = useContext(PanProgressContext);
   const wrapRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const gif = isGif(src);
   const motionOk = useCanPlayGif();
-  const hot = useGroupHover(wrapRef, gif);
-  const play = gif && hot && motionOk;
+  const hot = useGroupHover(wrapRef, gif && live);
+  const play = gif && live && hot && motionOk;
   const stillSrc = gif ? stillFrameUrl(src) : src;
   const shownRef = useRef(0);
   const [shift, setShift] = useState({ x: 0, y: 0, w: 0, h: 0 });
@@ -66,10 +69,10 @@ export function PanningCover({
   const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
-    if (!gif || !motionOk) return;
+    if (!gif || !live || !motionOk) return;
     const preload = new Image();
-    preload.src = src;
-  }, [gif, motionOk, src]);
+    preload.src = onceGifUrl(src);
+  }, [gif, live, motionOk, src]);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -157,7 +160,7 @@ export function PanningCover({
       />
       {play ? (
         <img
-          src={src}
+          src={onceGifUrl(src)}
           alt=""
           aria-hidden
           className="absolute top-0 left-0 max-w-none"

@@ -12,6 +12,7 @@ from app.dependencies import get_current_user, get_optional_user, require_admin
 from app.models.user import User
 from app.models.character import Character
 from app.models.character_story import CharacterStory, ContentLike
+from app.models.hero_slide import HeroSlide
 from app.schemas.story import (
     StoryMentionIn, StoryReject, StoryApprove, StoryPublic, StoryMine, StoryPending, StoryHeadingIn, StoryBodyIn,
     StoryAppearanceIn, StoryRelationOut,
@@ -22,6 +23,7 @@ from app.services.claims import (
 from app.services.image_bytes import read_image
 from app.services.missions import grant_ready
 from app.services.notifications import notify
+from app.services.scene_image import story_scene_url
 from app.services.slugs import RESERVED_SLUGS, is_uuid, slugify, unique_slug
 from app.services.surnames import visible_surname
 from app.urls import static_url
@@ -81,6 +83,21 @@ def _like_count(db: Session, story_id) -> int:
     )
 
 
+def _banner_url(db: Session, story: CharacterStory, char: Character) -> str | None:
+    """Foto del carrusel para esta historia, incluida la imagen propia de la diapositiva."""
+    slide = (
+        db.query(HeroSlide)
+        .filter(
+            HeroSlide.kind == "story",
+            HeroSlide.story_id == story.id,
+            HeroSlide.is_active.is_(True),
+        )
+        .order_by(HeroSlide.sort_order.asc())
+        .first()
+    )
+    return story_scene_url(story, char, slide.image_url if slide else None)
+
+
 def _to_public(db: Session, story: CharacterStory, char: Character, author: User) -> StoryPublic:
     return StoryPublic(
         id=story.id,
@@ -100,6 +117,7 @@ def _to_public(db: Session, story: CharacterStory, char: Character, author: User
         character_race=_race_value(char),
         cover_url=_cover_url(story, char),
         carousel_image_url=static_url(story.carousel_image_url),
+        banner_url=_banner_url(db, story, char),
         og_image_url=_og_image_url(story),
         card_lines=_card_lines(story.card_title),
         author_username=author.username,
