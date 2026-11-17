@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ImgHTMLAttributes } from "react";
-import { isGif, stillFrameUrl } from "@/lib/images";
+import { isGif, onceGifUrl, stillFrameUrl } from "@/lib/images";
 
 export function useCanPlayGif() {
   const [canHover, setCanHover] = useState(false);
@@ -63,18 +63,19 @@ export default function HoverGif({ src, alt = "", live = true, ...rest }: Props)
   const motionOk = useCanPlayGif();
   const hot = useGroupHover(ref, gif);
   const play = gif && live && hot && motionOk;
+  const motionSrc = onceGifUrl(src);
 
   useEffect(() => {
-    if (!gif || !motionOk) return;
+    if (!gif || !live || !motionOk) return;
     const preload = new Image();
-    preload.src = src;
-  }, [gif, motionOk, src]);
+    preload.src = motionSrc;
+  }, [gif, live, motionOk, motionSrc]);
 
   return (
     <img
       {...rest}
       ref={ref}
-      src={play ? src : gif ? stillFrameUrl(src) : src}
+      src={play ? motionSrc : gif ? stillFrameUrl(src) : src}
       alt={alt}
     />
   );

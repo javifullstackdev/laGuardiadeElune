@@ -12,8 +12,7 @@ from app.schemas.hero import HeroSlideCreate, HeroSlideUpdate, HeroReorder, Hero
 from app.schemas.character import merge_public_fields
 from app.services.bio_questions import has_public_sheet
 from app.services.surnames import visible_surname
-from app.services.image_bytes import is_gif_path
-from app.urls import static_url
+from app.services.scene_image import still_media, story_scene_url
 
 router = APIRouter(prefix="/hero", tags=["hero"])
 
@@ -33,29 +32,16 @@ def _clamp_focus(value: int | None, default: int) -> int:
     return max(0, min(100, int(value)))
 
 
-def _media(path: str | None) -> str | None:
-    return static_url(path)
-
-
 def _still(path: str | None) -> str | None:
-    """El carrusel no reproduce GIF. Una foto fija sí; un GIF se ignora."""
-    if not path or is_gif_path(path):
-        return None
-    return _media(path)
+    return still_media(path)
 
 
 def _story_banner(char: Character, story: CharacterStory) -> str | None:
-    return (
-        _still(story.carousel_image_url)
-        or _still(story.cover_url)
-        or _still(char.carousel_image_url)
-        or _still(char.custom_avatar_url)
-        or char.render_url
-    )
+    return story_scene_url(story, char)
 
 
 def _character_banner(char: Character) -> str | None:
-    return _still(char.carousel_image_url) or _still(char.custom_avatar_url) or char.render_url
+    return still_media(char.carousel_image_url) or still_media(char.custom_avatar_url) or char.render_url
 
 
 def _excerpt(text: str | None) -> str:
