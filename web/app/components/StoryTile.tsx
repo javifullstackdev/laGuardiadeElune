@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HoverGif from "@/app/components/HoverGif";
 import { characterSignature, storyExcerpt, storyHref, type StoryPublic } from "@/lib/stories";
 
 export default function StoryTile({ story }: { story: StoryPublic }) {
@@ -9,11 +10,12 @@ export default function StoryTile({ story }: { story: StoryPublic }) {
     <Link
       href={storyHref(story)}
       draggable={false}
+      data-gif-hover
       className="group flex flex-col h-full rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] hover:bg-[#1a2233] transition-colors select-none [touch-action:pan-x_pan-y] [-webkit-touch-callout:none] [-webkit-user-drag:none]"
     >
       <div className="relative aspect-[16/11] overflow-hidden bg-[#111]">
         {story.cover_url ? (
-          <img
+          <HoverGif
             src={story.cover_url}
             alt={`Portada: ${story.title}`}
             draggable={false}

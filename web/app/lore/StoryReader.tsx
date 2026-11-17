@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { textToParagraphs, formatDate } from "@/lib/posts";
 import { fitToOneLine } from "@/lib/fit-line";
+import HoverGif from "@/app/components/HoverGif";
 import ShareBar from "@/app/components/ShareBar";
 import BreadcrumbNav, { type Crumb } from "@/app/components/BreadcrumbNav";
 import Parchment from "@/app/components/ui/Parchment";
@@ -349,6 +350,7 @@ export default function StoryReader({
       <ParchmentPanRoot>
         <section
           ref={sceneRef}
+          data-gif-hover
           className="story-scene relative"
           data-mode={look}
           data-open={sceneOpen ? "true" : "false"}
@@ -435,7 +437,7 @@ export default function StoryReader({
             </div>
             {story.cover_url ? (
               <div className="story-read-cover relative z-0 mb-2 overflow-hidden rounded-2xl border border-gray-800 lg:mb-24">
-                <img
+                <HoverGif
                   src={story.cover_url}
                   alt={`Portada: ${story.title}`}
                   className="w-full max-h-[min(65svh,720px)] object-cover"

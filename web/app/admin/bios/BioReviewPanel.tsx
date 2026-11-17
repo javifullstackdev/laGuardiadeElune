@@ -187,7 +187,7 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
                 Imagen completa (ficha y carrusel)
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   onChange={(e) => setArtFile(item.character_id, "full", e.target.files?.[0] ?? null)}
                   className="mt-1 block w-full text-xs text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-xs file:text-gray-200"
                 />
@@ -196,7 +196,7 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
                 Foto de cara (ranking)
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   onChange={(e) => setArtFile(item.character_id, "face", e.target.files?.[0] ?? null)}
                   className="mt-1 block w-full text-xs text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-xs file:text-gray-200"
                 />

@@ -1,7 +1,9 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCanPlayGif, useGroupHover } from "@/app/components/HoverGif";
 import { ParchmentScrollContext } from "@/app/components/ui/parchment-scroll";
+import { isGif, stillFrameUrl } from "@/lib/images";
 
 const START_AT = 0.04;
 const TRAVEL = 0.92;
@@ -53,10 +55,21 @@ export function PanningCover({
   const progress = useContext(PanProgressContext);
   const wrapRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const gif = isGif(src);
+  const motionOk = useCanPlayGif();
+  const hot = useGroupHover(wrapRef, gif);
+  const play = gif && hot && motionOk;
+  const stillSrc = gif ? stillFrameUrl(src) : src;
   const shownRef = useRef(0);
   const [shift, setShift] = useState({ x: 0, y: 0, w: 0, h: 0 });
   const [shown, setShown] = useState(0);
   const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    if (!gif || !motionOk) return;
+    const preload = new Image();
+    preload.src = src;
+  }, [gif, motionOk, src]);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -97,7 +110,7 @@ export function PanningCover({
       ro.disconnect();
       window.removeEventListener("resize", measure);
     };
-  }, [measure, src]);
+  }, [measure, stillSrc]);
 
   useEffect(() => {
     if (reduced) {
@@ -129,19 +142,35 @@ export function PanningCover({
     >
       <img
         ref={imgRef}
-        src={src}
+        src={stillSrc}
         alt={alt}
         className="absolute top-0 left-0 max-w-none"
         style={{
           width: shift.w ? `${shift.w}px` : "100%",
           height: shift.h ? `${shift.h}px` : "100%",
           objectFit: shift.w ? "fill" : "cover",
-          opacity,
+          opacity: play ? 0 : opacity,
           transform: `translate3d(${tx}px, ${-shift.y}px, 0)`,
           willChange: reduced ? undefined : "transform",
         }}
         draggable={false}
       />
+      {play ? (
+        <img
+          src={src}
+          alt=""
+          aria-hidden
+          className="absolute top-0 left-0 max-w-none"
+          style={{
+            width: shift.w ? `${shift.w}px` : "100%",
+            height: shift.h ? `${shift.h}px` : "100%",
+            objectFit: shift.w ? "fill" : "cover",
+            opacity,
+            transform: `translate3d(${tx}px, ${-shift.y}px, 0)`,
+          }}
+          draggable={false}
+        />
+      ) : null}
       <div className="absolute inset-0 min-[1440px]:hidden" style={{ background: STORY_FADE_MOBILE }} />
       <div className="absolute inset-0 hidden min-[1440px]:block" style={{ background: STORY_FADE_DESKTOP }} />
     </div>

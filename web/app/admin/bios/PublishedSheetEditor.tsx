@@ -147,7 +147,7 @@ export default function PublishedSheetEditor({ initial }: { initial: BioPublishe
                       <input
                         key={`${item.character_id}-full-${fileTick[item.character_id] ?? 0}`}
                         type="file"
-                        accept="image/jpeg,image/png,image/webp"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
                         onChange={(e) => patch(item.character_id, item, "full", e.target.files?.[0] ?? null)}
                         className="block w-full text-xs text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-xs file:text-gray-200"
                       />
@@ -164,7 +164,7 @@ export default function PublishedSheetEditor({ initial }: { initial: BioPublishe
                       <input
                         key={`${item.character_id}-face-${fileTick[item.character_id] ?? 0}`}
                         type="file"
-                        accept="image/jpeg,image/png,image/webp"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
                         onChange={(e) => patch(item.character_id, item, "face", e.target.files?.[0] ?? null)}
                         className="block w-full text-xs text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-xs file:text-gray-200"
                       />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import HoverGif from "@/app/components/HoverGif";
 
 export type RankCharacter = {
   name: string;
@@ -177,6 +178,7 @@ function RankCard({
       type="button"
       onClick={onToggle}
       aria-expanded={open}
+      data-gif-hover
       className={`w-full h-full text-left rounded-xl border bg-[#0c1220] transition-all duration-300 overflow-hidden ${
         open
           ? "border-yellow-400/35 ring-1 ring-yellow-400/20"
@@ -185,7 +187,7 @@ function RankCard({
     >
       <div className="flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3.5 min-w-0">
         {mainAvatar ? (
-          <img
+          <HoverGif
             src={mainAvatar}
             alt={`Avatar de ${entry.username}`}
             className="w-11 h-11 sm:w-14 sm:h-14 rounded-full border border-white/15 shrink-0 object-cover"

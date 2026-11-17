@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import HoverGif from "@/app/components/HoverGif";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -305,7 +306,7 @@ function CreateDraw({
           <input
             name="image"
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             className="mt-1 block w-full text-sm text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-sm file:text-gray-200"
           />
           <span className="mt-1 block text-xs text-gray-500">JPEG, PNG o WebP. Hasta 5 MB. Opcional.</span>
@@ -337,10 +338,11 @@ function DrawSummary({ draw }: { draw: GuildDraw }) {
   return (
     <Link
       href={`/sorteos/${draw.id}`}
+      data-gif-hover
       className="block overflow-hidden rounded-xl border border-white/10 hover:border-white/25"
     >
       {draw.image_url && (
-        <img src={draw.image_url} alt="" className="h-44 w-full bg-black/40 object-cover" />
+        <HoverGif src={draw.image_url} alt="" className="h-44 w-full bg-black/40 object-cover" />
       )}
       <div className="space-y-2 p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -510,9 +512,9 @@ function DrawCard({
     Boolean(draw.ticket_number);
 
   return (
-    <article className="rounded-xl border border-white/10 p-4 sm:p-6 space-y-4">
+    <article data-gif-hover className="rounded-xl border border-white/10 p-4 sm:p-6 space-y-4">
       {draw.image_url && (
-        <img
+        <HoverGif
           src={draw.image_url}
           alt={draw.title}
           className={`w-full rounded-lg bg-black/40 object-contain ${page ? "max-h-[70vh]" : "max-h-72"}`}
@@ -821,7 +823,7 @@ function AdminTools({
         Imagen
         <input
           type="file"
-          accept="image/jpeg,image/png,image/webp"
+          accept="image/jpeg,image/png,image/webp,image/gif"
           disabled={busy === `${draw.id}:image`}
           onChange={(event) => {
             const file = event.target.files?.[0];

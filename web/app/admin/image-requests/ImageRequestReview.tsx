@@ -178,7 +178,7 @@ export default function ImageRequestReview({ initial }: { initial: RequestItem[]
               </div>
               <input
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 onChange={(e) =>
                   setFiles((prev) => ({ ...prev, [item.id]: e.target.files?.[0] ?? null }))
                 }

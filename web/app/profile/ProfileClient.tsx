@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect, useRef, type ReactNode } from "reac
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
+import HoverGif from "../components/HoverGif";
 import { useWatermarkBox } from "../components/HomeLogo";
 import PublishStoryPanel from "./PublishStoryPanel";
 import ProfileHome, { PROFILE_SECTIONS, type ProfileSection } from "./ProfileHome";
@@ -683,15 +684,15 @@ function CharacterDetail({
   const faceSrc = char.face_display_url || char.face_url || null;
 
   return (
-    <div className="relative flex flex-col h-full overflow-hidden">
+    <div className="relative flex flex-col h-full overflow-hidden" data-gif-hover>
 
       {/* ── sm+: imagen en la columna de detalle, sin invadir el aside ─ */}
       {hasGoodRender ? (
         <div className="absolute inset-y-0 right-0 w-[58%] pointer-events-none select-none hidden sm:block" style={{ zIndex: 0 }} aria-hidden>
-          <img
+          <HoverGif
             src={char.avatar_url!}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover object-[50%_5%]"
+            className="absolute inset-0 w-full h-full object-cover object-[50%_5%] pointer-events-none"
             style={{ opacity: 0.28 }}
           />
           <div
@@ -1306,7 +1307,7 @@ function BioTab({
                 {busy ? "Guardando..." : url ? "Cambiar imagen" : "Adjuntar imagen"}
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   disabled={answersLocked || busy}
                   onChange={(e) => {
                     const file = e.target.files?.[0];

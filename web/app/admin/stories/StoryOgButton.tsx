@@ -58,7 +58,7 @@ export default function StoryOgButton({
           {busy ? "..." : url ? "Cambiar al compartir" : "Imagen al compartir"}
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             disabled={busy}
             className="hidden"
             onChange={(e) => {
@@ -68,7 +68,7 @@ export default function StoryOgButton({
             }}
           />
         </label>
-        <p className="text-[11px] text-gray-500">WhatsApp y X. Horizontal, 1200×630.</p>
+        <p className="text-[11px] text-gray-500">WhatsApp y X, horizontal. Un GIF se comparte por su primer fotograma.</p>
         {url ? (
           <button
             type="button"

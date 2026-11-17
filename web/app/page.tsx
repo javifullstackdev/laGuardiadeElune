@@ -5,6 +5,7 @@ import FadeUp from "./components/FadeUp";
 import { HERO_SLIDES, type HeroSlide } from "@/lib/hero";
 import { getCategoryStyle, postSubtitle, formatDate, postHref} from "@/lib/posts";
 import CharacterCarousel from "./components/CharacterCarousel";
+import HoverGif from "./components/HoverGif";
 import StoryTile from "./components/StoryTile";
 import type { StoryPublic } from "@/lib/stories";
 import type { WikiListItem } from "@/lib/wiki";
@@ -158,11 +159,12 @@ function PostTile({ post }: { post: Post }) {
     <Link
       href={postHref(post)}
       draggable={false}
+      data-gif-hover
       className="group flex flex-col h-full rounded-lg overflow-hidden bg-[#151515] hover:bg-[#1c1c1c] transition-colors select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
     >
         <div className="relative aspect-[16/11] overflow-hidden bg-[#111]">
           {post.cover_url ? (
-            <img
+            <HoverGif
               src={post.cover_url}
               alt={`Portada: ${post.title}`}
               draggable={false}

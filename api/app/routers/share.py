@@ -10,7 +10,7 @@ router = APIRouter()
 
 UPLOAD_ROOT = Path("uploads").resolve()
 CACHE_DIR = UPLOAD_ROOT / "_share"
-SOURCE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+SOURCE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 # WhatsApp descarta las vistas previas con imágenes pesadas; apuntamos a menos de ~300 KB.
 MAX_SIDE = 1200
@@ -21,6 +21,8 @@ FLAT_BACKGROUND = (11, 11, 11)
 
 def _render(source: Path, target: Path) -> None:
     with Image.open(source) as original:
+        if getattr(original, "is_animated", False):
+            original.seek(0)
         image = ImageOps.exif_transpose(original)
         if image.mode in ("RGBA", "LA", "P"):
             rgba = image.convert("RGBA")
