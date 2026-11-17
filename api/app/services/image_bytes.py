@@ -10,6 +10,12 @@ _GIF = (b"GIF87a", b"GIF89a")
 GIF_MAX_BYTES = 12 * 1024 * 1024
 
 
+def is_gif_path(path: str | None) -> bool:
+    if not path:
+        return False
+    return path.split("?")[0].split("#")[0].lower().endswith(".gif")
+
+
 def image_kind(content: bytes) -> str | None:
     if content.startswith(_JPEG):
         return "jpg"
@@ -22,14 +28,23 @@ def image_kind(content: bytes) -> str | None:
     return None
 
 
-async def read_image(file: UploadFile, *, max_bytes: int, too_big: str) -> tuple[bytes, str]:
-    ceiling = max(max_bytes, GIF_MAX_BYTES)
+async def read_image(
+    file: UploadFile, *, max_bytes: int, too_big: str, allow_gif: bool = True
+) -> tuple[bytes, str]:
+    ceiling = max(max_bytes, GIF_MAX_BYTES if allow_gif else max_bytes)
     content = await file.read(ceiling + 1)
     if not content:
         raise HTTPException(400, "La imagen está vacía")
     kind = image_kind(content)
-    if kind is None:
-        raise HTTPException(400, "La imagen debe ser JPEG, PNG, WebP o GIF")
+    if kind is None or (kind == "gif" and not allow_gif):
+        if kind == "gif":
+            raise HTTPException(400, "Esta imagen tiene que ser fija: JPEG, PNG o WebP.")
+        raise HTTPException(
+            400,
+            "La imagen debe ser JPEG, PNG, WebP o GIF"
+            if allow_gif
+            else "La imagen debe ser JPEG, PNG o WebP",
+        )
     limit = GIF_MAX_BYTES if kind == "gif" else max_bytes
     if len(content) > limit:
         if kind == "gif":

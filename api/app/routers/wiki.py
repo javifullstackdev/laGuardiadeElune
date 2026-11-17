@@ -174,6 +174,7 @@ def get_wiki_character(realm: str, name: str, db: Session = Depends(get_db)):
         title=_shown_title(char, fields),
         prefix_title=_shown_prefix(char, fields),
         cover_url=_portrait(char),
+        og_image_url=static_url(char.og_image_url),
         biography=char.biography,
         personality=char.personality if fields.get("personality") else None,
         appearance=char.appearance if fields.get("appearance") else None,

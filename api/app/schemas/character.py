@@ -237,6 +237,7 @@ class WikiCharacterOut(BaseModel):
     title: str | None = None
     prefix_title: str | None = None
     cover_url: str | None = None
+    og_image_url: str | None = None
     biography: str | None = None
     personality: str | None = None
     appearance: str | None = None

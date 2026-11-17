@@ -17,6 +17,7 @@ export type StoryPublic = {
   character_faction?: string | null;
   character_race?: string | null;
   cover_url: string | null;
+  carousel_image_url?: string | null;
   og_image_url?: string | null;
   /** Líneas fijas de la tarjeta. Vacío: el título se parte solo. */
   card_lines?: string[];

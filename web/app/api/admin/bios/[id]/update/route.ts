@@ -18,7 +18,7 @@ export async function POST(
     const value = form.get(key);
     if (typeof value === "string") upstream.append(key, value);
   }
-  for (const key of ["full_file", "face_file"]) {
+  for (const key of ["full_file", "face_file", "carousel_file", "og_file"]) {
     const file = form.get(key);
     if (file instanceof File && file.size > 0) upstream.append(key, file);
   }

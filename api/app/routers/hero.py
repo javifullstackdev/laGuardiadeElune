@@ -12,6 +12,7 @@ from app.schemas.hero import HeroSlideCreate, HeroSlideUpdate, HeroReorder, Hero
 from app.schemas.character import merge_public_fields
 from app.services.bio_questions import has_public_sheet
 from app.services.surnames import visible_surname
+from app.services.image_bytes import is_gif_path
 from app.urls import static_url
 
 router = APIRouter(prefix="/hero", tags=["hero"])
@@ -36,13 +37,25 @@ def _media(path: str | None) -> str | None:
     return static_url(path)
 
 
-def _portrait(char: Character, story: CharacterStory | None = None) -> str | None:
-    """Arte de carrusel: portada de historia > imagen completa custom > render (nunca la cara)."""
-    if story and story.cover_url:
-        return _media(story.cover_url)
-    if char.custom_avatar_url:
-        return _media(char.custom_avatar_url)
-    return char.render_url
+def _still(path: str | None) -> str | None:
+    """El carrusel no reproduce GIF. Una foto fija sí; un GIF se ignora."""
+    if not path or is_gif_path(path):
+        return None
+    return _media(path)
+
+
+def _story_banner(char: Character, story: CharacterStory) -> str | None:
+    return (
+        _still(story.carousel_image_url)
+        or _still(story.cover_url)
+        or _still(char.carousel_image_url)
+        or _still(char.custom_avatar_url)
+        or char.render_url
+    )
+
+
+def _character_banner(char: Character) -> str | None:
+    return _still(char.carousel_image_url) or _still(char.custom_avatar_url) or char.render_url
 
 
 def _excerpt(text: str | None) -> str:
@@ -54,7 +67,7 @@ def _excerpt(text: str | None) -> str:
 
 def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
     kind = slide.kind
-    src = _media(slide.image_url)
+    src = _still(slide.image_url)
     title = (slide.title or "").strip()
     subtitle = (slide.subtitle or "").strip()
     kicker = (slide.kicker or "").strip()
@@ -73,7 +86,7 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
         if not row:
             return None
         story, char = row
-        src = src or _portrait(char, story) or FALLBACK_IMAGE
+        src = src or _story_banner(char, story) or FALLBACK_IMAGE
         own_title = title
         title = title or story.title
         # El corte de la historia manda en el carrusel, también si la diapositiva
@@ -93,7 +106,7 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
         )
         if not char or not has_public_sheet(char):
             return None
-        src = src or _portrait(char) or FALLBACK_IMAGE
+        src = src or _character_banner(char) or FALLBACK_IMAGE
         surname = visible_surname(char)
         display = f"{char.name}{(' ' + surname) if surname else ''}".strip()
         fields = merge_public_fields(char.public_fields)

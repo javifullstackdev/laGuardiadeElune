@@ -40,9 +40,9 @@ export default function StoryCoverButton({
       ) : (
         <div className="w-14 h-16 rounded-lg bg-gray-800 border border-gray-700" />
       )}
-      <div className="flex flex-col items-end gap-1">
+      <div className="flex flex-col items-start gap-1">
         <label className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 cursor-pointer">
-          {busy ? "..." : "Cambiar imagen"}
+          {busy ? "..." : url ? "Cambiar tarjeta" : "Imagen de la tarjeta"}
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp,image/gif"
@@ -55,6 +55,7 @@ export default function StoryCoverButton({
             }}
           />
         </label>
+        <p className="text-[11px] text-gray-500">Foto o GIF.</p>
         {error && <p className="text-[11px] text-red-400 max-w-[9rem] text-right">{error}</p>}
       </div>
     </div>

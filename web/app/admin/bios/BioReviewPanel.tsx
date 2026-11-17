@@ -184,7 +184,7 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
                 Si te convence la ficha, adjunta el arte generado. Se publica junto con el texto.
               </p>
               <label className="block text-xs text-gray-400">
-                Imagen completa (ficha y carrusel)
+                Tarjeta de la ficha (foto o GIF)
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/gif"

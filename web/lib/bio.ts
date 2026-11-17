@@ -46,6 +46,8 @@ export type BioPublished = {
   author_username: string;
   cover_url: string | null;
   face_url: string | null;
+  carousel_image_url?: string | null;
+  og_image_url?: string | null;
   biography: string | null;
   personality: string | null;
   appearance: string | null;

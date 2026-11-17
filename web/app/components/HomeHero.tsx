@@ -2,9 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type TransitionEvent } from "react";
-import HoverGif from "@/app/components/HoverGif";
 import type { HeroSlide } from "@/lib/hero";
 import { heroObjectPosition } from "@/lib/hero";
+import { isGif, stillFrameUrl } from "@/lib/images";
+
+function carouselSrc(src: string) {
+  return isGif(src) ? stillFrameUrl(src) : src;
+}
 import { useHomeIntro } from "./HomeReveal";
 
 function titleLines(slide: HeroSlide): string[] {
@@ -205,7 +209,6 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
         <div
           ref={bannerRef}
           id="home-carousel"
-          data-gif-hover
           className="relative rounded-2xl overflow-hidden h-[220px] md:h-[340px] lg:h-[50svh] touch-pan-y"
         >
           <div
@@ -217,11 +220,10 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
             onTransitionEnd={onTrackTransitionEnd}
           >
             {track.map((slide, i) => (
-              <HoverGif
+              <img
                 key={`${slide.id ?? slide.src}-strip-${i}`}
-                src={slide.src}
+                src={carouselSrc(slide.src)}
                 alt={slide.title || "Carrusel de inicio"}
-                live={i === offset}
                 draggable={false}
                 style={{ objectPosition: heroObjectPosition(slide) }}
                 className="h-full w-full min-w-full shrink-0 object-cover pointer-events-none select-none"
@@ -333,7 +335,6 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                     onMouseEnter={() => {
                       if (i !== index) goTo(i);
                     }}
-                    data-gif-hover
                     className={`group rounded-md overflow-hidden bg-gray-900 border transition-colors shadow-md block ${
                       centered ? "text-center" : "text-left"
                     } ${
@@ -343,8 +344,8 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                     }`}
                   >
                     <div className="relative aspect-[16/10] overflow-hidden">
-                      <HoverGif
-                        src={slide.src}
+                      <img
+                        src={carouselSrc(slide.src)}
                         alt={slide.title || "Miniatura del carrusel"}
                         style={{ objectPosition: heroObjectPosition(slide) }}
                         className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
