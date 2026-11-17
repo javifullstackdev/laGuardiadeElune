@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import HoverGif from "@/app/components/HoverGif";
 import { textToParagraphs } from "@/lib/posts";
 import { relationLabel } from "@/lib/relations";
 import { classLabel, raceLabel, factionLabel, factionColor, isHorde } from "@/lib/wow";
@@ -148,17 +149,17 @@ export default function WikiCharacterView({
   const lore = hasLore ? <LoreParchment char={char} actions={shareActions} /> : null;
 
   return (
-    <div className="relative text-white">
+    <div className="relative text-white" data-gif-hover>
       {char.cover_url && (
         <div
           className="fixed inset-y-0 -right-48 w-[58%] pointer-events-none select-none hidden min-[1440px]:block"
           style={{ zIndex: 0 }}
           aria-hidden
         >
-          <img
+          <HoverGif
             src={char.cover_url}
             alt={char.display_name}
-            className="absolute inset-0 w-full h-full object-cover object-[50%_5%]"
+            className="absolute inset-0 w-full h-full object-cover object-[50%_5%] pointer-events-none"
             style={{ opacity: 0.34 }}
           />
           <div
@@ -225,7 +226,7 @@ export default function WikiCharacterView({
                   <>
                     <div className="aspect-[4/5] overflow-hidden bg-gray-900">
                       {rel.cover_url ? (
-                        <img
+                        <HoverGif
                           src={rel.cover_url}
                           alt={rel.name}
                           className="w-full h-full object-cover object-top"
@@ -243,7 +244,7 @@ export default function WikiCharacterView({
                   </>
                 );
                 return (
-                  <li key={`${rel.name}-${rel.realm}`} className="rounded-lg overflow-hidden border border-gray-800 bg-gray-900/40">
+                  <li key={`${rel.name}-${rel.realm}`} data-gif-hover className="rounded-lg overflow-hidden border border-gray-800 bg-gray-900/40">
                     {rel.has_page && !preview ? (
                       <Link
                         href={`/personajes/${encodeURIComponent(rel.realm)}/${encodeURIComponent(rel.name)}`}

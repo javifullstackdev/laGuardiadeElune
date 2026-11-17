@@ -6,7 +6,7 @@ from app.services.blizzard import normalize
 from app.urls import static_url
 
 UPLOAD_DIR = Path("uploads/dungeons")
-IMAGE_EXTS = ("jpg", "jpeg", "png", "webp")
+IMAGE_EXTS = ("jpg", "jpeg", "png", "webp", "gif")
 
 CATALOG: list[dict] = [
     # Midnight temporada 2

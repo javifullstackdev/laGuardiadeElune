@@ -31,7 +31,7 @@ export default function CoverField({ defaultValue = "" }: { defaultValue?: strin
     <div className="space-y-2">
       <input
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         disabled={uploading}
         onChange={(e) => {
           const file = e.target.files?.[0];

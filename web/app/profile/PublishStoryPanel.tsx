@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import HoverGif from "@/app/components/HoverGif";
 import { storyExcerpt, storyHref, type StoryMine } from "@/lib/stories";
 import { RELATION_TYPES } from "@/lib/relations";
 
@@ -210,11 +211,11 @@ export default function PublishStoryPanel({
 
         <div>
           <label className="text-xs text-gray-500 block mb-1">Portada (opcional)</label>
-          <p className="text-xs text-gray-600 mb-2">JPEG, PNG o WebP. Máximo 5 MB.</p>
+          <p className="text-xs text-gray-600 mb-2">JPEG, PNG, WebP o GIF. Hasta 5 MB; un GIF, hasta 12 MB.</p>
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             onChange={(e) => onCover(e.target.files?.[0] ?? null)}
             className="block w-full text-sm text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-sm file:text-gray-200"
           />
@@ -324,7 +325,7 @@ export default function PublishStoryPanel({
             const open = openId === story.id;
             const excerpt = storyExcerpt(story);
             return (
-              <li key={story.id} className="rounded-lg border border-gray-800 overflow-hidden">
+              <li key={story.id} data-gif-hover className="rounded-lg border border-gray-800 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setOpenId(open ? null : story.id)}
@@ -332,7 +333,7 @@ export default function PublishStoryPanel({
                 >
                   <div className="w-14 h-14 shrink-0 rounded-md overflow-hidden bg-gray-800 border border-gray-700">
                     {story.cover_url ? (
-                      <img src={story.cover_url} alt="" className="w-full h-full object-cover object-top" />
+                      <HoverGif src={story.cover_url} alt="" className="w-full h-full object-cover object-top" />
                     ) : null}
                   </div>
                   <div className="min-w-0 flex-1">

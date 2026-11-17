@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HoverGif from "@/app/components/HoverGif";
 import { getCategoryStyle, postHref, postSubtitle, formatDate, type Post } from "@/lib/posts";
 
 export default function PostTile({ post, href }: { post: Post; href?: string }) {
@@ -9,11 +10,12 @@ export default function PostTile({ post, href }: { post: Post; href?: string }) 
       <Link
         href={href ?? postHref(post)}
         draggable={false}
+        data-gif-hover
         className="group flex flex-col h-full rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] hover:bg-[#1a2233] transition-colors select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
       >
         <div className="relative aspect-[16/11] overflow-hidden bg-[#111]">
           {post.cover_url ? (
-            <img
+            <HoverGif
               src={post.cover_url}
               alt={`Portada: ${post.title}`}
               draggable={false}

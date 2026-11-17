@@ -146,7 +146,7 @@ export default function ImageRequestModal({ open, kind, char, onClose, onSubmitt
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   multiple
                   className="hidden"
                   onChange={(e) => onFiles(Array.from(e.target.files ?? []))}

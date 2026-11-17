@@ -9,6 +9,7 @@ import {
   type TransitionEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import HoverGif from "@/app/components/HoverGif";
 import BreadcrumbNav, { type Crumb } from "@/app/components/BreadcrumbNav";
 import FactCycle from "@/app/personajes/FactCycle";
 import type { WikiNeighbor } from "@/lib/wiki";
@@ -30,16 +31,19 @@ const DISMISS_VELOCITY = 900;
 function CoverArt({
   url,
   label,
+  live = true,
 }: {
   url: string | null | undefined;
   label: string;
+  live?: boolean;
 }) {
   return (
     <>
       {url ? (
-        <img
+        <HoverGif
           src={url}
           alt={label}
+          live={live}
           draggable={false}
           className="absolute inset-0 w-full h-full object-cover object-[50%_18%] pointer-events-none select-none"
           style={{ opacity: 0.68 }}
@@ -478,6 +482,7 @@ export default function WikiMobileStage({
     <section
       ref={stageRef}
       id="wiki-cover"
+      data-gif-hover
       className="min-[1440px]:hidden relative h-[calc(100dvh-3rem)] overflow-hidden touch-pan-y"
     >
       <div
@@ -495,7 +500,7 @@ export default function WikiMobileStage({
             key={slide.key}
             className="relative h-full w-full min-w-full shrink-0"
           >
-            <CoverArt url={slide.coverUrl} label={slide.displayName} />
+            <CoverArt url={slide.coverUrl} label={slide.displayName} live={slide.current === true} />
 
             <div
               className={`absolute top-14 inset-x-0 bottom-0 z-20 flex flex-col justify-end px-4 md:px-8 pb-7 md:pb-10 transition-opacity duration-300 ${

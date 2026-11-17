@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HoverGif from "@/app/components/HoverGif";
 import type { MythicPlayer, MythicRole, MythicRun } from "@/lib/mythic-board";
 
 function fmtDate(iso: string) {
@@ -90,10 +91,10 @@ export default function MythicRunCard({ run }: { run: MythicRun }) {
       : run.players.map((player) => player.character_name || player.username).filter(Boolean);
 
   return (
-    <article className="rounded-xl border border-gray-800 bg-gray-900 overflow-hidden">
+    <article data-gif-hover className="rounded-xl border border-gray-800 bg-gray-900 overflow-hidden">
       <header className="relative min-h-[13rem] isolate">
         {run.dungeon_image_url ? (
-          <img
+          <HoverGif
             src={run.dungeon_image_url}
             alt=""
             className="absolute inset-0 w-full h-full object-cover"

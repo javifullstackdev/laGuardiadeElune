@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { permanentRedirect } from "next/navigation";
 import { getCategoryStyle, formatDate } from "@/lib/posts";
+import HoverGif from "@/app/components/HoverGif";
 import Breadcrumb from "@/app/components/Breadcrumb";
 import ShareBar from "../../components/ShareBar";
 import ReactMarkdown from "react-markdown";
@@ -102,8 +103,8 @@ export default async function PostPage({
         )}
 
         {post.cover_url && (
-          <div className="mb-8 overflow-hidden rounded-2xl border border-gray-800">
-            <img
+          <div data-gif-hover className="mb-8 overflow-hidden rounded-2xl border border-gray-800">
+            <HoverGif
               src={post.cover_url}
               alt={`Portada: ${post.title}`}
               className="w-full max-h-[min(65svh,720px)] object-cover"

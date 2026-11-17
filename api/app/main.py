@@ -1,7 +1,11 @@
 import asyncio
 import logging
+import mimetypes
 import os
 from pathlib import Path
+
+mimetypes.add_type("image/gif", ".gif")
+mimetypes.add_type("image/webp", ".webp")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

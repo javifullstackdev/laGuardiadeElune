@@ -66,7 +66,7 @@ export default function DungeonCovers({ onUploaded }: { onUploaded?: () => void 
                 {busy === item.slug ? "Subiendo…" : item.custom ? "Cambiar imagen" : "Subir imagen"}
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/webp"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   className="hidden"
                   disabled={busy === item.slug}
                   onChange={(e) => {

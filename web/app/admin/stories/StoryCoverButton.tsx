@@ -45,7 +45,7 @@ export default function StoryCoverButton({
           {busy ? "..." : "Cambiar imagen"}
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/gif"
             disabled={busy}
             className="hidden"
             onChange={(e) => {

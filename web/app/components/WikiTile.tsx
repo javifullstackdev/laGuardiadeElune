@@ -1,4 +1,5 @@
 import Link from "next/link";
+import HoverGif from "@/app/components/HoverGif";
 import type { WikiListItem } from "@/lib/wiki";
 
 export default function WikiTile({ item, tabbable = true }: { item: WikiListItem; tabbable?: boolean }) {
@@ -7,11 +8,12 @@ export default function WikiTile({ item, tabbable = true }: { item: WikiListItem
       href={`/personajes/${encodeURIComponent(item.realm)}/${encodeURIComponent(item.name)}`}
       tabIndex={tabbable ? undefined : -1}
       draggable={false}
+      data-gif-hover
       className="group relative flex flex-col justify-end h-full min-h-[168px] md:min-h-[42vw] lg:min-h-[168px] rounded-[4px] overflow-hidden border border-white/10 bg-[#111827] select-none [-webkit-touch-callout:none] [-webkit-user-drag:none] sm:hover:-translate-y-0.5 sm:hover:shadow-[0_8px_20px_rgba(0,0,0,0.28)] transition-[transform,box-shadow] duration-300 ease-out"
     >
       {item.cover_url && (
         <div className="absolute inset-y-0 right-0 w-[58%] pointer-events-none select-none" aria-hidden>
-          <img
+          <HoverGif
             src={item.cover_url}
             alt={item.display_name}
             draggable={false}

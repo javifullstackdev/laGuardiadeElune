@@ -31,6 +31,7 @@ MEDIA_TYPES = {
     ".jpeg": "image/jpeg",
     ".png": "image/png",
     ".webp": "image/webp",
+    ".gif": "image/gif",
 }
 
 
