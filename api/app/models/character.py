@@ -48,7 +48,9 @@ class Character(Base):
     blizzard_character_id = Column(BigInteger, nullable=True)  # para render de armería
     render_url            = Column(String(1000), nullable=True) # cuerpo entero (main / main-raw)
     face_url              = Column(String(1000), nullable=True) # cara Blizzard (avatar / inset)
-    custom_avatar_url     = Column(String(500), nullable=True) # imagen completa aprobada (ficha/carrusel)
+    custom_avatar_url     = Column(String(500), nullable=True) # imagen de la tarjeta (foto o GIF)
+    carousel_image_url    = Column(String(1000), nullable=True) # foto fija del carrusel
+    og_image_url          = Column(String(1000), nullable=True) # foto fija al compartir
     pending_avatar_url    = Column(String(500), nullable=True) # imagen completa pendiente
     custom_face_url       = Column(String(500), nullable=True) # cara propia aprobada (ranking)
     pending_face_url      = Column(String(500), nullable=True) # cara propia pendiente

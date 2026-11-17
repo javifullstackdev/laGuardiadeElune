@@ -67,6 +67,8 @@ class BioPublishedOut(BaseModel):
     author_username: str
     cover_url: str | None = None
     face_url: str | None = None
+    carousel_image_url: str | None = None
+    og_image_url: str | None = None
     biography: str | None = None
     personality: str | None = None
     appearance: str | None = None

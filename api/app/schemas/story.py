@@ -87,6 +87,7 @@ class StoryPublic(BaseModel):
     character_faction: str | None = None
     character_race: str | None = None
     cover_url: str | None = None
+    carousel_image_url: str | None = None
     og_image_url: str | None = None
     card_lines: list[str] = []
     author_username: str

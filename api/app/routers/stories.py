@@ -99,6 +99,7 @@ def _to_public(db: Session, story: CharacterStory, char: Character, author: User
         character_faction=char.faction,
         character_race=_race_value(char),
         cover_url=_cover_url(story, char),
+        carousel_image_url=static_url(story.carousel_image_url),
         og_image_url=_og_image_url(story),
         card_lines=_card_lines(story.card_title),
         author_username=author.username,
@@ -210,9 +211,12 @@ def get_story(
     return _to_public(db, story, char, author)
 
 
-async def _save_cover(story_id, file: UploadFile) -> str:
+async def _save_cover(story_id, file: UploadFile, *, allow_gif: bool = True) -> str:
     content, ext = await read_image(
-        file, max_bytes=MAX_COVER_SIZE, too_big="La portada no puede superar 5 MB"
+        file,
+        max_bytes=MAX_COVER_SIZE,
+        too_big="La imagen no puede superar 5 MB",
+        allow_gif=allow_gif,
     )
     filename = f"{story_id}_{uuid.uuid4().hex}.{ext}"
     path = STORY_UPLOAD_DIR / filename
@@ -516,11 +520,48 @@ async def replace_story_og_image(
         raise HTTPException(409, "Solo se puede cambiar la imagen de una historia publicada")
     if not image.filename:
         raise HTTPException(400, "Falta la imagen")
-    new_path = await _save_cover(story.id, image)
+    new_path = await _save_cover(story.id, image, allow_gif=False)
     _remove_stored_file(story.og_image_url)
     story.og_image_url = new_path
     db.commit()
     return {"og_image_url": _og_image_url(story)}
+
+
+@router.post("/{story_id}/carousel-image")
+async def replace_story_carousel_image(
+    story_id: str,
+    image: UploadFile = File(...),
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Foto fija del carrusel. No cambia la tarjeta ni la imagen al compartir."""
+    story = db.query(CharacterStory).filter(CharacterStory.id == story_id).first()
+    if not story:
+        raise HTTPException(404, "Historia no encontrada")
+    if story.status != "approved":
+        raise HTTPException(409, "Solo se puede cambiar la imagen de una historia publicada")
+    if not image.filename:
+        raise HTTPException(400, "Falta la imagen")
+    new_path = await _save_cover(story.id, image, allow_gif=False)
+    _remove_stored_file(story.carousel_image_url)
+    story.carousel_image_url = new_path
+    db.commit()
+    return {"carousel_image_url": static_url(story.carousel_image_url)}
+
+
+@router.delete("/{story_id}/carousel-image", status_code=204)
+def clear_story_carousel_image(
+    story_id: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    story = db.query(CharacterStory).filter(CharacterStory.id == story_id).first()
+    if not story:
+        raise HTTPException(404, "Historia no encontrada")
+    _remove_stored_file(story.carousel_image_url)
+    story.carousel_image_url = None
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.delete("/{story_id}/og-image", status_code=204)
@@ -725,6 +766,7 @@ def delete_story(
         ContentLike.target_id == story.id,
     ).delete(synchronize_session=False)
     _remove_cover_file(story)
+    _remove_stored_file(story.carousel_image_url)
     _remove_stored_file(story.og_image_url)
     db.delete(story)
     db.commit()

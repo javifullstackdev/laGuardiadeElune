@@ -60,7 +60,7 @@ export async function generateMetadata({
     title: char.display_name,
     description,
     path: `/personajes/${encodeURIComponent(char.realm)}/${encodeURIComponent(char.name)}`,
-    image: char.cover_url,
+    image: char.og_image_url || char.cover_url,
     type: "profile",
   });
 }

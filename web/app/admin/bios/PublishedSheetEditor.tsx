@@ -9,6 +9,8 @@ type Draft = {
   appearance: string;
   full: File | null;
   face: File | null;
+  carousel: File | null;
+  share: File | null;
 };
 
 function sheetHref(item: BioPublished) {
@@ -40,6 +42,8 @@ export default function PublishedSheetEditor({ initial }: { initial: BioPublishe
       appearance: item.appearance ?? "",
       full: null,
       face: null,
+      carousel: null,
+      share: null,
     };
   }
 
@@ -61,6 +65,8 @@ export default function PublishedSheetEditor({ initial }: { initial: BioPublishe
     body.append("appearance", draft.appearance);
     if (draft.full) body.append("full_file", draft.full);
     if (draft.face) body.append("face_file", draft.face);
+    if (draft.carousel) body.append("carousel_file", draft.carousel);
+    if (draft.share) body.append("og_file", draft.share);
     const res = await fetch(`/api/admin/bios/${item.character_id}/update`, { method: "POST", body });
     const data = await res.json().catch(() => ({}));
     setLoading(null);
@@ -136,7 +142,7 @@ export default function PublishedSheetEditor({ initial }: { initial: BioPublishe
 
                   <div className="grid sm:grid-cols-2 gap-4">
                     <label className="block text-xs text-gray-400 space-y-2">
-                      <span>Imagen de la ficha</span>
+                      <span>Tarjeta (foto o GIF)</span>
                       {item.cover_url && (
                         <img
                           src={item.cover_url}
@@ -170,8 +176,44 @@ export default function PublishedSheetEditor({ initial }: { initial: BioPublishe
                       />
                     </label>
                   </div>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <label className="block text-xs text-gray-400 space-y-2">
+                      <span>Carrusel (foto fija)</span>
+                      {item.carousel_image_url && (
+                        <img
+                          src={item.carousel_image_url}
+                          alt=""
+                          className="w-full max-h-32 rounded-lg object-cover bg-black/40 border border-gray-800"
+                        />
+                      )}
+                      <input
+                        key={`${item.character_id}-carousel-${fileTick[item.character_id] ?? 0}`}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => patch(item.character_id, item, "carousel", e.target.files?.[0] ?? null)}
+                        className="block w-full text-xs text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-xs file:text-gray-200"
+                      />
+                    </label>
+                    <label className="block text-xs text-gray-400 space-y-2">
+                      <span>Al compartir (foto fija)</span>
+                      {item.og_image_url && (
+                        <img
+                          src={item.og_image_url}
+                          alt=""
+                          className="w-full max-h-32 rounded-lg object-cover bg-black/40 border border-gray-800"
+                        />
+                      )}
+                      <input
+                        key={`${item.character_id}-share-${fileTick[item.character_id] ?? 0}`}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => patch(item.character_id, item, "share", e.target.files?.[0] ?? null)}
+                        className="block w-full text-xs text-gray-400 file:mr-3 file:rounded-lg file:border-0 file:bg-gray-800 file:px-3 file:py-1.5 file:text-xs file:text-gray-200"
+                      />
+                    </label>
+                  </div>
                   <p className="text-[11px] text-gray-500">
-                    Si no eliges un archivo, se queda la imagen que ya está publicada.
+                    La tarjeta puede ser un GIF y se mueve al pasar el ratón. El carrusel y WhatsApp o X usan una foto fija. Si no eliges un archivo, se queda la imagen que ya está publicada.
                   </p>
 
                   <textarea

@@ -21,7 +21,7 @@ from app.schemas.bio import (
     SurnameReviewOut,
 )
 from app.services.bio_questions import QUESTIONS, formatted_answers, has_public_sheet
-from app.services.character_images import SHEET_SLOTS, publish_character_image, reference_paths
+from app.services.character_images import SHEET_SLOTS, publish_character_image, reference_paths, store_still_image
 from app.services.missions import grant_ready
 from app.services.notifications import notify
 from app.urls import static_url
@@ -101,6 +101,8 @@ def _published_out(char: Character, author: User) -> BioPublishedOut:
         author_username=author.username,
         cover_url=_cover(char),
         face_url=_face(char),
+        carousel_image_url=static_url(char.carousel_image_url),
+        og_image_url=static_url(char.og_image_url),
         biography=char.biography,
         personality=char.personality,
         appearance=char.appearance,
@@ -324,6 +326,8 @@ async def update_published_bio(
     appearance: str | None = Form(None),
     full_file: UploadFile | None = File(None),
     face_file: UploadFile | None = File(None),
+    carousel_file: UploadFile | None = File(None),
+    og_file: UploadFile | None = File(None),
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
@@ -350,6 +354,12 @@ async def update_published_bio(
     if face_file is not None and face_file.filename:
         await publish_character_image(char, face_file, "face")
         _close_requests(db, char, "face")
+        replaced_image = True
+    if carousel_file is not None and carousel_file.filename:
+        await store_still_image(char, carousel_file, "carousel_image_url")
+        replaced_image = True
+    if og_file is not None and og_file.filename:
+        await store_still_image(char, og_file, "og_image_url")
         replaced_image = True
     char.biography = text
     char.personality = (personality or "").strip() or None

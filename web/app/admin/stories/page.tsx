@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import StoryReviewPanel from "./StoryReviewPanel";
 import StoryBodyField from "./StoryBodyField";
 import StoryCoverButton from "./StoryCoverButton";
+import StoryCarouselButton from "./StoryCarouselButton";
 import StoryOgButton from "./StoryOgButton";
 import StoryHeadingField from "./StoryHeadingField";
 import StoryDeleteButton from "./StoryDeleteButton";
@@ -57,7 +58,7 @@ export default async function AdminStoriesPage() {
         <section>
           <h2 className="text-lg font-semibold mb-1">Publicadas</h2>
           <p className="text-sm text-gray-500 mb-5">
-            Puedes cambiar el título, el subtítulo, el enlace, el texto, la portada y quién aparece. La imagen al compartir es la que ven WhatsApp y X, y no sustituye a la portada. Si cambias el enlace, el anterior sigue abriendo la historia. Solo el Eremita o un administrador puede eliminarla.
+            Puedes cambiar el título, el subtítulo, el enlace, el texto y quién aparece. La tarjeta admite foto o GIF. El carrusel y la imagen de WhatsApp y X son fotos fijas, y no sustituyen a la tarjeta. Si cambias el enlace, el anterior sigue abriendo la historia. Solo el Eremita o un administrador puede eliminarla.
           </p>
           {publishedStories.length === 0 ? (
             <p className="text-gray-500">No hay historias publicadas.</p>
@@ -91,10 +92,16 @@ export default async function AdminStoriesPage() {
                       appearance={story.appearance}
                     />
                     <StoryCastField storyId={story.id} relations={story.relations} />
-                    <StoryOgButton storyId={story.id} ogImageUrl={story.og_image_url ?? null} />
+                    <div className="grid gap-4 pt-1 lg:grid-cols-3">
+                      <StoryCoverButton storyId={story.id} coverUrl={story.cover_url} />
+                      <StoryCarouselButton
+                        storyId={story.id}
+                        carouselImageUrl={story.carousel_image_url ?? null}
+                      />
+                      <StoryOgButton storyId={story.id} ogImageUrl={story.og_image_url ?? null} />
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 pt-0.5">
-                    <StoryCoverButton storyId={story.id} coverUrl={story.cover_url} />
                     <StoryDeleteButton storyId={story.id} />
                   </div>
                 </li>

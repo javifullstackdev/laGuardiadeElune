@@ -53,7 +53,7 @@ export function useGroupHover(
 
 type Props = ImgHTMLAttributes<HTMLImageElement> & {
   src: string;
-  /** En un carrusel, solo la diapositiva visible debe arrancar. */
+  /** Si es false, se queda en el primer fotograma. */
   live?: boolean;
 };
 

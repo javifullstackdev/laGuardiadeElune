@@ -17,6 +17,7 @@ class CharacterStory(Base):
     slug = Column(String(255), unique=True, index=True, nullable=True)
     slug_aliases = Column(ARRAY(String(255)), nullable=False, server_default="{}")
     cover_url = Column(String(1000), nullable=True)
+    carousel_image_url = Column(String(1000), nullable=True)
     og_image_url = Column(String(1000), nullable=True)
     biography = Column(Text, nullable=True)
     personality = Column(Text, nullable=True)

@@ -84,6 +84,25 @@ async def store_sheet_image(char: Character, file: UploadFile, slot: str) -> str
     return relative
 
 
+async def store_still_image(char: Character, file: UploadFile, column: str) -> str:
+    """Foto fija del carrusel o de la vista previa al compartir. No admite GIF."""
+    if column not in ("carousel_image_url", "og_image_url"):
+        raise HTTPException(400, "Esa imagen no existe")
+    content, ext = await read_image(
+        file,
+        max_bytes=MAX_IMAGE_SIZE,
+        too_big="La imagen no puede superar 8 MB.",
+        allow_gif=False,
+    )
+    prefix = "carousel" if column == "carousel_image_url" else "share"
+    filename = f"{prefix}_{char.id}_{uuid.uuid4().hex}.{ext}"
+    (UPLOAD_DIR / filename).write_bytes(content)
+    relative = f"avatars/{filename}"
+    _unlink(getattr(char, column))
+    setattr(char, column, relative)
+    return relative
+
+
 async def publish_character_image(char: Character, file: UploadFile, kind: str) -> str:
     """Guarda el arte generado y lo deja público en la ficha (full) o en el ranking (face)."""
     if kind not in ("face", "full"):

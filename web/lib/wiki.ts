@@ -82,6 +82,7 @@ export type WikiCharacter = {
   title: string | null;
   prefix_title?: string | null;
   cover_url: string | null;
+  og_image_url?: string | null;
   biography: string | null;
   personality: string | null;
   appearance: string | null;
