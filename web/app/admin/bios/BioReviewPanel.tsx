@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { BioPending } from "@/lib/bio";
+import CharacterSurname from "./CharacterSurname";
+import PlayerImageGallery from "./PlayerImageGallery";
 
 export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
   const [items, setItems] = useState(pending);
@@ -40,15 +42,23 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
 
   async function handle(item: BioPending, action: "publish" | "reject" | "decline") {
     const draft = drafts[item.character_id];
-    if (action === "decline" && !(draft?.reason ?? "").trim()) {
-      setError("Escribe el motivo antes de rechazar la ficha.");
+    const note = (draft?.reason ?? "").trim();
+    if (action !== "publish" && !note) {
+      setError(action === "decline" ? "Escribe el motivo antes de rechazar la ficha." : "Escribe qué tiene que cambiar.");
       return;
+    }
+    if (action === "reject") {
+      const question =
+        item.bio_status === "published"
+          ? `¿Pedir cambios en la ficha de ${item.character_name}? La ficha pública se queda como está. El jugador verá tu mensaje y podrá corregirla.`
+          : `¿Pedir cambios en la ficha de ${item.character_name}? Vuelve a borrador. El jugador verá tu mensaje y podrá enviarla de nuevo.`;
+      if (!window.confirm(question)) return;
     }
     if (action === "decline") {
       const question =
         item.bio_status === "published"
-          ? `¿Rechazar los cambios de ${item.character_name}? La ficha pública se queda como está y el jugador lo verá en el buzón.`
-          : `¿Rechazar la ficha de ${item.character_name}? No se publica y el jugador lo verá en el buzón.`;
+          ? `¿Rechazar los cambios de ${item.character_name}? La ficha pública se queda como está. El jugador verá el motivo y podrá corregirla.`
+          : `¿Rechazar la ficha de ${item.character_name}? No se publica. El jugador verá el motivo y podrá reescribirla.`;
       if (!window.confirm(question)) return;
     }
     setLoading(`${item.character_id}-${action}`);
@@ -115,6 +125,20 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
               )}
             </div>
 
+            <CharacterSurname
+              characterId={item.character_id}
+              game={item.game}
+              surname={item.surname}
+              allowed={item.surname_allowed}
+              onChange={(allowed) =>
+                setItems((prev) =>
+                  prev.map((row) =>
+                    row.character_id === item.character_id ? { ...row, surname_allowed: allowed } : row,
+                  ),
+                )
+              }
+            />
+
             <div className="space-y-3">
               <h3 className="text-xs uppercase tracking-wider text-gray-500">Respuestas del jugador</h3>
               {item.answers.length === 0 ? (
@@ -129,26 +153,11 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
               )}
             </div>
 
-            {(item.sheet_images ?? []).length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-xs uppercase tracking-wider text-gray-500">Imágenes in-game de la ficha</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {item.sheet_images?.map((image) => (
-                    <div key={image.slot} className="space-y-2">
-                      <a
-                        href={image.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block rounded-lg overflow-hidden border border-gray-700 bg-black/40"
-                      >
-                        <img src={image.url} alt="" className="w-full h-36 object-contain" />
-                      </a>
-                      <p className="text-xs text-gray-400">{image.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <PlayerImageGallery
+              characterId={item.character_id}
+              sheetImages={item.sheet_images}
+              storyImages={item.story_images}
+            />
 
             <div className="space-y-3">
               <h3 className="text-xs uppercase tracking-wider text-gray-500">Capturas in-game</h3>
@@ -230,9 +239,12 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
                 value={draft.reason}
                 onChange={(e) => patch(item.character_id, "reason", e.target.value)}
                 rows={2}
-                placeholder="Motivo. Obligatorio si rechazas la ficha."
+                placeholder="Qué tiene que cambiar, o por qué no se publica."
                 className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600"
               />
+              <p className="text-xs text-gray-600">
+                Obligatorio para pedir cambios o rechazar. El jugador lo lee en el buzón y en la ficha.
+              </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -247,7 +259,7 @@ export default function BioReviewPanel({ pending }: { pending: BioPending[] }) {
               <button
                 type="button"
                 onClick={() => handle(item, "reject")}
-                disabled={!!loading}
+                disabled={!!loading || !draft.reason.trim()}
                 className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm disabled:opacity-50"
               >
                 {loading === `${item.character_id}-reject` ? "..." : "Pedir cambios"}

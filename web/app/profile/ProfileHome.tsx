@@ -208,7 +208,9 @@ export default function ProfileHome({
                             </Link>
                           ) : mission.character || hasCharacter ? (
                             <button type="button" onClick={() => onOpenMission(mission)} className={actionClass}>
-                              {MISSION_COPY[mission.key]?.open}
+                              {mission.key === "publish_first_story" && mission.subject
+                                ? "Corregir la historia"
+                                : MISSION_COPY[mission.key]?.open}
                             </button>
                           ) : (
                             <Link href="/characters" className={actionClass}>

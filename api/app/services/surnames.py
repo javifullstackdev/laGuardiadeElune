@@ -8,6 +8,8 @@ def visible_surname(char) -> str | None:
     text = raw.strip()
     if not text:
         return None
+    if getattr(char, "game", "retail") == "forever":
+        return text
     if getattr(char, "surname_allowed", True) is False:
         return None
     return text

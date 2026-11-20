@@ -11,6 +11,7 @@ import ProfileHome, { PROFILE_SECTIONS, type ProfileSection } from "./ProfileHom
 import FichaPreview from "./FichaPreview";
 import ClaimsInbox from "./ClaimsInbox";
 import Mailbox from "./Mailbox";
+import EremitaNote from "./EremitaNote";
 import ImageRequestModal from "./ImageRequestModal";
 import { mergePublicFields, PUBLIC_FIELD_LABELS, type PublicFields, type WikiCharacter } from "@/lib/wiki";
 import { type BioAnswers } from "@/lib/bio";
@@ -151,6 +152,30 @@ type CharPatch = Partial<Pick<Character,
   "bio_answers" | "bio_answers_pending" | "bio_rejection_reason" | "is_verified"
 >>;
 
+export type ProfileFocus = {
+  seccion?: string;
+  personaje?: string;
+  reino?: string;
+  historia?: string;
+};
+
+const PROFILE_SECTION_KEYS = new Set(PROFILE_SECTIONS.map((section) => section.key));
+
+function initialSection(focus?: ProfileFocus): "inicio" | ProfileSection {
+  if (focus?.seccion && PROFILE_SECTION_KEYS.has(focus.seccion as ProfileSection)) {
+    return focus.seccion as ProfileSection;
+  }
+  return "inicio";
+}
+
+function initialCharacter(chars: Character[], focus?: ProfileFocus): Character | null {
+  if (focus?.personaje && focus.reino) {
+    const match = chars.find((c) => c.name === focus.personaje && c.realm === focus.reino);
+    if (match) return match;
+  }
+  return chars.find((c) => c.is_main) ?? chars[0] ?? null;
+}
+
 // ── Componente principal ───────────────────────────────────────────────────
 
 export default function ProfileClient({
@@ -160,6 +185,7 @@ export default function ProfileClient({
   missions,
   bnetTokenExpired = false,
   nonce,
+  focus,
 }: {
   user: User;
   characters: Character[];
@@ -167,17 +193,23 @@ export default function ProfileClient({
   missions: Mission[];
   bnetTokenExpired?: boolean;
   nonce?: string;
+  focus?: ProfileFocus;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [characters, setCharacters] = useState<Character[]>(initialChars);
-  const [selected, setSelected] = useState<Character | null>(
-    () => initialChars.find((c) => c.is_main) ?? initialChars[0] ?? null,
-  );
-  const [tab, setTab] = useState<DetailTab>("inicio");
+  const [selected, setSelected] = useState<Character | null>(() => initialCharacter(initialChars, focus));
+  const [tab, setTab] = useState<DetailTab>(() => initialSection(focus));
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<string | null>(null);
+  const openStoryId =
+    focus?.historia &&
+    selected &&
+    focus.personaje === selected.name &&
+    focus.reino === selected.realm
+      ? focus.historia
+      : undefined;
 
   useEffect(() => {
     setCharacters(initialChars);
@@ -417,6 +449,7 @@ export default function ProfileClient({
               onFavoritePrefixChange={(t) => handleFavoritePrefixChange(selected, t)}
               onDetailsPatch={(p) => handleDetailsPatch(selected, p)}
               onOpenCharacters={() => setSidebarOpen(true)}
+              openStoryId={openStoryId}
               nonce={nonce}
               home={
                 <ProfileHome
@@ -562,7 +595,7 @@ type DetailTab = "inicio" | ProfileSection;
 
 function CharacterDetail({
   char, transactions, points, onSetMain, isPending, onFavoriteTitleChange, onFavoritePrefixChange, onDetailsPatch,
-  onOpenCharacters, tab, onTabChange, home, nonce,
+  onOpenCharacters, tab, onTabChange, home, nonce, openStoryId,
 }: {
   tab: DetailTab;
   onTabChange: (tab: DetailTab) => void;
@@ -577,6 +610,7 @@ function CharacterDetail({
   onDetailsPatch: (p: CharPatch) => void;
   onOpenCharacters?: () => void;
   nonce?: string;
+  openStoryId?: string;
 }) {
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -829,7 +863,7 @@ function CharacterDetail({
                         onFavoritePrefixChange={onFavoritePrefixChange}
                       />
                     )}
-                    {t.key === "stories" && <StoriesTab char={char} />}
+                    {t.key === "stories" && <StoriesTab char={char} openStoryId={openStoryId} />}
                     {t.key === "relations" && <RelationsTab char={char} />}
                     {t.key === "professions" && (
                       <ProfessionsTab char={char} color={color} />
@@ -1057,7 +1091,7 @@ function buildFichaPreview(char: Character, biography: string): WikiCharacter {
     id: char.id,
     name: char.name,
     realm: char.realm,
-    display_name: `${char.name}${char.surname && char.surname_allowed !== false ? ` ${char.surname}` : ""}`.trim(),
+    display_name: `${char.name}${char.surname && (char.game === "forever" || char.surname_allowed !== false) ? ` ${char.surname}` : ""}`.trim(),
     title: fields.title ? (char.favorite_title?.name ?? null) : null,
     prefix_title: fields.prefix ? (char.favorite_prefix?.name ?? char.prefix_title) : null,
     cover_url: char.avatar_url,
@@ -1242,7 +1276,7 @@ function BioTab({
   return (
     <div className="flex flex-col gap-4 max-w-2xl">
       <p className="text-sm text-gray-400">
-        Escribe la historia del personaje. Para enviarla al Eremita hacen falta también tres imágenes in-game: el cuerpo completo de frente, el cuerpo completo de espaldas y el rostro.
+        Escribe la historia del personaje. Para enviarla al Eremita hacen falta también tres imágenes in-game: el cuerpo completo de frente, el cuerpo completo de espaldas y el rostro. Esas imágenes se quedan guardadas: si pide cambios, no hace falta volver a subirlas.
       </p>
       <div className="relative">
         <label className="text-xs text-gray-500 block mb-1">Historia</label>
@@ -1326,20 +1360,28 @@ function BioTab({
       )}
       {error && <p className="shrink-0 text-red-400 text-sm">{error}</p>}
       {!answersLocked && char.bio_status === "rejected" && (
-        <p className="shrink-0 text-sm text-red-300">
-          El Eremita ha rechazado esta ficha. Puedes reescribirla y volver a enviarla.
-          {char.bio_rejection_reason ? ` ${char.bio_rejection_reason}` : ""}
-        </p>
+        <EremitaNote
+          tone="red"
+          title="El Eremita ha rechazado esta ficha"
+          reason={char.bio_rejection_reason}
+          next="No se publica. Reescríbela y pulsa Enviar de nuevo."
+        />
       )}
       {!answersLocked && char.bio_status === "draft" && char.bio_rejection_reason && (
-        <p className="shrink-0 text-sm text-amber-300">
-          El Eremita te ha pedido cambios. {char.bio_rejection_reason}
-        </p>
+        <EremitaNote
+          tone="amber"
+          title="El Eremita te pide cambios"
+          reason={char.bio_rejection_reason}
+          next="Corrígela y pulsa Enviar de nuevo."
+        />
       )}
       {!answersLocked && char.bio_status === "published" && char.bio_rejection_reason && (
-        <p className="shrink-0 text-sm text-amber-300">
-          El Eremita no ha publicado los últimos cambios. {char.bio_rejection_reason}
-        </p>
+        <EremitaNote
+          tone="amber"
+          title="El Eremita no ha publicado los últimos cambios"
+          reason={char.bio_rejection_reason}
+          next="La ficha pública sigue igual. Corrígelos y pulsa Enviar de nuevo."
+        />
       )}
       {answersLocked && (
         <p className="shrink-0 text-sm text-amber-300">
@@ -1364,7 +1406,11 @@ function BioTab({
           disabled={sending || answersLocked || biography.trim().length < 40 || !imagesReady}
           className={btn}
         >
-          {sending ? "Enviando..." : "Enviar al Eremita"}
+          {sending
+            ? "Enviando..."
+            : char.bio_status === "rejected" || char.bio_rejection_reason
+              ? "Enviar de nuevo"
+              : "Enviar al Eremita"}
         </button>
       </div>
       {previewOpen && (
@@ -1540,7 +1586,7 @@ function DetailsTab({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <LoreInput label="Apellido" placeholder="(opcional en retail)" value={surname} onChange={setSurname} />
-          {char.surname && char.surname_allowed === false && (
+          {char.game !== "forever" && char.surname && char.surname_allowed === false && (
             <p className="text-[11px] text-amber-500/90 mt-1">
               El Eremita no lo ha dado por válido. No se muestra en público.
             </p>
@@ -1681,8 +1727,8 @@ function TitlesTab({
   );
 }
 
-function StoriesTab({ char }: { char: Character }) {
-  return <PublishStoryPanel name={char.name} realm={char.realm} />;
+function StoriesTab({ char, openStoryId }: { char: Character; openStoryId?: string }) {
+  return <PublishStoryPanel name={char.name} realm={char.realm} initialOpenId={openStoryId} />;
 }
 
 function RelationsTab({ char }: { char: Character }) {
@@ -2462,8 +2508,8 @@ function CharacterList({
                         <p className="font-semibold truncate text-sm" style={{ color }}>
                           {char.name}
                           {char.surname && (
-                            <span className={`font-normal ${char.surname_allowed === false ? "text-gray-500" : "opacity-70"}`}>
-                              {" "}{char.surname}{char.surname_allowed === false ? " (oculto)" : ""}
+                            <span className={`font-normal ${char.game !== "forever" && char.surname_allowed === false ? "text-gray-500" : "opacity-70"}`}>
+                              {" "}{char.surname}{char.game !== "forever" && char.surname_allowed === false ? " (oculto)" : ""}
                             </span>
                           )}
                           {char.is_main && <span className="ml-1 text-xs text-yellow-400 font-normal opacity-80">(main)</span>}

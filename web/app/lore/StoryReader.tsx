@@ -148,9 +148,19 @@ function ComfortTitle({ title }: { title: string }) {
 
 function StatusBadge({ status }: { status: StoryPublic["status"] }) {
   if (!status || status === "approved") return null;
+  const rejected = status === "rejected";
+  const label =
+    status === "pending"
+      ? "Pendiente de revisión"
+      : status === "changes_requested"
+        ? "Cambios pedidos"
+        : "Rechazada";
+  const tone = rejected
+    ? "border-red-500/30 bg-red-500/15 text-red-300"
+    : "border-amber-500/30 bg-amber-500/15 text-amber-300";
   return (
-    <span className="text-xs px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/15 text-amber-300 shrink-0">
-      {status === "pending" ? "Pendiente de revisión" : "Rechazada"}
+    <span className={`text-xs px-2 py-0.5 rounded-full border shrink-0 ${tone}`}>
+      {label}
     </span>
   );
 }

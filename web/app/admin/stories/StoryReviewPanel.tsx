@@ -7,17 +7,37 @@ import StoryCastField from "./StoryCastField";
 export default function StoryReviewPanel({ pending }: { pending: StoryPending[] }) {
   const [items, setItems] = useState(pending);
   const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [reason, setReason] = useState<Record<string, string>>({});
 
-  async function handle(item: StoryPending, action: "approve" | "reject", override = false) {
+  async function handle(item: StoryPending, action: "approve" | "reject" | "request-changes", override = false) {
+    const note = (reason[item.id] ?? "").trim();
+    if (action !== "approve" && !note) {
+      setError(action === "reject" ? "Escribe por qué rechazas la historia." : "Escribe qué tiene que cambiar.");
+      return;
+    }
+    if (action === "request-changes") {
+      const question = `¿Pedir cambios en «${item.title}»? El jugador verá tu mensaje en el buzón y podrá corregir la historia.`;
+      if (!window.confirm(question)) return;
+    }
+    if (action === "reject") {
+      const question = `¿Rechazar «${item.title}»? No se publica. El jugador verá el motivo y podrá reescribirla.`;
+      if (!window.confirm(question)) return;
+    }
     setLoading(`${item.id}-${action}`);
+    setError(null);
     const res = await fetch(`/api/admin/stories/${item.id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, reason: reason[item.id] ?? null, override }),
+      body: JSON.stringify({ action, reason: note || null, override }),
     });
+    const data = await res.json().catch(() => ({}));
     setLoading(null);
-    if (res.ok) setItems((prev) => prev.filter((i) => i.id !== item.id));
+    if (!res.ok) {
+      setError(typeof data.detail === "string" ? data.detail : "No se pudo guardar la historia.");
+      return;
+    }
+    setItems((prev) => prev.filter((i) => i.id !== item.id));
   }
 
   if (items.length === 0) {
@@ -26,83 +46,98 @@ export default function StoryReviewPanel({ pending }: { pending: StoryPending[] 
 
   return (
     <div className="space-y-6">
-      {items.map((item) => (
-        <article key={item.id} className="bg-gray-900 rounded-xl border border-gray-800 p-5">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div className="min-w-0">
-              <h2 className="font-bold text-lg">{item.title}</h2>
-              {item.subtitle ? (
-                <p className="text-[11px] uppercase tracking-[0.16em] text-gray-400 mt-0.5">{item.subtitle}</p>
-              ) : null}
-              <p className="text-sm text-gray-400">
-                {item.character_name} · {item.character_realm} · {item.author_username}
-              </p>
+      {error && <p className="text-sm text-red-400">{error}</p>}
+      {items.map((item) => {
+        const note = (reason[item.id] ?? "").trim();
+        return (
+          <article key={item.id} className="bg-gray-900 rounded-xl border border-gray-800 p-5">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="min-w-0">
+                <h2 className="font-bold text-lg">{item.title}</h2>
+                {item.subtitle ? (
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-gray-400 mt-0.5">{item.subtitle}</p>
+                ) : null}
+                <p className="text-sm text-gray-400">
+                  {item.character_name} · {item.character_realm} · {item.author_username}
+                </p>
+              </div>
+              {item.cover_url && (
+                <img
+                  src={item.cover_url}
+                  alt=""
+                  className="w-20 h-20 rounded-lg object-cover object-top border border-gray-800 shrink-0"
+                />
+              )}
             </div>
-            {item.cover_url && (
-              <img
-                src={item.cover_url}
-                alt=""
-                className="w-20 h-20 rounded-lg object-cover object-top border border-gray-800 shrink-0"
-              />
+
+            {item.biography && (
+              <p className="text-sm text-gray-300 whitespace-pre-wrap mb-3">{item.biography}</p>
             )}
-          </div>
+            {item.personality && (
+              <p className="text-sm text-gray-400 mb-2">
+                <span className="text-gray-500">Personalidad: </span>
+                {item.personality}
+              </p>
+            )}
+            {item.appearance && (
+              <p className="text-sm text-gray-400 mb-2">
+                <span className="text-gray-500">Aspecto: </span>
+                {item.appearance}
+              </p>
+            )}
 
-          {item.biography && (
-            <p className="text-sm text-gray-300 whitespace-pre-wrap mb-3">{item.biography}</p>
-          )}
-          {item.personality && (
-            <p className="text-sm text-gray-400 mb-2">
-              <span className="text-gray-500">Personalidad: </span>
-              {item.personality}
+            {item.awaiting_relations && (
+              <p className="mt-3 text-xs text-amber-400">
+                Faltan confirmaciones. Publicar ahora es decisión del Eremita.
+              </p>
+            )}
+
+            <div className="mt-3">
+              <StoryCastField storyId={item.id} relations={item.relations ?? []} startOpen />
+            </div>
+
+            <label className="text-xs text-gray-500 block mt-3 mb-1">Mensaje para el jugador</label>
+            <textarea
+              value={reason[item.id] ?? ""}
+              onChange={(e) => setReason((prev) => ({ ...prev, [item.id]: e.target.value }))}
+              placeholder="Qué tiene que cambiar, o por qué no se publica."
+              rows={2}
+              className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600"
+            />
+            <p className="text-xs text-gray-600 mt-1">
+              Obligatorio para pedir cambios o rechazar. El jugador lo lee en el buzón y puede corregir la historia.
             </p>
-          )}
-          {item.appearance && (
-            <p className="text-sm text-gray-400 mb-2">
-              <span className="text-gray-500">Aspecto: </span>
-              {item.appearance}
-            </p>
-          )}
 
-          {item.awaiting_relations && (
-            <p className="mt-3 text-xs text-amber-400">
-              Faltan confirmaciones. Publicar ahora es decisión del Eremita.
-            </p>
-          )}
-
-          <div className="mt-3">
-            <StoryCastField storyId={item.id} relations={item.relations ?? []} startOpen />
-          </div>
-
-          <textarea
-            value={reason[item.id] ?? ""}
-            onChange={(e) => setReason((prev) => ({ ...prev, [item.id]: e.target.value }))}
-            placeholder="Motivo si se rechaza (opcional)"
-            rows={2}
-            className="w-full mt-3 bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder:text-gray-600"
-          />
-
-          <div className="flex gap-3 mt-4">
-            <button
-              onClick={() => handle(item, "approve", item.awaiting_relations)}
-              disabled={!!loading}
-              className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-50"
-            >
-              {loading === `${item.id}-approve`
-                ? "..."
-                : item.awaiting_relations
-                  ? "Publicar como Eremita"
-                  : "Publicar"}
-            </button>
-            <button
-              onClick={() => handle(item, "reject")}
-              disabled={!!loading}
-              className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm disabled:opacity-50"
-            >
-              {loading === `${item.id}-reject` ? "..." : "Rechazar"}
-            </button>
-          </div>
-        </article>
-      ))}
+            <div className="flex flex-wrap gap-3 mt-4">
+              <button
+                onClick={() => handle(item, "approve", item.awaiting_relations)}
+                disabled={!!loading}
+                className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-semibold disabled:opacity-50"
+              >
+                {loading === `${item.id}-approve`
+                  ? "..."
+                  : item.awaiting_relations
+                    ? "Publicar como Eremita"
+                    : "Publicar"}
+              </button>
+              <button
+                onClick={() => handle(item, "request-changes")}
+                disabled={!!loading || !note}
+                className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm disabled:opacity-50"
+              >
+                {loading === `${item.id}-request-changes` ? "..." : "Pedir cambios"}
+              </button>
+              <button
+                onClick={() => handle(item, "reject")}
+                disabled={!!loading || !note}
+                className="px-4 py-2 rounded-lg border border-red-500/40 bg-red-950/40 hover:bg-red-900/50 text-red-200 text-sm disabled:opacity-50"
+              >
+                {loading === `${item.id}-reject` ? "..." : "Rechazar"}
+              </button>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }
