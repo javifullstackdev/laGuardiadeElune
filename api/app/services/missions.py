@@ -12,6 +12,7 @@ from app.models.user import User
 from app.models.user_mission import UserMission
 from app.services import points as points_service
 from app.services.notifications import notify
+from app.services.surnames import visible_surname
 
 PUBLISH_SHEET = "publish_character_sheet"
 PUBLISH_STORY = "publish_first_story"
@@ -30,8 +31,9 @@ def _characters(db: Session, user_id) -> list[Character]:
 
 
 def _character_subject(char: Character) -> str:
-    if char.surname and char.surname_allowed:
-        return f"{char.name} {char.surname}"
+    surname = visible_surname(char)
+    if surname:
+        return f"{char.name} {surname}"
     return char.name
 
 
@@ -66,6 +68,18 @@ def _pending_story(db: Session, user_id) -> CharacterStory | None:
         db.query(CharacterStory)
         .filter(CharacterStory.author_id == user_id, CharacterStory.status == "pending")
         .order_by(CharacterStory.submitted_at.desc())
+        .first()
+    )
+
+
+def _story_to_fix(db: Session, user_id) -> CharacterStory | None:
+    return (
+        db.query(CharacterStory)
+        .filter(
+            CharacterStory.author_id == user_id,
+            CharacterStory.status.in_(("changes_requested", "rejected")),
+        )
+        .order_by(CharacterStory.reviewed_at.desc())
         .first()
     )
 
@@ -274,11 +288,12 @@ def _card(
     progress: int | None = None,
     goal: int | None = None,
     contributions: list[dict] | None = None,
+    description: str | None = None,
 ) -> dict:
     card = {
         "key": spec["key"],
         "title": spec["title"],
-        "description": spec["description"],
+        "description": description or spec["description"],
         "points": spec["points"],
         "status": status,
         "completed_at": completed_at.isoformat() if completed_at else None,
@@ -376,8 +391,20 @@ def list_for(db: Session, user: User) -> list[dict]:
             )
         )
     else:
+        fixing = _story_to_fix(db, user.id)
         rows.append(
-            _card(STORY, status="open", completed_at=None, character=None, subject=None)
+            _card(
+                STORY,
+                status="open",
+                completed_at=None,
+                character=None,
+                subject=fixing.title if fixing else None,
+                description=(
+                    "El Eremita te ha escrito. Corrige la historia en tu perfil y envíala de nuevo."
+                    if fixing
+                    else None
+                ),
+            )
         )
 
     order = {"open": 0, "review": 1, "done": 2}

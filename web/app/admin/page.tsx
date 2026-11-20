@@ -49,7 +49,7 @@ const SECTIONS = [
   {
     href:        "/admin/bios",
     title:       "Fichas",
-    description: "Publicar fichas, corregir las ya públicas y ocultar un apellido que no sea válido.",
+    description: "Publicar fichas, corregir las ya públicas y, en cada personaje de Retail, mostrar u ocultar el apellido.",
     color:       "border-amber-500/40 hover:border-amber-400",
     badge:       "bg-amber-500/20 text-amber-300",
   },

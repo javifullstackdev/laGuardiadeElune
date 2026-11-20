@@ -26,7 +26,7 @@ from app.services.notifications import notify
 from app.services.scene_image import story_scene_url
 from app.services.slugs import RESERVED_SLUGS, is_uuid, slugify, unique_slug
 from app.services.surnames import visible_surname
-from app.urls import static_url
+from app.urls import profile_href, static_url
 
 router = APIRouter(prefix="/stories", tags=["stories"])
 
@@ -59,7 +59,43 @@ def _mine_out(db: Session, story: CharacterStory, char: Character) -> StoryMine:
         biography=story.biography,
         personality=story.personality,
         appearance=story.appearance,
+        relations=claims_out(db, story.id),
     )
+
+
+def _pending_out(db: Session, story: CharacterStory, char: Character, author: User) -> StoryPending:
+    return StoryPending(
+        id=story.id,
+        title=story.title,
+        subtitle=story.subtitle,
+        biography=story.biography,
+        personality=story.personality,
+        appearance=story.appearance,
+        submitted_at=story.submitted_at,
+        character_name=char.name,
+        character_realm=char.realm,
+        character_faction=char.faction,
+        character_race=_race_value(char),
+        author_username=author.username,
+        relations=claims_out(db, story.id),
+        awaiting_relations=awaiting_relations(db, story.id),
+        cover_url=_cover_url(story, char),
+    )
+
+
+def _story_title(char: Character, title: str | None) -> str:
+    chosen = " ".join((title or "").split())
+    if chosen:
+        if len(chosen) > 255:
+            raise HTTPException(400, "El título no puede superar 255 caracteres")
+        return chosen
+    prefix = None
+    if getattr(char, "favorite_prefix", None) and char.favorite_prefix.name:
+        prefix = char.favorite_prefix.name
+    elif char.prefix_title:
+        prefix = char.prefix_title
+    surname = visible_surname(char)
+    return f"{(prefix + ' ') if prefix else ''}{char.name}{(' ' + surname) if surname else ''}".strip()
 
 
 def _class_value(char: Character) -> str | None:
@@ -152,26 +188,7 @@ def list_pending(
         .order_by(CharacterStory.submitted_at.asc())
         .all()
     )
-    return [
-        StoryPending(
-            id=story.id,
-            title=story.title,
-            subtitle=story.subtitle,
-            biography=story.biography,
-            personality=story.personality,
-            appearance=story.appearance,
-            submitted_at=story.submitted_at,
-            character_name=char.name,
-            character_realm=char.realm,
-            character_faction=char.faction,
-            character_race=_race_value(char),
-            author_username=author.username,
-            relations=claims_out(db, story.id),
-            awaiting_relations=awaiting_relations(db, story.id),
-            cover_url=_cover_url(story, char),
-        )
-        for story, char, author in rows
-    ]
+    return [_pending_out(db, story, char, author) for story, char, author in rows]
 
 
 @router.get("/mine", response_model=list[StoryMine])
@@ -347,20 +364,74 @@ def approve_story(
     )
     grant_ready(db, author)
     db.commit()
-    return StoryPending(
-        id=story.id,
-        title=story.title,
-        subtitle=story.subtitle,
-        biography=story.biography,
-        personality=story.personality,
-        appearance=story.appearance,
-        submitted_at=story.submitted_at,
-        character_name=char.name,
-        character_realm=char.realm,
-        author_username=author.username,
-        relations=claims_out(db, story.id),
-        awaiting_relations=awaiting_relations(db, story.id),
-        cover_url=_cover_url(story, char),
+    return _pending_out(db, story, char, author)
+
+
+def _review_story(db: Session, story_id: str):
+    row = (
+        db.query(CharacterStory, Character, User)
+        .join(Character, Character.id == CharacterStory.character_id)
+        .join(User, User.id == CharacterStory.author_id)
+        .filter(CharacterStory.id == story_id)
+        .first()
+    )
+    if not row:
+        raise HTTPException(404, "Historia no encontrada")
+    return row
+
+
+def _answer_story(
+    db: Session,
+    current_user: User,
+    story: CharacterStory,
+    char: Character,
+    author: User,
+    *,
+    status: str,
+    reason: str,
+    title: str,
+    notice: str,
+) -> StoryPending:
+    if story.status != "pending":
+        raise HTTPException(409, "Esta historia no está en revisión")
+    story.status = status
+    story.rejection_reason = reason
+    story.reviewed_at = datetime.now(timezone.utc)
+    story.reviewer_id = current_user.id
+    story.published_at = None
+    notify(
+        db,
+        user_id=author.id,
+        kind="eremita_story",
+        title=title,
+        body=notice,
+        href=profile_href(section="stories", name=char.name, realm=char.realm, story_id=str(story.id)),
+    )
+    db.commit()
+    return _pending_out(db, story, char, author)
+
+
+@router.post("/{story_id}/request-changes", response_model=StoryPending)
+def request_story_changes(
+    story_id: str,
+    body: StoryReject,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    reason = (body.reason or "").strip()
+    if not reason:
+        raise HTTPException(400, "Escribe qué tiene que cambiar")
+    story, char, author = _review_story(db, story_id)
+    return _answer_story(
+        db,
+        current_user,
+        story,
+        char,
+        author,
+        status="changes_requested",
+        reason=reason,
+        title="El Eremita te pide cambios en la historia",
+        notice=f"«{story.title}». {reason} Corrígelo en tu perfil y vuelve a enviarla.",
     )
 
 
@@ -371,48 +442,77 @@ def reject_story(
     current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
+    reason = (body.reason or "").strip()
+    if not reason:
+        raise HTTPException(400, "Escribe por qué rechazas la historia")
+    story, char, author = _review_story(db, story_id)
+    return _answer_story(
+        db,
+        current_user,
+        story,
+        char,
+        author,
+        status="rejected",
+        reason=reason,
+        title="El Eremita ha rechazado la historia",
+        notice=f"«{story.title}» no se publica. {reason} Puedes reescribirla y enviarla de nuevo.",
+    )
+
+
+@router.post("/{story_id}/resubmit", response_model=StoryMine)
+async def resubmit_story(
+    story_id: str,
+    title: str | None = Form(None),
+    subtitle: str | None = Form(None),
+    body: str = Form(...),
+    mentions: str = Form("[]"),
+    cover: UploadFile | None = File(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     row = (
-        db.query(CharacterStory, Character, User)
+        db.query(CharacterStory, Character)
         .join(Character, Character.id == CharacterStory.character_id)
-        .join(User, User.id == CharacterStory.author_id)
-        .filter(CharacterStory.id == story_id)
+        .filter(
+            CharacterStory.id == story_id,
+            CharacterStory.author_id == current_user.id,
+            Character.deleted_at.is_(None),
+        )
         .first()
     )
     if not row:
         raise HTTPException(404, "Historia no encontrada")
-    story, char, author = row
-    story.status = "rejected"
-    story.rejection_reason = (body.reason or "").strip() or None
-    story.reviewed_at = datetime.now(timezone.utc)
-    story.reviewer_id = current_user.id
+    story, char = row
+    if story.status not in ("changes_requested", "rejected"):
+        raise HTTPException(409, "Esta historia no está esperando cambios")
+    story_body = " ".join((body or "").split())
+    if len(story_body) < 80:
+        raise HTTPException(400, "La historia es demasiado corta")
+    try:
+        mention_items = [StoryMentionIn.model_validate(m) for m in json.loads(mentions or "[]")]
+    except Exception:
+        raise HTTPException(400, "Las menciones no son válidas")
+
+    story.title = _story_title(char, title)
+    story.subtitle = _clean_subtitle(subtitle)
+    story.biography = body.strip()
+    story.status = "pending"
+    story.rejection_reason = None
+    story.submitted_at = datetime.now(timezone.utc)
+    story.reviewed_at = None
+    story.reviewer_id = None
     story.published_at = None
-    reason = story.rejection_reason
-    message = f"«{story.title}» necesita cambios."
-    if reason:
-        message = f"{message} {reason}"
-    notify(
-        db,
-        user_id=author.id,
-        kind="eremita_story",
-        title="El Eremita ha respondido a tu historia",
-        body=message,
-    )
+    story.eremita_override = False
+    previous_cover = None
+    if cover and cover.filename:
+        previous_cover = story.cover_url
+        story.cover_url = await _save_cover(story.id, cover)
+    replace_claims(db, story, current_user, char, mention_items)
     db.commit()
-    return StoryPending(
-        id=story.id,
-        title=story.title,
-        subtitle=story.subtitle,
-        biography=story.biography,
-        personality=story.personality,
-        appearance=story.appearance,
-        submitted_at=story.submitted_at,
-        character_name=char.name,
-        character_realm=char.realm,
-        author_username=author.username,
-        relations=claims_out(db, story.id),
-        awaiting_relations=awaiting_relations(db, story.id),
-        cover_url=_cover_url(story, char),
-    )
+    if previous_cover and previous_cover != story.cover_url:
+        _remove_stored_file(previous_cover)
+    db.refresh(story)
+    return _mine_out(db, story, char)
 
 
 def _clean_title(value: str | None) -> str:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urlencode
 
 
 def public_base_url() -> str:
@@ -11,6 +12,14 @@ def public_base_url() -> str:
     Prod (Caddy): https://www.laguardiadeelune.com
     """
     return os.getenv("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/")
+
+
+def profile_href(*, section: str, name: str, realm: str, story_id: str | None = None) -> str:
+    """Abre el perfil en la ficha o la historia que el jugador tiene que corregir."""
+    params = {"seccion": section, "personaje": name, "reino": realm}
+    if story_id:
+        params["historia"] = story_id
+    return "/profile?" + urlencode(params)
 
 
 def static_url(path: str | None) -> str | None:

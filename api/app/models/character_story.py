@@ -22,7 +22,7 @@ class CharacterStory(Base):
     biography = Column(Text, nullable=True)
     personality = Column(Text, nullable=True)
     appearance = Column(Text, nullable=True)
-    # pending | approved | rejected
+    # pending | changes_requested | rejected | approved
     status = Column(String(20), nullable=False, server_default="pending")
     rejection_reason = Column(Text, nullable=True)
     submitted_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

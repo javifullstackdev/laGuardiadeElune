@@ -2,11 +2,13 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import require_admin
 from app.models.character import Character
+from app.models.character_story import CharacterStory
 from app.models.image_request import ImageRequest
 from app.models.user import User
 from app.schemas.bio import (
@@ -16,15 +18,23 @@ from app.schemas.bio import (
     BioQuestionOut,
     BioReferenceImage,
     BioSheetImage,
+    BioStoryImage,
     BioRejectIn,
     SurnameDecisionIn,
     SurnameReviewOut,
 )
 from app.services.bio_questions import QUESTIONS, formatted_answers, has_public_sheet
-from app.services.character_images import SHEET_SLOTS, publish_character_image, reference_paths, store_still_image
+from app.services.character_images import (
+    SHEET_SLOTS,
+    media_type_for,
+    publish_character_image,
+    reference_paths,
+    store_still_image,
+    upload_file,
+)
 from app.services.missions import grant_ready
 from app.services.notifications import notify
-from app.urls import static_url
+from app.urls import profile_href, static_url
 
 router = APIRouter(prefix="/bios", tags=["bios"])
 
@@ -71,20 +81,77 @@ def _sheet_views(char: Character) -> list[BioSheetImage]:
     return views
 
 
+def _story_images(db: Session, character_ids: list) -> dict:
+    """Portadas que el jugador subió en sus historias. No incluye el retrato de respaldo."""
+    if not character_ids:
+        return {}
+    rows = (
+        db.query(CharacterStory)
+        .filter(
+            CharacterStory.character_id.in_(character_ids),
+            CharacterStory.cover_url.isnot(None),
+            CharacterStory.cover_url != "",
+        )
+        .order_by(CharacterStory.submitted_at.desc())
+        .all()
+    )
+    grouped: dict = {}
+    for story in rows:
+        if not story.cover_url or story.cover_url.startswith("http"):
+            continue
+        url = static_url(story.cover_url)
+        if not url:
+            continue
+        grouped.setdefault(story.character_id, []).append(
+            BioStoryImage(
+                story_id=story.id,
+                title=story.title,
+                status=story.status,
+                url=url,
+            )
+        )
+    return grouped
+
+
+def _file_name(name: str, label: str, suffix: str) -> str:
+    def clean(value: str) -> str:
+        text = "".join(ch if ch.isalnum() else "-" for ch in value)
+        while "--" in text:
+            text = text.replace("--", "-")
+        return text.strip("-") or "archivo"
+    return f"{clean(name)}-{clean(label)}{suffix}"
+
+
+def _admin_character(db: Session, character_id: str) -> Character:
+    char = (
+        db.query(Character)
+        .filter(Character.id == character_id, Character.deleted_at.is_(None))
+        .first()
+    )
+    if not char:
+        raise HTTPException(404, "Personaje no encontrado")
+    return char
+
+
 def _pending_out(
     char: Character,
     author: User,
     refs: list[ImageRequest] | None = None,
+    story_images: list[BioStoryImage] | None = None,
 ) -> BioPendingOut:
     return BioPendingOut(
         character_id=char.id,
         character_name=char.name,
         character_realm=char.realm,
         author_username=author.username,
+        game=char.game or "retail",
+        surname=(char.surname or "").strip() or None,
+        surname_allowed=bool(char.surname_allowed),
         cover_url=_cover(char),
         answers=[BioAnswerView(**row) for row in formatted_answers(char.bio_answers)],
         reference_images=_reference_views(refs or []),
         sheet_images=_sheet_views(char),
+        story_images=story_images or [],
         submitted_at=char.bio_submitted_at,
         bio_status=char.bio_status,
         current_biography=char.biography,
@@ -93,12 +160,19 @@ def _pending_out(
     )
 
 
-def _published_out(char: Character, author: User) -> BioPublishedOut:
+def _published_out(
+    char: Character,
+    author: User,
+    story_images: list[BioStoryImage] | None = None,
+) -> BioPublishedOut:
     return BioPublishedOut(
         character_id=char.id,
         character_name=char.name,
         character_realm=char.realm,
         author_username=author.username,
+        game=char.game or "retail",
+        surname=(char.surname or "").strip() or None,
+        surname_allowed=bool(char.surname_allowed),
         cover_url=_cover(char),
         face_url=_face(char),
         carousel_image_url=static_url(char.carousel_image_url),
@@ -106,6 +180,8 @@ def _published_out(char: Character, author: User) -> BioPublishedOut:
         biography=char.biography,
         personality=char.personality,
         appearance=char.appearance,
+        sheet_images=_sheet_views(char),
+        story_images=story_images or [],
     )
 
 
@@ -163,8 +239,13 @@ def list_pending(
         .order_by(Character.bio_submitted_at.asc().nulls_last())
         .all()
     )
-    refs = _pending_refs(db, [char.id for char, _author in rows])
-    return [_pending_out(char, author, refs.get(char.id, [])) for char, author in rows]
+    ids = [char.id for char, _author in rows]
+    refs = _pending_refs(db, ids)
+    covers = _story_images(db, ids)
+    return [
+        _pending_out(char, author, refs.get(char.id, []), covers.get(char.id, []))
+        for char, author in rows
+    ]
 
 
 @router.get("/published", response_model=list[BioPublishedOut])
@@ -183,38 +264,61 @@ def list_published(
         .order_by(Character.name.asc())
         .all()
     )
-    return [_published_out(char, author) for char, author in rows]
+    covers = _story_images(db, [char.id for char, _author in rows])
+    return [_published_out(char, author, covers.get(char.id, [])) for char, author in rows]
 
 
-@router.get("/surnames", response_model=list[SurnameReviewOut])
-def list_surnames(
+@router.get("/{character_id}/sheet/{slot}/file")
+def download_sheet_image(
+    character_id: str,
+    slot: str,
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    """Apellidos escritos por los jugadores, para aceptarlos u ocultarlos."""
-    rows = (
-        db.query(Character, User)
-        .join(User, User.id == Character.user_id)
-        .filter(
-            Character.deleted_at.is_(None),
-            Character.surname.isnot(None),
-            Character.surname != "",
-        )
-        .order_by(Character.surname_allowed.desc(), Character.name.asc())
-        .all()
+    """Admin: descarga una captura de la ficha tal como la subió el jugador."""
+    found = SHEET_SLOTS.get(slot)
+    if found is None:
+        raise HTTPException(404, "Esa imagen no forma parte de la ficha")
+    column, label = found
+    char = _admin_character(db, character_id)
+    relative = getattr(char, column)
+    if not relative:
+        raise HTTPException(404, "El jugador no ha subido esa imagen")
+    path = upload_file(relative)
+    return FileResponse(
+        path,
+        media_type=media_type_for(path),
+        filename=_file_name(char.name, label, path.suffix.lower()),
+        content_disposition_type="attachment",
     )
-    return [
-        SurnameReviewOut(
-            character_id=char.id,
-            character_name=char.name,
-            character_realm=char.realm,
-            author_username=author.username,
-            surname=char.surname,
-            surname_allowed=bool(char.surname_allowed),
+
+
+@router.get("/{character_id}/stories/{story_id}/cover")
+def download_story_cover(
+    character_id: str,
+    story_id: str,
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Admin: descarga la portada que el jugador subió con la historia."""
+    char = _admin_character(db, character_id)
+    story = (
+        db.query(CharacterStory)
+        .filter(
+            CharacterStory.id == story_id,
+            CharacterStory.character_id == char.id,
         )
-        for char, author in rows
-        if (char.surname or "").strip()
-    ]
+        .first()
+    )
+    if not story or not story.cover_url or story.cover_url.startswith("http"):
+        raise HTTPException(404, "Esta historia no tiene una portada subida")
+    path = upload_file(story.cover_url)
+    return FileResponse(
+        path,
+        media_type=media_type_for(path),
+        filename=_file_name(char.name, story.title, path.suffix.lower()),
+        content_disposition_type="attachment",
+    )
 
 
 @router.post("/{character_id}/surname", response_model=SurnameReviewOut)
@@ -236,6 +340,8 @@ def decide_surname(
     char, author = row
     if not (char.surname or "").strip():
         raise HTTPException(400, "Este personaje no tiene apellido")
+    if char.game == "forever":
+        raise HTTPException(400, "En Forever el apellido se muestra siempre")
     char.surname_allowed = body.allowed
     if body.allowed:
         title = f"El Eremita ha aceptado el apellido de {char.name}"
@@ -315,7 +421,12 @@ async def publish_bio(
     grant_ready(db, author)
     db.commit()
     db.refresh(char)
-    return _pending_out(char, author, _pending_refs(db, [char.id]).get(char.id, []))
+    return _pending_out(
+        char,
+        author,
+        _pending_refs(db, [char.id]).get(char.id, []),
+        _story_images(db, [char.id]).get(char.id, []),
+    )
 
 
 @router.post("/{character_id}/update", response_model=BioPublishedOut)
@@ -377,7 +488,7 @@ async def update_published_bio(
     )
     db.commit()
     db.refresh(char)
-    return _published_out(char, author)
+    return _published_out(char, author, _story_images(db, [char.id]).get(char.id, []))
 
 
 @router.post("/{character_id}/reject", response_model=BioPendingOut)
@@ -398,32 +509,35 @@ def reject_bio(
     char, author = row
     if not char.bio_answers_pending:
         raise HTTPException(409, "Este cuestionario no está en revisión")
+    reason = (body.reason or "").strip()
+    if not reason:
+        raise HTTPException(400, "Escribe qué tiene que cambiar")
+    public = has_public_sheet(char)
     char.bio_answers_pending = False
-    char.bio_rejection_reason = (body.reason or "").strip() or None
-    if not has_public_sheet(char):
+    char.bio_rejection_reason = reason
+    if not public:
         char.bio_status = "draft"
-    reason = char.bio_rejection_reason
-    if char.bio_status == "published":
-        title = "El Eremita ha respondido a tu ficha"
-        notice = f"No ha incorporado los cambios de {char.name}."
-        href = f"/personajes/{quote(char.realm, safe='')}/{quote(char.name, safe='')}"
+    title = "El Eremita te pide cambios en la ficha"
+    if public:
+        notice = f"La ficha pública de {char.name} sigue igual. {reason} Corrígelo en tu perfil y vuelve a enviarla."
     else:
-        title = "El Eremita ha devuelto tu ficha"
-        notice = f"El cuestionario de {char.name} vuelve a borrador."
-        href = "/profile"
-    if reason:
-        notice = f"{notice} {reason}"
+        notice = f"La ficha de {char.name} vuelve a borrador. {reason} Corrígelo y vuelve a enviarla."
     notify(
         db,
         user_id=author.id,
         kind="eremita_bio",
         title=title,
         body=notice,
-        href=href,
+        href=profile_href(section="bio", name=char.name, realm=char.realm),
     )
     db.commit()
     db.refresh(char)
-    return _pending_out(char, author, _pending_refs(db, [char.id]).get(char.id, []))
+    return _pending_out(
+        char,
+        author,
+        _pending_refs(db, [char.id]).get(char.id, []),
+        _story_images(db, [char.id]).get(char.id, []),
+    )
 
 
 @router.post("/{character_id}/decline", response_model=BioPendingOut)
@@ -448,25 +562,29 @@ def decline_bio(
     reason = (body.reason or "").strip()
     if not reason:
         raise HTTPException(400, "Escribe por qué rechazas la ficha")
+    public = has_public_sheet(char)
     char.bio_answers_pending = False
     char.bio_rejection_reason = reason
-    if has_public_sheet(char):
-        title = "El Eremita ha rechazado los cambios de tu ficha"
-        notice = f"La ficha pública de {char.name} sigue como está. {reason}"
-        href = f"/personajes/{quote(char.realm, safe='')}/{quote(char.name, safe='')}"
+    if public:
+        title = "El Eremita ha rechazado los cambios de la ficha"
+        notice = f"La ficha pública de {char.name} sigue igual. {reason} Puedes corregirla y enviarla de nuevo."
     else:
         char.bio_status = "rejected"
-        title = "El Eremita ha rechazado tu ficha"
-        notice = f"La ficha de {char.name} no se publica. {reason}"
-        href = "/profile"
+        title = "El Eremita ha rechazado la ficha"
+        notice = f"{char.name} no se publica. {reason} Puedes reescribirla y enviarla de nuevo."
     notify(
         db,
         user_id=author.id,
         kind="eremita_bio",
         title=title,
         body=notice,
-        href=href,
+        href=profile_href(section="bio", name=char.name, realm=char.realm),
     )
     db.commit()
     db.refresh(char)
-    return _pending_out(char, author, _pending_refs(db, [char.id]).get(char.id, []))
+    return _pending_out(
+        char,
+        author,
+        _pending_refs(db, [char.id]).get(char.id, []),
+        _story_images(db, [char.id]).get(char.id, []),
+    )

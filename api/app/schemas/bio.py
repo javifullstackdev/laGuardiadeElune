@@ -47,6 +47,13 @@ class BioSheetImage(BaseModel):
     url: str
 
 
+class BioStoryImage(BaseModel):
+    story_id: UUID
+    title: str
+    status: str
+    url: str
+
+
 class SurnameReviewOut(BaseModel):
     character_id: UUID
     character_name: str
@@ -65,6 +72,9 @@ class BioPublishedOut(BaseModel):
     character_name: str
     character_realm: str
     author_username: str
+    game: str = "retail"
+    surname: str | None = None
+    surname_allowed: bool = True
     cover_url: str | None = None
     face_url: str | None = None
     carousel_image_url: str | None = None
@@ -72,6 +82,8 @@ class BioPublishedOut(BaseModel):
     biography: str | None = None
     personality: str | None = None
     appearance: str | None = None
+    sheet_images: list[BioSheetImage] = []
+    story_images: list[BioStoryImage] = []
 
 
 class BioPendingOut(BaseModel):
@@ -79,10 +91,14 @@ class BioPendingOut(BaseModel):
     character_name: str
     character_realm: str
     author_username: str
+    game: str = "retail"
+    surname: str | None = None
+    surname_allowed: bool = True
     cover_url: str | None = None
     answers: list[BioAnswerView]
     reference_images: list[BioReferenceImage] = []
     sheet_images: list[BioSheetImage] = []
+    story_images: list[BioStoryImage] = []
     submitted_at: datetime | None = None
     bio_status: str
     current_biography: str | None = None

@@ -39,11 +39,21 @@ export type BioSheetImage = {
   url: string;
 };
 
+export type BioStoryImage = {
+  story_id: string;
+  title: string;
+  status: string;
+  url: string;
+};
+
 export type BioPublished = {
   character_id: string;
   character_name: string;
   character_realm: string;
   author_username: string;
+  game?: string;
+  surname?: string | null;
+  surname_allowed?: boolean;
   cover_url: string | null;
   face_url: string | null;
   carousel_image_url?: string | null;
@@ -51,6 +61,8 @@ export type BioPublished = {
   biography: string | null;
   personality: string | null;
   appearance: string | null;
+  sheet_images?: BioSheetImage[];
+  story_images?: BioStoryImage[];
 };
 
 export type BioPending = {
@@ -58,10 +70,14 @@ export type BioPending = {
   character_name: string;
   character_realm: string;
   author_username: string;
+  game?: string;
+  surname?: string | null;
+  surname_allowed?: boolean;
   cover_url: string | null;
   answers: BioAnswerView[];
   reference_images?: BioReferenceImage[];
   sheet_images?: BioSheetImage[];
+  story_images?: BioStoryImage[];
   submitted_at: string | null;
   bio_status: string;
   current_biography: string | null;

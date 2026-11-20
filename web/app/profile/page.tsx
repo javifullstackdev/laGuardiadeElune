@@ -4,8 +4,13 @@ import ProfileClient from "./ProfileClient";
 import type { Mission } from "@/lib/missions";
 
 import { apiUrl } from "@/lib/api";
-export default async function ProfilePage() {
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ seccion?: string; personaje?: string; reino?: string; historia?: string }>;
+}) {
   const nonce = (await requestHeaders()).get("x-nonce") ?? "";
+  const focus = await searchParams;
   const cookieStore = await cookies();
   const token = cookieStore.get("token")?.value;
   if (!token) redirect("/");
@@ -87,6 +92,7 @@ export default async function ProfilePage() {
       missions={missions}
       bnetTokenExpired={bnetTokenExpired}
       nonce={nonce}
+      focus={focus}
     />
   );
 }

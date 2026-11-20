@@ -404,7 +404,10 @@ def update_bio(
         old_surname = (char.surname or "").strip() or None
         if new_surname != old_surname:
             char.surname = new_surname
-            char.surname_allowed = False if new_surname else True
+            if char.game == "forever":
+                char.surname_allowed = True
+            else:
+                char.surname_allowed = False if new_surname else True
     if data.origin       is not None: char.origin       = data.origin       or None
     if data.age_lore     is not None: char.age_lore     = data.age_lore
     if data.residence    is not None: char.residence    = data.residence    or None

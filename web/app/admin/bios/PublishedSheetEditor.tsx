@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { BioPublished } from "@/lib/bio";
+import CharacterSurname from "./CharacterSurname";
+import PlayerImageGallery from "./PlayerImageGallery";
 
 type Draft = {
   biography: string;
@@ -139,6 +141,24 @@ export default function PublishedSheetEditor({ initial }: { initial: BioPublishe
                   >
                     Ver ficha pública
                   </a>
+                  <CharacterSurname
+                    characterId={item.character_id}
+                    game={item.game}
+                    surname={item.surname}
+                    allowed={item.surname_allowed}
+                    onChange={(allowed) =>
+                      setItems((prev) =>
+                        prev.map((row) =>
+                          row.character_id === item.character_id ? { ...row, surname_allowed: allowed } : row,
+                        ),
+                      )
+                    }
+                  />
+                  <PlayerImageGallery
+                    characterId={item.character_id}
+                    sheetImages={item.sheet_images}
+                    storyImages={item.story_images}
+                  />
 
                   <div className="grid sm:grid-cols-2 gap-4">
                     <label className="block text-xs text-gray-400 space-y-2">

@@ -45,6 +45,16 @@ const KIND_LABEL: Record<string, string> = {
   recruitment: "Reclutamiento",
 };
 
+function noticeAction(item: Notice): string {
+  if (
+    (item.kind === "eremita_bio" || item.kind === "eremita_story") &&
+    /pide cambios|rechazad/i.test(item.title)
+  ) {
+    return "Corregir";
+  }
+  return "Ver";
+}
+
 function formatWhen(iso: string) {
   const date = new Date(iso);
   const minutes = Math.round((Date.now() - date.getTime()) / 60000);
@@ -289,7 +299,7 @@ export default function Mailbox({ children }: { children: ReactNode }) {
                 {item.body && <p className="text-xs text-gray-400 leading-relaxed">{item.body}</p>}
                 {item.href && (
                   <Link href={item.href} className="inline-block text-xs text-yellow-400 hover:text-yellow-300">
-                    Ver
+                    {noticeAction(item)}
                   </Link>
                 )}
                 {offer && (

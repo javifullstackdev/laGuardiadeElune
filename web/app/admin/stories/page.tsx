@@ -50,7 +50,9 @@ export default async function AdminStoriesPage() {
         <section className="mb-12">
           <h2 className="text-lg font-semibold mb-1">Pendientes de revisión</h2>
           <p className="text-sm text-gray-500 mb-5">
-            Relatos escritos por los jugadores. La ficha de personaje se escribe en Fichas.
+            Relatos escritos por los jugadores. Publica, pide cambios o rechaza.
+            En los dos últimos casos el jugador lo ve en el buzón, corrige el texto y lo envía otra vez.
+            La ficha de personaje se escribe en Fichas.
           </p>
           <StoryReviewPanel pending={pending as StoryPending[]} />
         </section>

@@ -112,6 +112,7 @@ class StoryMine(BaseModel):
     biography: str | None = None
     personality: str | None = None
     appearance: str | None = None
+    relations: list[StoryRelationOut] = []
 
 
 class StoryPending(BaseModel):

@@ -156,7 +156,7 @@ function CharacterBadge({ char }: { char: MyCharacter }) {
   return (
     <li className="flex items-center gap-2 border rounded px-4 py-2">
       <span className="font-semibold">{char.name}</span>
-      {char.surname && char.surname_allowed !== false && (
+      {char.surname && (isForever || char.surname_allowed !== false) && (
         <span className="text-gray-500 text-sm">{char.surname}</span>
       )}
       <span className="text-gray-400 text-sm">

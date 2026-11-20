@@ -10,7 +10,8 @@ export async function POST(
   const token = cookieStore.get("token")?.value;
   if (!token) return Response.json({ detail: "No autenticado" }, { status: 401 });
   const body = await req.json();
-  const action = body.action === "reject" ? "reject" : "approve";
+  const action =
+    body.action === "reject" || body.action === "request-changes" ? body.action : "approve";
   const res = await fetch(apiUrl(`/stories/${id}/${action}`), {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },

@@ -1,11 +1,13 @@
 import type { StoryRelation } from "./relations";
 
+export type StoryStatus = "pending" | "changes_requested" | "approved" | "rejected";
+
 export type StoryPublic = {
   id: string;
   slug?: string | null;
   title: string;
   subtitle?: string | null;
-  status?: "pending" | "approved" | "rejected";
+  status?: StoryStatus;
   biography: string | null;
   personality: string | null;
   appearance: string | null;
@@ -31,7 +33,7 @@ export type StoryPublic = {
 export type StoryMine = {
   id: string;
   slug?: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: StoryStatus;
   title: string;
   subtitle?: string | null;
   rejection_reason: string | null;
@@ -42,6 +44,7 @@ export type StoryMine = {
   biography: string | null;
   personality: string | null;
   appearance: string | null;
+  relations?: StoryRelation[];
 };
 
 export type StoryPending = {
