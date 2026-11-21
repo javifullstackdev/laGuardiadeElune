@@ -29,14 +29,8 @@ export default async function AdminBiosPage() {
 
   return (
     <main className="min-h-screen px-4 py-12">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <a href="/admin" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">
-            Panel admin
-          </a>
-          <span className="text-gray-700">/</span>
-          <h1 className="text-2xl font-bold">Fichas</h1>
-        </div>
+      <div className="w-full max-w-6xl">
+        <h1 className="mb-8 text-2xl font-bold">Fichas</h1>
         <p className="text-sm text-gray-500 mb-8">
           El jugador responde el cuestionario y adjunta las imágenes de la ficha. Esas fotos, y las portadas de sus historias, se quedan en cada ficha para verlas y descargarlas.
           Si te convence la ficha, escribe el texto, sube el arte y se publica.

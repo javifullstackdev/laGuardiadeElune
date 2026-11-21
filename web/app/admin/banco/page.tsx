@@ -1,7 +1,5 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-
 import { apiUrl } from "@/lib/api";
 import type { BankItem, BankRequest } from "@/lib/bank";
 import { EMPTY_GOLD_BOARD, type GoldBoard } from "@/lib/gold";
@@ -31,14 +29,8 @@ export default async function AdminBancoPage() {
 
   return (
     <main className="min-h-screen px-4 py-12">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/admin" className="text-gray-500 hover:text-gray-300 text-sm transition-colors">
-            Panel admin
-          </Link>
-          <span className="text-gray-700">/</span>
-          <h1 className="text-2xl font-bold">Banco</h1>
-        </div>
+      <div className="w-full max-w-6xl">
+        <h1 className="mb-8 text-2xl font-bold">Banco</h1>
         <p className="text-sm text-gray-400 mb-8 max-w-2xl">
           Publica los materiales que la hermandad necesita, los puntos de cada uno y, si quieres, un
           cupo. Al aceptar un ingreso, esa cantidad se resta del cupo y se otorgan los puntos de la
