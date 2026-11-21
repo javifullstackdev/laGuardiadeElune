@@ -97,7 +97,7 @@ def _out(row: BankGoldDeposit, settings: BankGoldSettings) -> dict:
         "awarded_points": row.awarded_points,
         "note": row.note,
         "admin_note": row.admin_note,
-        "username": row.user.username if row.user else "",
+        "username": row.user.visible_name if row.user else "",
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "resolved_at": row.resolved_at.isoformat() if row.resolved_at else None,
     }
@@ -108,17 +108,17 @@ BANK_ACHIEVEMENT = "Invirtiendo en la Guardia"
 
 def _contributors(db: Session, ends_on: date | None = None) -> list[dict]:
     query = (
-        db.query(User.username, func.coalesce(func.sum(BankGoldDeposit.copper), 0))
+        db.query(User, func.coalesce(func.sum(BankGoldDeposit.copper), 0))
         .join(User, User.id == BankGoldDeposit.user_id)
         .filter(BankGoldDeposit.status == "approved")
     )
     if ends_on is not None:
         stamp = func.coalesce(BankGoldDeposit.resolved_at, BankGoldDeposit.created_at)
         query = query.filter(stamp < mission_end(ends_on))
-    rows = query.group_by(User.id, User.username).all()
+    rows = query.group_by(User.id).all()
     people = [
-        {"username": name, "copper": int(total or 0)}
-        for name, total in rows
+        {"username": user.visible_name, "copper": int(total or 0)}
+        for user, total in rows
         if int(total or 0) > 0
     ]
     people.sort(key=lambda row: (-row["copper"], row["username"].casefold()))
@@ -386,7 +386,7 @@ def approve_gold(
     grant_bank_investors(db)
     db.flush()
     counted = _sum_mission_copper(db, settings.ends_on)
-    who = (player.display_name or player.username) if player else row.character_name
+    who = player.visible_name if player else row.character_name
     queue_goal_deposit(
         db,
         goal_deposit_message(who or "Alguien", int(row.copper), counted, int(settings.goal_copper)),

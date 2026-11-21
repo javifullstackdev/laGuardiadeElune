@@ -48,7 +48,7 @@ async def get_me(
 
     return {
         "id": str(current_user.id),
-        "username": current_user.display_name or current_user.username,
+        "username": current_user.visible_name,
         "discord_username": current_user.username,
         "display_name": current_user.display_name,
         "discord_id": current_user.discord_id,
@@ -155,7 +155,7 @@ def set_user_display_name(
     return {
         "id": str(user.id),
         "display_name": user.display_name,
-        "username": user.display_name or user.username,
+        "username": user.visible_name,
         "discord_username": user.username,
     }
 
@@ -332,7 +332,7 @@ async def list_players(
     return [
         {
             "id":              str(u.id),
-            "username":        u.display_name or u.username,
+            "username":        u.visible_name,
             "display_name":    u.display_name,
             "discord_username": u.username,
             "discord_id":      u.discord_id,
@@ -378,7 +378,7 @@ def get_ranking(
     def score(u: User) -> int:
         return scores.get(u.id, 0) if season else u.total_points
 
-    users = sorted(candidates, key=lambda u: (-score(u), -u.total_points, u.username.lower()))[:limit]
+    users = sorted(candidates, key=lambda u: (-score(u), -u.total_points, u.visible_name.lower()))[:limit]
     if not users:
         return []
 
@@ -424,7 +424,7 @@ def get_ranking(
         result.append(
             {
                 "position": position,
-                "username": user.display_name or user.username,
+                "username": user.visible_name,
                 "display_name": user.display_name,
                 "discord_username": user.username,
                 "discord_id": user.discord_id,

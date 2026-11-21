@@ -63,7 +63,7 @@ class JoinIn(BaseModel):
 def _name(user: User | None) -> str:
     if user is None:
         return ""
-    return user.display_name or user.username
+    return user.visible_name
 
 
 def _parse_when(value: str, label: str) -> datetime:

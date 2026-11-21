@@ -76,7 +76,7 @@ def _pending_out(db: Session, story: CharacterStory, char: Character, author: Us
         character_realm=char.realm,
         character_faction=char.faction,
         character_race=_race_value(char),
-        author_username=author.username,
+        author_username=author.visible_name,
         relations=claims_out(db, story.id),
         awaiting_relations=awaiting_relations(db, story.id),
         cover_url=_cover_url(story, char),
@@ -156,7 +156,7 @@ def _to_public(db: Session, story: CharacterStory, char: Character, author: User
         banner_url=_banner_url(db, story, char),
         og_image_url=_og_image_url(story),
         card_lines=_card_lines(story.card_title),
-        author_username=author.username,
+        author_username=author.visible_name,
         like_count=_like_count(db, story.id),
         relations=[r for r in claims_out(db, story.id) if r.status == "confirmed" or story.status != "approved"],
     )
