@@ -127,7 +127,7 @@ class ResolveBody(BaseModel):
 def _username(user: User | None) -> str:
     if not user:
         return "—"
-    return user.display_name or user.username
+    return user.visible_name
 
 
 def _catalog_lookup(db: Session, item_id: int, grade: str | None) -> BankItem | None:

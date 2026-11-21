@@ -85,7 +85,7 @@ def _liker_out(user: User, like: ContentLike, char_count: int) -> dict:
         "like_id": str(like.id),
         "liked_at": like.created_at.isoformat() if like.created_at else None,
         "user_id": str(user.id),
-        "username": user.username,
+        "username": user.visible_name,
         "discord_id": user.discord_id,
         "avatar_url": user.avatar_url,
         "role": user.role.value if user.role else None,

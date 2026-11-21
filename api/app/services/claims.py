@@ -30,7 +30,7 @@ def claims_out(db: Session, story_id) -> list[StoryRelationOut]:
             met_at=claim.met_at,
             note=claim.note,
             status=claim.status,
-            owner_username=owner.username,
+            owner_username=owner.visible_name,
             has_page=has_public_sheet(char),
         )
         for claim, char, owner in claim_rows(db, story_id)
@@ -166,7 +166,7 @@ def replace_claims(db: Session, story: CharacterStory, author: User, from_char: 
                 user_id=target.user_id,
                 kind="relation_claim",
                 title=f"{from_char.name} te ha nombrado",
-                body=f"{author.username} menciona a {target.name} en «{story.title}» y propone una relación.",
+                body=f"{author.visible_name} menciona a {target.name} en «{story.title}» y propone una relación.",
                 claim_id=claim.id,
             )
         else:

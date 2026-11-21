@@ -51,7 +51,7 @@ def serialize_admin_tx(
     return {
         "id": str(tx.id),
         "user_id": str(tx.user_id),
-        "username": (user.display_name or user.username) if user else "—",
+        "username": user.visible_name if user else "—",
         "discord_username": user.username if user else None,
         "character_name": character.name if character else None,
         "character_realm": character.realm if character else None,
@@ -107,7 +107,7 @@ def _public_player(
     return {
         "character_name": character.name if character else None,
         "character_realm": character.realm if character else None,
-        "username": (user.display_name or user.username) if user else "—",
+        "username": user.visible_name if user else "—",
         "points": counted,
         "amount": tx.amount,
         "weekly_capped": tx.weekly_capped,

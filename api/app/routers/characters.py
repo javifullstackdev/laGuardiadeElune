@@ -219,7 +219,7 @@ def search_characters(
     """Busca personajes por nombre en toda la hermandad (para añadir relaciones)."""
     from app.models.user import User as UserModel
     results = (
-        db.query(Character, UserModel.username)
+        db.query(Character, UserModel)
         .join(UserModel, UserModel.id == Character.user_id)
         .filter(
             Character.name.ilike(f"%{q}%"),
@@ -233,10 +233,10 @@ def search_characters(
             "name":           c.name,
             "realm":          c.realm,
             "wow_class":      c.wow_class.value if c.wow_class else None,
-            "owner_username": username,
+            "owner_username": owner.visible_name,
             "is_own":         c.user_id == current_user.id,
         }
-        for c, username in results
+        for c, owner in results
     ]
 
 
@@ -508,7 +508,7 @@ def get_relations(
 
     # Salientes: from = este personaje
     outgoing = (
-        db.query(CharacterRelation, Character, UserModel.username)
+        db.query(CharacterRelation, Character, UserModel)
         .join(Character, Character.id == CharacterRelation.to_character_id)
         .join(UserModel, UserModel.id == Character.user_id)
         .filter(CharacterRelation.from_character_id == char.id)
@@ -517,7 +517,7 @@ def get_relations(
 
     # Entrantes: to = este personaje
     incoming = (
-        db.query(CharacterRelation, Character, UserModel.username)
+        db.query(CharacterRelation, Character, UserModel)
         .join(Character, Character.id == CharacterRelation.from_character_id)
         .join(UserModel, UserModel.id == Character.user_id)
         .filter(CharacterRelation.to_character_id == char.id)
@@ -546,7 +546,7 @@ def get_relations(
     incoming_keys = {(rel.from_character_id, rel.relation_type) for rel, _, _ in incoming}
 
     result = []
-    for rel, other_char, owner_username in outgoing:
+    for rel, other_char, owner in outgoing:
         result.append(RelationOut(
             id=rel.id,
             relation_type=rel.relation_type,
@@ -556,12 +556,12 @@ def get_relations(
                 name=other_char.name,
                 realm=other_char.realm,
                 wow_class=other_char.wow_class.value if other_char.wow_class else None,
-                owner_username=owner_username,
+                owner_username=owner.visible_name,
             ),
             story_count=int(story_counts.get(other_char.id, 0) + incoming_counts.get(other_char.id, 0)),
             reciprocal=(other_char.id, rel.relation_type) in incoming_keys,
         ))
-    for rel, other_char, owner_username in incoming:
+    for rel, other_char, owner in incoming:
         result.append(RelationOut(
             id=rel.id,
             relation_type=rel.relation_type,
@@ -571,7 +571,7 @@ def get_relations(
                 name=other_char.name,
                 realm=other_char.realm,
                 wow_class=other_char.wow_class.value if other_char.wow_class else None,
-                owner_username=owner_username,
+                owner_username=owner.visible_name,
             ),
             story_count=int(story_counts.get(other_char.id, 0) + incoming_counts.get(other_char.id, 0)),
             reciprocal=(other_char.id, rel.relation_type) in outgoing_keys,
@@ -674,7 +674,7 @@ def add_relation(
             name=target.name,
             realm=target.realm,
             wow_class=target.wow_class.value if target.wow_class else None,
-            owner_username=target_owner.username if target_owner else "?",
+            owner_username=target_owner.visible_name if target_owner else "?",
         ),
     )
 
@@ -730,7 +730,7 @@ def update_relation(
             name=other.name if other else "?",
             realm=other.realm if other else "",
             wow_class=other.wow_class.value if other and other.wow_class else None,
-            owner_username=owner.username if owner else "?",
+            owner_username=owner.visible_name if owner else "?",
         ),
     )
 
@@ -1188,7 +1188,7 @@ def list_pending_avatars(
     from sqlalchemy import or_
     from app.models.user import User as UserModel
     results = (
-        db.query(Character, UserModel.username)
+        db.query(Character, UserModel)
         .join(UserModel, UserModel.id == Character.user_id)
         .filter(
             Character.deleted_at.is_(None),
@@ -1200,12 +1200,12 @@ def list_pending_avatars(
         .all()
     )
     out = []
-    for c, username in results:
+    for c, owner in results:
         base = {
             "name": c.name,
             "realm": c.realm,
             "game": c.game,
-            "owner_username": username,
+            "owner_username": owner.visible_name,
         }
         if c.pending_avatar_url:
             out.append({
