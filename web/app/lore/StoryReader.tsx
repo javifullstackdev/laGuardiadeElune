@@ -242,7 +242,7 @@ export default function StoryReader({
   const busy = phase !== "parchment" && phase !== "comfort";
   const crumbs: Crumb[] = [
     { href: "/", label: "Inicio" },
-    { href: "/lore", label: "Historias" },
+    { href: "/lore", label: "Relatos" },
     { label: story.title },
   ];
   const canShare = !story.status || story.status === "approved";

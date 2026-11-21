@@ -64,7 +64,7 @@ export default async function LoreDetailPage({
         <div className="text-center">
           <p className="text-gray-400 mb-4">Historia no encontrada.</p>
           <Link href="/lore" className="text-yellow-400 hover:underline">
-            Volver a historias
+            Volver a relatos
           </Link>
         </div>
       </main>

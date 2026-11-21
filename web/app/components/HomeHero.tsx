@@ -244,10 +244,12 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
             <div className="w-full px-5 pb-8 text-center md:px-8 md:pb-9 lg:max-w-lg lg:px-16 lg:pb-0 lg:text-left">
               <h1
                 className={`font-quest-display font-bold leading-tight text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] group-hover/hero-copy:text-white/95 text-2xl md:text-3xl lg:text-[2.6rem] ${
-                  current.kind === "story" ? "line-clamp-2 lg:line-clamp-none" : ""
+                  current.kind === "story" && titleLines(current).length === 0
+                    ? "line-clamp-2 lg:line-clamp-none"
+                    : ""
                 }`}
               >
-                {current.title}
+                <TitleText title={current.title} lines={titleLines(current)} />
               </h1>
               {current.subtitle ? (
                 <p className="mt-3 text-base text-gray-200/90 leading-relaxed hidden lg:block">
@@ -318,7 +320,10 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                 const isCharacter = slide.kind === "character";
                 const isStory = slide.kind === "story";
                 const centered = isCharacter || isStory;
-                const storyKicker = slide.kicker || "Historia";
+                const storyKicker =
+                  !slide.kicker || slide.kicker.trim().toLowerCase() === "historia"
+                    ? "Relato"
+                    : slide.kicker;
                 const charPrefix = isCharacter ? (slide.kicker || "").trim() : "";
                 const charCaption = (slide.caption || "").trim();
                 const dest = slide.href || "#tablon";

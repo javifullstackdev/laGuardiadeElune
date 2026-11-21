@@ -7,7 +7,7 @@ import type { StoryPublic } from "@/lib/stories";
 import { apiUrl } from "@/lib/api";
 
 export const metadata: Metadata = {
-  title: "Historias",
+  title: "Relatos",
   description:
     "Relatos de rol escritos por los jugadores de La Guardia de Elune.",
 };
@@ -22,10 +22,10 @@ export default async function LorePage() {
         <Breadcrumb
           items={[
             { href: "/", label: "Inicio" },
-            { label: "Historias" },
+            { label: "Relatos" },
           ]}
         />
-        <h1 className="text-3xl font-quest-display font-bold">Historias</h1>
+        <h1 className="text-3xl font-quest-display font-bold">Relatos</h1>
         <p className="text-gray-400 mt-2 text-sm">
           Relatos escritos por los jugadores y revisados por el Eremita. Las fichas están en{" "}
           <Link href="/personajes" className="text-yellow-400 hover:underline">Personajes</Link>.
@@ -33,7 +33,7 @@ export default async function LorePage() {
 
         {stories.length === 0 ? (
           <p className="text-gray-500 py-16 text-center">
-            Aún no hay historias publicadas.
+            Aún no hay relatos publicados.
           </p>
         ) : (
           <ul className="grid grid-cols-1 lg:grid-cols-4 gap-3 mt-8">
