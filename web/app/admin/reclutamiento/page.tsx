@@ -24,7 +24,7 @@ export default async function AdminReclutamientoPage() {
 
   return (
     <main className="min-h-screen">
-      <div className="w-full max-w-6xl px-4 py-10 lg:px-8">
+      <div className="mx-auto max-w-3xl px-4 py-12">
         <h1 className="text-3xl font-bold">Reclutamiento</h1>
         <p className="mt-2 text-sm text-gray-400">
           Solicitudes de quien quiere entrar en la hermandad.

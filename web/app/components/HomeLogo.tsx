@@ -108,7 +108,6 @@ export default function HomeLogo() {
   // Perfil: el layout ya deja hueco al watermark (--fact-pad); la columna
   // a pantalla completa no debe contarse como solape.
   const onProfile = pathname === "/profile" || pathname.startsWith("/profile/");
-  const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
   const sideLogo = keepsSideLogo(pathname);
   const { mobile, size, left } = useWatermarkBox();
   const { setWatermarkHidden } = useLogoChrome();
@@ -136,7 +135,7 @@ export default function HomeLogo() {
     const tick = () => {
       const logoEl = asideRef.current;
 
-      if (mobile || onAdmin) {
+      if (mobile) {
         setCovered(true);
         return;
       }
@@ -204,7 +203,7 @@ export default function HomeLogo() {
       window.removeEventListener("resize", tick);
       ro?.disconnect();
     };
-  }, [mobile, onAdmin, onProfile, sideLogo, left, size, ready, mounted, pathname]);
+  }, [mobile, onProfile, sideLogo, left, size, ready, mounted, pathname]);
 
   useEffect(() => {
     // En móvil y tablet el wordmark de la navbar es el único logo.

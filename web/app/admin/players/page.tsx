@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import PlayersTable from "./PlayersTable";
 
 import { apiUrl } from "@/lib/api";
@@ -23,13 +24,18 @@ export default async function AdminPlayersPage() {
 
   return (
     <main className="min-h-screen">
-      <div className="w-full max-w-6xl px-4 py-10 lg:px-8">
+      <div className="max-w-3xl mx-auto px-4 py-10">
 
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold">Jugadores</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            {players.length} miembro{players.length !== 1 ? "s" : ""} · apodo = nombre en el ranking
-          </p>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold">Jugadores</h1>
+            <p className="text-gray-400 text-sm mt-1">
+              {players.length} miembro{players.length !== 1 ? "s" : ""} · apodo = nombre en el ranking
+            </p>
+          </div>
+          <Link href="/admin" className="text-sm text-gray-500 hover:text-gray-300">
+            &larr; Panel admin
+          </Link>
         </div>
 
         <PlayersTable players={players} />
