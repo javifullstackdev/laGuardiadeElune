@@ -249,7 +249,16 @@ export default function HomeHero({ slides }: { slides: HeroSlide[] }) {
                     : ""
                 }`}
               >
-                <TitleText title={current.title} lines={titleLines(current)} />
+                {titleLines(current).length > 0 ? (
+                  <>
+                    <span className="lg:hidden">
+                      <TitleText title={current.title} lines={titleLines(current)} />
+                    </span>
+                    <span className="hidden lg:inline">{current.title}</span>
+                  </>
+                ) : (
+                  current.title
+                )}
               </h1>
               {current.subtitle ? (
                 <p className="mt-3 text-base text-gray-200/90 leading-relaxed hidden lg:block">
