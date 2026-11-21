@@ -24,7 +24,7 @@ export default async function Navbar() {
     { href: "/", label: "Inicio" },
     { href: "/posts", label: "Tablón" },
     { href: "/personajes", label: "Personajes" },
-    { href: "/lore", label: "Historias" },
+    { href: "/lore", label: "Relatos" },
     { href: "/preguntas", label: "Preguntas" },
     { href: "/reclutamiento", label: "Reclutamiento" },
     ...(token

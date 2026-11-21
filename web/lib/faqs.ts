@@ -33,7 +33,7 @@ export const FAQS: Faq[] = [
   {
     question: "¿Quién escribe las fichas y las historias?",
     answer:
-      "Las escribes tú. La ficha es la cara pública del personaje y la historia es lo que le ocurre. El Eremita las lee antes de publicarlas, para que lo que sale al pergamino esté cuidado. Las fichas están en Personajes y los relatos en Historias.",
+      "Las escribes tú. La ficha es la cara pública del personaje y la historia es lo que le ocurre. El Eremita las lee antes de publicarlas, para que lo que sale al pergamino esté cuidado. Las fichas están en Personajes y las historias en Relatos.",
   },
   {
     question: "¿Cómo hablo con la Guardia?",

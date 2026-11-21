@@ -87,7 +87,7 @@ export default async function Home() {
           <section className="px-4 pb-10 sm:pb-14">
             <FadeUp>
               <div className="flex items-end justify-between mb-6">
-                <h2 className="text-xl sm:text-2xl font-quest font-bold">Historias</h2>
+                <h2 className="text-xl sm:text-2xl font-quest font-bold">Relatos</h2>
                 <Link href="/lore" className="text-xs sm:text-sm text-gray-500 hover:text-gray-300">
                   Ver todas
                 </Link>

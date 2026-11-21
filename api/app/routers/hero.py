@@ -81,7 +81,8 @@ def _resolve(db: Session, slide: HeroSlide) -> HeroSlidePublic | None:
         if same_title:
             title_lines = _card_lines(story.card_title)
         subtitle = subtitle or _excerpt(story.biography or story.personality or story.appearance)
-        kicker = kicker or "Historia"
+        if not kicker or kicker.casefold() == "historia":
+            kicker = "Relato"
         href = href or f"/lore/{story.slug or story.id}"
         cta = cta or "Leer historia"
     elif kind == "character":
