@@ -70,7 +70,7 @@ def _out(req: ImageRequest) -> dict:
             "race": char.race.value if char and char.race else None,
             "gender": char.gender if char else None,
         },
-        "owner_username": req.user.username if req.user else None,
+        "owner_username": req.user.visible_name if req.user else None,
     }
 
 

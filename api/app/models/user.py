@@ -19,8 +19,13 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(255), nullable=False)  # sync Discord (login /me)
-    # Apodo visible en ranking (editable por admin; no lo pisa Discord)
+    # Nombre que pone el admin cuando Discord no trae el apodo. Manda en toda la web.
     display_name = Column(String(255), nullable=True)
+
+    @property
+    def visible_name(self) -> str:
+        chosen = (self.display_name or "").strip()
+        return chosen or self.username
     discord_id = Column(String(255), nullable=False, unique=True)
     guild_title = Column(String(255), nullable=False)
     total_points = Column(Integer, nullable=False, default=0)

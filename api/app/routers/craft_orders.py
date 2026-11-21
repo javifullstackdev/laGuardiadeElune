@@ -88,7 +88,7 @@ def _score_collected(db: Session, row: CraftOrder) -> None:
 def _visible_name(user: User | None) -> str:
     if user is None:
         return ""
-    return user.display_name or user.username
+    return user.visible_name
 
 
 def _high_skill(skill: int, maximum: int) -> bool:

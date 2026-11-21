@@ -64,22 +64,25 @@ function rectsOverlap(a: DOMRect, b: DOMRect, pad = 0) {
 }
 
 /**
+ * Ficha, historia y perfil reservan hueco a la izquierda. En el resto, si la
+ * columna centrada invade el sello, este no debe volver al hacer scroll.
+ */
+function keepsSideLogo(pathname: string) {
+  if (pathname === "/profile" || pathname.startsWith("/profile/")) return true;
+  if (/^\/lore\/[^/]+/.test(pathname)) return true;
+  if (/^\/personajes\/[^/]+\/[^/]+/.test(pathname)) return true;
+  return false;
+}
+
+/**
  * Elementos reales de contenido (no el <main> a pantalla completa, que
  * siempre solaparía el logo y dejaría el wordmark de la nav siempre visible).
  */
-function contentCollisionTargets(onHome: boolean): HTMLElement[] {
+function contentCollisionTargets(): HTMLElement[] {
   const list: HTMLElement[] = [];
   const push = (el: Element | null) => {
     if (el instanceof HTMLElement && !list.includes(el)) list.push(el);
   };
-
-  // Home: solo el carrusel decide el solape
-  if (onHome) {
-    push(document.getElementById("home-carousel"));
-    return list;
-  }
-
-  push(document.getElementById("home-carousel"));
 
   document
     .querySelectorAll(
@@ -102,10 +105,10 @@ function contentCollisionTargets(onHome: boolean): HTMLElement[] {
 
 export default function HomeLogo() {
   const pathname = usePathname();
-  const onHome = pathname === "/";
   // Perfil: el layout ya deja hueco al watermark (--fact-pad); la columna
   // a pantalla completa no debe contarse como solape.
   const onProfile = pathname === "/profile" || pathname.startsWith("/profile/");
+  const sideLogo = keepsSideLogo(pathname);
   const { mobile, size, left } = useWatermarkBox();
   const { setWatermarkHidden } = useLogoChrome();
   const asideRef = useRef<HTMLElement>(null);
@@ -153,12 +156,13 @@ export default function HomeLogo() {
         return;
       }
 
-      const targets = contentCollisionTargets(onHome);
+      const targets = contentCollisionTargets();
       if (targets.length === 0) {
         setCovered(false);
         return;
       }
 
+      let crosses = false;
       let hit = false;
       for (const el of targets) {
         const r = el.getBoundingClientRect();
@@ -167,12 +171,19 @@ export default function HomeLogo() {
         if (r.width > window.innerWidth * 0.92 && r.height > window.innerHeight * 0.85) {
           continue;
         }
+        const horizontal = r.left < logoRect.right - 8 && r.right > logoRect.left + 8;
+        if (!horizontal) continue;
+        // Columna centrada encima del sello: en esta anchura solo va el de la navbar.
+        if (!sideLogo) {
+          crosses = true;
+          break;
+        }
         if (rectsOverlap(logoRect, r, 8)) {
           hit = true;
           break;
         }
       }
-      setCovered(hit);
+      setCovered(sideLogo ? hit : crosses);
     };
 
     tick();
@@ -192,7 +203,7 @@ export default function HomeLogo() {
       window.removeEventListener("resize", tick);
       ro?.disconnect();
     };
-  }, [mobile, onHome, onProfile, left, size, ready, mounted, pathname]);
+  }, [mobile, onProfile, sideLogo, left, size, ready, mounted, pathname]);
 
   useEffect(() => {
     // En móvil y tablet el wordmark de la navbar es el único logo.
